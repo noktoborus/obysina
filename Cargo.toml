@@ -26,6 +26,7 @@ winit = { version = "0.30", default-features = false }
 
 obusina = { path = ".", version = "0.1.0" }
 obusina-canvas = { path = "crates/obusina-canvas", version = "0.1.0" }
+obusina-panel = { path = "crates/obusina-panel", version = "0.1.0" }
 obusina-pattern = { path = "crates/obusina-pattern", version = "0.1.0" }
 
 [profile.release]
@@ -47,6 +48,7 @@ egui.workspace = true
 env_logger.workspace = true
 log.workspace = true
 obusina-canvas.workspace = true
+obusina-panel.workspace = true
 obusina-pattern.workspace = true
 rust-i18n.workspace = true
 sys-locale.workspace = true

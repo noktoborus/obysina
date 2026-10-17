@@ -7,7 +7,9 @@ An editor of bead patterns, for Linux, Windows and Android.
 - Draws a pattern on a field that fills the window. A bead is drawn at its
   proportions.
 - Three kinds of grid: loom (and square stitch), peyote and brick stitch.
-- Two floating panels that can be moved and folded:
+- Two floating panels with no title. The grip of dots moves a panel; a tap on
+  it folds the panel. At the left or the right edge of the window a panel
+  stands in a column, at the top or the bottom in a row. The panels:
   - **Tools**: undo, redo, the pencil, the fill, the picker, the kind of grid,
     save;
   - **Beads**: the colours of the pattern with their counts, an empty place,

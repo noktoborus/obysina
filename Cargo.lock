@@ -2533,6 +2533,7 @@ dependencies = [
  "env_logger",
  "log",
  "obusina-canvas",
+ "obusina-panel",
  "obusina-pattern",
  "rust-i18n",
  "serde",
@@ -2560,6 +2561,16 @@ dependencies = [
  "egui",
  "egui_kittest",
  "obusina-pattern",
+]
+
+[[package]]
+name = "obusina-panel"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "eframe",
+ "egui",
+ "egui_kittest",
 ]
 
 [[package]]

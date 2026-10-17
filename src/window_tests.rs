@@ -1,7 +1,7 @@
 //! Tests of the window (`RULE test.window`): `App` driven by `egui_kittest`
 //! with egui events, what it draws found through the tree of accesskit.
 
-use egui::{Event, Modifiers, PointerButton, Pos2, TouchDeviceId, TouchId, TouchPhase};
+use egui::{Event, Modifiers, PointerButton, Pos2, TouchDeviceId, TouchId, TouchPhase, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use obusina_pattern::{Cell, Grid};
@@ -60,6 +60,35 @@ impl Window {
         }
         self.harness.event(button(*points.last().unwrap(), false));
         self.harness.run();
+    }
+
+    /// Drags the grip named `grip` to `target` with the first button.
+    fn drag(&mut self, grip: &str, target: Pos2) {
+        let start = self.harness.get_by_label(grip).rect().center();
+        let button = |pos, pressed| Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        };
+        self.harness.event(Event::PointerMoved(start));
+        self.harness.event(button(start, true));
+        self.harness.step();
+        for step in 1..=10 {
+            let point = start + (target - start) * (step as f32 / 10.0);
+            self.harness.event(Event::PointerMoved(point));
+            self.harness.step();
+        }
+        self.harness.event(button(target, false));
+        self.harness.run();
+    }
+
+    /// True when the widget named `first` stands above `second`, in a
+    /// column; false when it stands beside it, in a row.
+    fn stacked(&self, first: &str, second: &str) -> bool {
+        let first = self.harness.get_by_label(first).rect().center();
+        let second = self.harness.get_by_label(second).rect().center();
+        (first.x - second.x).abs() < 1.0 && second.y > first.y
     }
 
     /// Clicks the widget named `name`.
@@ -280,4 +309,61 @@ fn every_widget_has_a_name() {
     ] {
         window.harness.get_by_label(&name);
     }
+}
+
+#[test]
+fn a_panel_has_a_grip_and_no_title() {
+    let window = window();
+
+    let grips = window
+        .harness
+        .query_all_by_label(&t!("panel.tools"))
+        .count();
+
+    assert_eq!(grips, 1, "the grip is the one thing named for the panel");
+}
+
+#[test]
+fn a_panel_at_a_side_stands_in_a_column() {
+    let mut window = window();
+    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+
+    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, 8.0));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+}
+
+#[test]
+fn a_panel_in_the_centre_keeps_its_shape() {
+    let mut window = window();
+    window.drag(&t!("panel.palette"), pos2(SIZE.x - 8.0, SIZE.y / 2.0));
+    assert!(window.stacked(&t!("palette.first"), &t!("palette.second")));
+
+    window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+
+    assert!(window.stacked(&t!("palette.first"), &t!("palette.second")));
+}
+
+#[test]
+fn a_tap_on_the_grip_folds_the_panel() {
+    let mut window = window();
+
+    window.click(&t!("panel.tools"));
+    assert!(window.harness.query_by_label(&t!("edit.undo")).is_none());
+
+    window.click(&t!("panel.tools"));
+    window.harness.get_by_label(&t!("edit.undo"));
+}
+
+#[test]
+fn a_panel_stays_inside_the_window() {
+    let mut window = window();
+
+    window.drag(&t!("panel.tools"), pos2(SIZE.x + 300.0, SIZE.y + 300.0));
+
+    let screen = egui::Rect::from_min_size(Pos2::ZERO, SIZE);
+    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
+    assert!(screen.contains_rect(grip), "{grip:?} in {screen:?}");
 }

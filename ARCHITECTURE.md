@@ -6,6 +6,7 @@
 obusina-android (cdylib, android only) ──► obusina
 obusina (binary and library)
  ├── obusina-canvas ──► obusina-pattern
+ ├── obusina-panel
  └── obusina-pattern
 experiments/glyphs     (nothing depends on it)
 ```
@@ -14,6 +15,7 @@ experiments/glyphs     (nothing depends on it)
 | --- | --- |
 | `obusina-pattern` | the model: grid, palette, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
+| `obusina-panel` | a floating panel with a grip, laid out by the zone of the window it is dragged to |
 | `obusina` | the window, the panels, the history of edits, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 

@@ -4,35 +4,40 @@
 use egui::{Color32, RichText, Stroke, vec2};
 use rust_i18n::t;
 
+use obusina_panel::{FloatingPanel, Orientation};
+
 use crate::app::App;
 use crate::ui::access::Named;
 use crate::ui::icons;
+use crate::ui::tools::gap;
 
 /// Where the panel stands the first time, from the top right of the window.
 const PLACE: egui::Vec2 = vec2(-16.0, 16.0);
 /// The size of a swatch: large enough for a finger.
 const SWATCH: egui::Vec2 = vec2(44.0, 36.0);
-/// Swatches in one row.
-const COLUMNS: usize = 4;
+/// Swatches in one line of a row.
+const ROW: usize = 8;
+/// Swatches in one line of a column.
+const COLUMN: usize = 2;
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
-    let corner = context.content_rect().right_top() + PLACE;
-    egui::Window::new(t!("panel.palette"))
-        .id(egui::Id::unique("palette"))
-        .pivot(egui::Align2::RIGHT_TOP)
-        .default_pos(corner)
-        .resizable(false)
-        .constrain(true)
-        .show(context, |ui| {
-            swatches(app, ui);
-            ui.add_space(ui.spacing().item_spacing.y * 2.0);
+    FloatingPanel::new("palette", t!("panel.palette"))
+        .place(egui::Align2::RIGHT_TOP, PLACE)
+        .show(context, |ui, orientation| {
+            let per_line = match orientation {
+                Orientation::Horizontal => ROW,
+                Orientation::Vertical => COLUMN,
+            };
+            swatches(app, ui, per_line);
+            gap(ui, orientation);
             in_hand(app, ui);
         });
 }
 
-/// One swatch for each colour, and one for an empty place.
-fn swatches(app: &mut App, ui: &mut egui::Ui) {
+/// One swatch for each colour, and one for an empty place, `per_line` in a
+/// line.
+fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
     let counts = app.pattern.counts();
     let entries: Vec<Option<usize>> = (0..app.pattern.palette().len())
         .map(Some)
@@ -59,7 +64,7 @@ fn swatches(app: &mut App, ui: &mut egui::Ui) {
                 if response.secondary_clicked() {
                     app.colours[1] = colour;
                 }
-                if place % COLUMNS == COLUMNS - 1 {
+                if place % per_line == per_line - 1 {
                     ui.end_row();
                 }
             }
@@ -69,14 +74,12 @@ fn swatches(app: &mut App, ui: &mut egui::Ui) {
 /// The two colours in hand and the button that swaps them, which is the way
 /// to the second colour by touch (`RULE ui.touch`).
 fn in_hand(app: &mut App, ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        let [first, second] = app.colours;
-        swatch(app, ui, first, false).named(&t!("palette.first"));
-        swatch(app, ui, second, false).named(&t!("palette.second"));
-        if ui.button(icons::SWAP).tip(&t!("palette.swap")).clicked() {
-            app.colours.swap(0, 1);
-        }
-    });
+    let [first, second] = app.colours;
+    swatch(app, ui, first, false).named(&t!("palette.first"));
+    swatch(app, ui, second, false).named(&t!("palette.second"));
+    if ui.button(icons::SWAP).tip(&t!("palette.swap")).clicked() {
+        app.colours.swap(0, 1);
+    }
 }
 
 /// A button of the colour `colour`, its key on it.

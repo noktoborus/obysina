@@ -74,6 +74,7 @@ RULE crate.deps : a library crate depends on no other library crate of this
 WHY  a crate that needs a sibling is not one purpose any more
 THEN move the shared part into the binary, or make it its own crate both use
 EX+  obusina-canvas -> obusina-pattern    the one allowed exception, it draws it
+EX+  obusina-panel, which knows egui only
 EX-  obusina-pattern -> obusina-config
 REF  ARCHITECTURE.md
 
@@ -323,9 +324,18 @@ THEN a right click, a hover, a key or a wheel is a second way to an action,
 EX-  a second colour reachable only by the right button
 
 RULE ui.layout : the field of beads fills the window; the tools and the
-     palette are floating panels that can be moved
-THEN no side panel, no menu bar; a panel can be folded
+     palette are `obusina_panel::FloatingPanel`s
+THEN no side panel, no menu bar, no title on a panel: a grip of dots moves
+     it, a tap on the grip folds it
 EX-  a `SidePanel` holding the palette
+EX-  an `egui::Window` with its title bar
+REF  crates/obusina-panel/README.md
+
+RULE ui.zones : the window has five zones, the four edges split by the
+     diagonals from the corners, and the large centre
+THEN a panel dragged to the left or the right edge is a column, to the top
+     or the bottom a row; in the centre it keeps its shape
+THEN the content of a panel lays itself out by the `Orientation` it is given
 
 RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller
@@ -424,6 +434,7 @@ WHY  a widget is drawn the same way wherever it is used, so its pixels are its
      behaviour. The window changes with every locale, theme and setting.
 THEN the window is tested by its tree (`RULE test.window`), not by its pixels
 EX+  `obusina-canvas`: one picture per kind of grid
+EX+  `obusina-panel`: a row, a column, a folded panel
 EX-  a picture of the main window of `obusina` committed as a reference
 
 RULE test.picture.tool = `egui_kittest` with `wgpu` and `snapshot`, a
