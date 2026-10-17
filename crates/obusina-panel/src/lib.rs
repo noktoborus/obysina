@@ -16,7 +16,6 @@ const GRIP_LONG: f32 = 36.0;
 const DOT_STEP: f32 = 6.0;
 /// The radius of a dot of the grip.
 const DOT_RADIUS: f32 = 1.5;
-
 /// What a panel remembers from frame to frame.
 #[derive(Debug, Clone, Copy)]
 struct State {
@@ -26,6 +25,9 @@ struct State {
     folded: bool,
     /// How the content is laid out.
     orientation: Orientation,
+    /// While the grip is held: the point of the panel under the pointer,
+    /// from its top left corner.
+    grab: Option<Vec2>,
 }
 
 /// What the panel did in this frame.
@@ -92,7 +94,13 @@ impl FloatingPanel {
             position: self.corner.pos_in_rect(&window) + self.offset,
             folded: false,
             orientation: self.orientation,
+            grab: None,
         });
+        let (pointer, held) =
+            context.input(|input| (input.pointer.latest_pos(), input.pointer.primary_down()));
+        if let (Some(grab), Some(pointer), true) = (state.grab, pointer, held) {
+            state.position = pointer - grab;
+        }
         let pivot = if stored.is_some() {
             Align2::LEFT_TOP
         } else {
@@ -123,16 +131,27 @@ impl FloatingPanel {
             let anchor = state.position;
             let pivot = vec2(self.corner.x().to_factor(), self.corner.y().to_factor());
             state.position = anchor - pivot * rect.size();
-        } else if grip.dragged() {
-            state.position = rect.min + grip.drag_delta();
-            let zone = grip
-                .interact_pointer_pos()
-                .and_then(|point| Zone::of(window, point).orientation());
-            if let Some(orientation) = zone {
-                state.orientation = orientation;
-            }
-        } else {
+        } else if state.grab.is_none() {
             state.position = rect.min;
+        }
+        if grip.is_pointer_button_down_on() && state.grab.is_none() {
+            let origin = context.input(|input| input.pointer.press_origin());
+            state.grab = origin.map(|origin| origin - rect.min);
+        }
+        if grip.dragged()
+            && let Some(orientation) = grip
+                .interact_pointer_pos()
+                .and_then(|point| Zone::of(window, point).orientation())
+            && orientation != state.orientation
+        {
+            state.orientation = orientation;
+            let start = grip.rect.min - rect.min;
+            state.grab = state
+                .grab
+                .map(|grab| grab.clamp(start, start + grip_size(orientation)));
+        }
+        if !held {
+            state.grab = None;
         }
         if grip.clicked() {
             state.folded = !state.folded;
@@ -142,7 +161,7 @@ impl FloatingPanel {
             state.position = inside(window, Rect::from_min_size(state.position, rect.size()));
             context.data_mut(|data| data.insert_temp(self.id, state));
         }
-        if !measured || stored.is_none() || grip.dragged() || grip.clicked() {
+        if !measured || stored.is_none() || state.grab.is_some() || grip.clicked() {
             context.request_repaint();
         }
 
@@ -168,10 +187,7 @@ impl FloatingPanel {
 
     /// The grip: a field of dots across the start of the panel.
     fn grip(&self, ui: &mut Ui, state: &State) -> Response {
-        let size = match state.orientation {
-            Orientation::Horizontal => vec2(GRIP_THIN, GRIP_LONG),
-            Orientation::Vertical => vec2(GRIP_LONG, GRIP_THIN),
-        };
+        let size = grip_size(state.orientation);
         let response = ui.allocate_response(size, Sense::click_and_drag());
         let name = self.name.clone();
         let folded = state.folded;
@@ -197,6 +213,14 @@ impl FloatingPanel {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
         }
         response
+    }
+}
+
+/// The size of the grip of a panel laid out as `orientation`.
+fn grip_size(orientation: Orientation) -> Vec2 {
+    match orientation {
+        Orientation::Horizontal => vec2(GRIP_THIN, GRIP_LONG),
+        Orientation::Vertical => vec2(GRIP_LONG, GRIP_THIN),
     }
 }
 

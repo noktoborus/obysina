@@ -25,6 +25,9 @@ grip folds it, and the zone of the window it is dragged to lays it out.
   The centre is the window less `EDGE` of its size on every side; the
   diagonals from the corners split the rest. The pointer decides the zone,
   not the panel: a panel wider than an edge zone still reaches it.
+- The point of the panel taken by the pointer stays under it: the panel is
+  placed from the pointer before it is drawn, so it neither lags a frame nor
+  loses the first points of a drag.
 - The panel is kept inside the window, also when the window shrinks.
 
 | Row | Column | Folded |

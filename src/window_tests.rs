@@ -461,3 +461,64 @@ fn the_wheel_alone_moves_the_field() {
     assert_eq!(window.bead_size(), bead);
     assert!(window.harness.state().view.offset.y < offset.y);
 }
+
+#[test]
+fn a_panel_follows_the_pointer_exactly() {
+    let mut window = window();
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+    let start = window
+        .harness
+        .get_by_label(&t!("panel.tools"))
+        .rect()
+        .center();
+    let by = egui::vec2(-150.0, 90.0);
+
+    window.drag(&t!("panel.tools"), start + by);
+
+    let end = window
+        .harness
+        .get_by_label(&t!("panel.tools"))
+        .rect()
+        .center();
+    assert!(
+        (end - (start + by)).length() < 1.0,
+        "{end:?} != {:?}",
+        start + by
+    );
+}
+
+#[test]
+fn a_panel_dragged_slowly_follows_the_pointer() {
+    let mut window = window();
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+    let start = window
+        .harness
+        .get_by_label(&t!("panel.tools"))
+        .rect()
+        .center();
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+
+    window.harness.event(Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    let mut point = start;
+    for _ in 0..40 {
+        point += egui::vec2(1.0, 0.5);
+        window.harness.event(Event::PointerMoved(point));
+        window.harness.step();
+        let grip = window
+            .harness
+            .get_by_label(&t!("panel.tools"))
+            .rect()
+            .center();
+        let behind = (point - grip).length();
+        assert!(behind < 1.0, "the grip is {behind} behind the pointer");
+    }
+    window.harness.event(button(point, false));
+    window.harness.run();
+}
