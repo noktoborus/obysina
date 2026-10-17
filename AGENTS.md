@@ -464,16 +464,20 @@ EX-  a picture updated so a failing test passes, without opening it
 
 ## Checks before finishing
 
-RULE checks : all seven are clean before the work is reported done
+RULE checks : all six are clean before the work is committed
 THEN cargo fmt --all
      tools/reap -- cargo clippy --workspace --all-targets
      tools/reap -- cargo build --workspace
      tools/reap -- cargo test --workspace
      tools/reap -- make build-windows
-     tools/reap -- make apk
      cargo audit
-WHY  code gated by `cfg` for one platform is compiled only on that platform;
-     a build of each is the one way to know it compiles
+WHY  code gated by `cfg` for windows is compiled only for windows; the tests
+     run on the linux build
+
+RULE checks.android : the android package is built when a change touches
+     `android/`, the code gated for android or what it calls, or when the
+     user asks
+THEN tools/reap -- make apk, after `. /etc/profile.d/workspace-packages.sh`
 
 ## Commits
 
