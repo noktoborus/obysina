@@ -1,0 +1,24 @@
+{
+  "format": 1,
+  "grid": "peyote",
+  "width": 6,
+  "height": 3,
+  "bead_ratio": 1.0,
+  "palette": [
+    {
+      "key": "A",
+      "rgb": "#1b1b1b",
+      "catalog": "miyuki-delica-11",
+      "code": "DB-0010"
+    },
+    {
+      "key": "B",
+      "rgb": "#f2efe6"
+    }
+  ],
+  "rows": [
+    "AAB.BB",
+    "ABABAB",
+    "......"
+  ]
+}

@@ -1,0 +1,81 @@
+_version: 2
+
+field:
+  en: "Pattern"
+  ru: "Схема"
+
+panel.tools:
+  en: "Tools"
+  ru: "Инструменты"
+panel.palette:
+  en: "Beads"
+  ru: "Бисер"
+
+edit.undo:
+  en: "Undo"
+  ru: "Отменить"
+edit.redo:
+  en: "Redo"
+  ru: "Повторить"
+
+tool.pencil:
+  en: "Pencil"
+  ru: "Карандаш"
+tool.fill:
+  en: "Fill"
+  ru: "Заливка"
+tool.pick:
+  en: "Pick a colour"
+  ru: "Взять цвет"
+
+grid.kind:
+  en: "Grid"
+  ru: "Сетка"
+grid.loom:
+  en: "Loom"
+  ru: "Станок"
+grid.peyote:
+  en: "Peyote"
+  ru: "Мозаика"
+grid.brick:
+  en: "Brick stitch"
+  ru: "Кирпичик"
+
+palette.bead:
+  en: "Bead %{key}, %{rgb}, %{count} in the pattern"
+  ru: "Бисер %{key}, %{rgb}, в схеме %{count}"
+palette.empty:
+  en: "Empty place"
+  ru: "Пустое место"
+palette.first:
+  en: "First colour"
+  ru: "Первый цвет"
+palette.second:
+  en: "Second colour"
+  ru: "Второй цвет"
+palette.swap:
+  en: "Swap the colours"
+  ru: "Поменять цвета"
+
+file.save:
+  en: "Save"
+  ru: "Сохранить"
+file.nowhere:
+  en: "Name a file on the command line to save to it"
+  ru: "Чтобы сохранять, укажите файл в командной строке"
+file.saved:
+  en: "Saved"
+  ru: "Сохранено"
+
+error.pattern.read:
+  en: "The pattern file cannot be read"
+  ru: "Файл схемы не читается"
+error.pattern.write:
+  en: "The pattern file cannot be written"
+  ru: "Файл схемы не записывается"
+error.pattern.newer:
+  en: "The pattern was saved by a newer version of the program"
+  ru: "Схема сохранена более новой версией программы"
+error.pattern.invalid:
+  en: "The pattern file is damaged"
+  ru: "Файл схемы повреждён"

@@ -1,0 +1,96 @@
+//! Every format ever written is read (`RULE pattern.version`).
+//!
+//! `tests/patterns/<format>.json` is a file of that format. It is never
+//! changed once the format is replaced.
+
+use obusina_pattern::{Cell, FORMAT, Grid, Pattern, PatternError};
+
+/// The file of a format, as text.
+fn file(format: u64) -> String {
+    let path = format!("tests/patterns/{format}.json");
+    std::fs::read_to_string(&path).unwrap_or_else(|error| panic!("{path}: {error}"))
+}
+
+#[test]
+fn there_is_a_file_of_every_format() {
+    for format in 1..=FORMAT {
+        Pattern::from_json(&file(format)).expect("the file reads");
+    }
+}
+
+#[test]
+fn format_1_reads_its_beads() {
+    let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+
+    assert_eq!(pattern.grid(), Grid::Peyote);
+    assert_eq!((pattern.width(), pattern.height()), (6, 3));
+    assert_eq!(pattern.palette()[0].code.as_deref(), Some("DB-0010"));
+    assert_eq!(pattern.get(Cell { column: 2, row: 0 }), Some(1));
+    assert_eq!(pattern.get(Cell { column: 3, row: 0 }), None);
+    assert_eq!(pattern.counts(), [5, 6]);
+}
+
+#[test]
+fn the_current_format_reads_back_what_it_wrote() {
+    let pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
+
+    let text = pattern.to_json().expect("the pattern writes");
+
+    assert_eq!(Pattern::from_json(&text).expect("it reads back"), pattern);
+    assert_eq!(text, file(FORMAT), "the file is written the way it is kept");
+}
+
+#[test]
+fn a_row_is_one_line_of_the_file() {
+    let text = file(FORMAT);
+
+    assert!(text.contains("\n    \"AAB.BB\",\n"));
+}
+
+#[test]
+fn a_newer_format_is_refused() {
+    let text = file(FORMAT).replacen(
+        &format!("\"format\": {FORMAT}"),
+        &format!("\"format\": {}", FORMAT + 1),
+        1,
+    );
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::Newer { .. })
+    ));
+}
+
+#[test]
+fn a_file_with_no_format_is_refused() {
+    assert!(matches!(
+        Pattern::from_json("{}"),
+        Err(PatternError::NoFormat)
+    ));
+}
+
+#[test]
+fn a_bead_of_no_colour_is_refused() {
+    let text = file(1).replace("\"ABABAB\"", "\"ABABAC\"");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::UnknownKey {
+            row: 1,
+            column: 5,
+            key: 'C'
+        })
+    ));
+}
+
+#[test]
+fn a_write_leaves_a_whole_file() {
+    let directory = tempfile::tempdir().expect("a scratch directory");
+    let path = directory.path().join("pattern.json");
+    let pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
+
+    obusina_pattern::write(&path, &pattern).expect("the pattern writes");
+
+    assert_eq!(obusina_pattern::read(&path).expect("it reads"), pattern);
+    assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+}

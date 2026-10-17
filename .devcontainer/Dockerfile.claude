@@ -1,0 +1,47 @@
+FROM docker.io/library/rust:1-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg git less sudo jq yq \
+        ripgrep fd-find \
+        pkg-config libssl-dev build-essential \
+        libxkbcommon0 libxkbcommon-x11-0 \
+        libwayland-client0 libwayland-cursor0 libwayland-egl1 \
+        libx11-6 libx11-xcb1 libxcb1 libxcb-shape0 \
+        libxcursor1 libxi6 libxrandr2 libfontconfig1 \
+        libgl1 libegl1 libgl1-mesa-dri \
+        libvulkan1 mesa-vulkan-drivers \
+        xvfb xauth imagemagick xdotool \
+        grim wtype meson ninja-build libwayland-dev wayland-protocols \
+        libxkbcommon-dev libpixman-1-dev libdrm-dev libseat-dev
+
+# The window is run and looked at with no display. X11: Xvfb, import and
+# xdotool, above. Wayland: cage in headless mode, grim and wtype. cage 0.1.4 of
+# bookworm has no virtual keyboard, so wtype types nothing into it: 0.1.5 has
+# one and needs wlroots 0.16, which is built with it as a static subproject.
+# cage refuses to run as root, so it runs as the user headless.
+RUN set -e; cd /tmp; \
+    curl -fsSL -o cage.tar.gz https://github.com/cage-kiosk/cage/archive/refs/tags/v0.1.5.tar.gz; \
+    echo "576b8b5a041712b8d8785243ac6db08c7bc9c32822f96ad6dec7ac2b2db9b2b5  cage.tar.gz" | sha256sum -c -; \
+    curl -fsSL -o wlroots.tar.gz https://gitlab.freedesktop.org/wlroots/wlroots/-/archive/0.16.2/wlroots-0.16.2.tar.gz; \
+    echo "f502959db8bc029e32f10a837b37257bb8c5ed269bceddf9492f0bb381bebf76  wlroots.tar.gz" | sha256sum -c -; \
+    mkdir -p cage/subprojects/wlroots; \
+    tar xzf cage.tar.gz -C cage --strip-components=1; \
+    tar xzf wlroots.tar.gz -C cage/subprojects/wlroots --strip-components=1; \
+    (cd cage && meson setup build --prefix=/opt/cage --buildtype=release \
+        --default-library=static -Dxwayland=false -Dwlroots:xwayland=disabled \
+        -Dwlroots:backends= -Dwlroots:renderers= -Dwlroots:allocators= \
+        -Dwlroots:examples=false \
+     && ninja -C build && meson install -C build --skip-subprojects); \
+    ln -s /opt/cage/bin/cage /usr/local/bin/cage; \
+    rm -rf cage cage.tar.gz wlroots.tar.gz; \
+    useradd -m -u 1000 -s /bin/bash headless
+
+RUN rustup component add rustfmt clippy rust-src rust-analyzer llvm-tools-preview
+RUN rustup component add rust-docs-json --toolchain nightly
+RUN rustup target add aarch64-linux-android
+RUN cargo install cargo-brief
+RUN cargo install ruskel
+RUN cargo install cargo-audit
+
+RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc

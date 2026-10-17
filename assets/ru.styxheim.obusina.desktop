@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Obusina
+Comment=Editor of bead patterns
+Comment[ru]=Редактор схем для бисера
+Exec=obusina %f
+Icon=ru.styxheim.obusina
+StartupWMClass=ru.styxheim.obusina
+Categories=Graphics;
+MimeType=application/json;

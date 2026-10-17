@@ -1,0 +1,12 @@
+/target
+
+# The list `experiments/glyphs` writes when it is run from here
+/glyphs.txt
+
+# The swap files of an editor
+.*.sw?
+
+# What a picture test of a widget leaves beside the picture it failed against
+*.new.png
+*.diff.png
+*.old.png

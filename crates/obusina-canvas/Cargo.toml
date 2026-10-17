@@ -1,0 +1,18 @@
+[package]
+name = "obusina-canvas"
+description = "egui widget drawing a bead pattern and telling which bead the pointer is on"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+egui.workspace = true
+obusina-pattern.workspace = true
+
+[build-dependencies]
+base64.workspace = true
+
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest.workspace = true

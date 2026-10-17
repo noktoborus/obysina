@@ -1,0 +1,65 @@
+//! Icons of the interface, one code point each (`RULE icon.glyph`).
+//!
+//! Each is taken from the list `cargo run -p glyphs` writes, from a face of
+//! the proportional family. The test below fails if no font carries one.
+
+/// Undo, the arrow turning left.
+pub const UNDO: &str = "\u{27f2}";
+/// Redo, the arrow turning right.
+pub const REDO: &str = "\u{27f3}";
+/// The pencil, which paints one bead at a time.
+pub const PENCIL: &str = "\u{270f}";
+/// The fill, which paints a region of one colour.
+pub const FILL: &str = "\u{1f3a8}";
+/// The picker, which takes the colour of a bead.
+pub const PICK: &str = "\u{1f4a7}";
+/// Swap the two colours, the arrows going round.
+pub const SWAP: &str = "\u{1f503}";
+/// Save, the floppy disk.
+pub const SAVE: &str = "\u{1f4be}";
+/// An empty place, the cross.
+pub const EMPTY: &str = "\u{2716}";
+
+/// Every icon, for the test that the fonts carry them all.
+#[cfg(test)]
+pub const ALL: &[&str] = &[UNDO, REDO, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The icons of a list that no face of the family has a glyph for.
+    fn missing<'a>(family: egui::FontFamily, icons: &'a [&'a str]) -> Vec<&'a str> {
+        let context = egui::Context::default();
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            ui.label("");
+        });
+        output.textures_delta.clear();
+
+        context.fonts_mut(move |fonts| {
+            let carried = fonts.characters(&family).clone();
+            icons
+                .iter()
+                .copied()
+                .filter(|icon| icon.chars().any(|point| !carried.contains_key(&point)))
+                .collect()
+        })
+    }
+
+    #[test]
+    fn every_icon_is_in_the_fonts_the_toolkit_ships_with() {
+        let missing = missing(egui::FontFamily::Proportional, ALL);
+
+        assert!(
+            missing.is_empty(),
+            "no font of the toolkit carries these: {missing:?}"
+        );
+    }
+
+    #[test]
+    fn a_code_point_no_font_carries_is_named() {
+        let missing = missing(egui::FontFamily::Proportional, &["\u{e000}"]);
+
+        assert_eq!(missing, ["\u{e000}"]);
+    }
+}
