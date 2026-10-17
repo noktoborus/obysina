@@ -38,6 +38,17 @@ WHY  eframe gives accesskit on android only with the game activity
      (`RULE ui.name`)
 THEN `NativeOptions::android_app` carries the `AndroidApp` it is given; the
      pattern lives in the internal data path of the program
+RULE android.package = gradle in `android/`: the activity is
+     `com.google.androidgamesdk.GameActivity` of `androidx.games:games-activity`,
+     the library is built by cargo-ndk from a task of `android/app/build.gradle.kts`
+THEN the version of games-activity is the one `android-activity` names in its
+     README, not the latest
+WHY  the native half of the activity is in `android-activity`, the java half in
+     the library; two versions that do not match fail at run time
+EX-  games-activity raised to 4.4.2 because it is newer
+EXC  the prefab of games-activity is not used: `android-activity` carries its
+     own native half
+
 RULE android.cdylib : only `android/` is a `cdylib`, and it is empty on any
      other platform
 WHY  a `cdylib` of the whole program exports every symbol, and the linker of
@@ -441,7 +452,7 @@ THEN cargo fmt --all
      tools/reap -- cargo build --workspace
      tools/reap -- cargo test --workspace
      tools/reap -- make build-windows
-     tools/reap -- make build-android
+     tools/reap -- make apk
      cargo audit
 WHY  code gated by `cfg` for one platform is compiled only on that platform;
      a build of each is the one way to know it compiles

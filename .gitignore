@@ -3,6 +3,13 @@
 # The list `experiments/glyphs` writes when it is run from here
 /glyphs.txt
 
+# What gradle writes in the project of android
+/android/.gradle/
+/android/.kotlin/
+/android/build/
+/android/app/build/
+/android/local.properties
+
 # The swap files of an editor
 .*.sw?
 

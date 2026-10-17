@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The beads of assets/icon.svg, inside the safe zone of an adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:fillColor="#c03030" android:pathData="M33.38,29.25 H39.56 A4.12,4.12 0 0 1 43.69,33.38 V39.56 A4.12,4.12 0 0 1 39.56,43.69 H33.38 A4.12,4.12 0 0 1 29.25,39.56 V33.38 A4.12,4.12 0 0 1 33.38,29.25 Z" />
+    <path android:fillColor="#1b1b1b" android:pathData="M50.91,36.47 H57.09 A4.12,4.12 0 0 1 61.22,40.59 V46.78 A4.12,4.12 0 0 1 57.09,50.91 H50.91 A4.12,4.12 0 0 1 46.78,46.78 V40.59 A4.12,4.12 0 0 1 50.91,36.47 Z" />
+    <path android:fillColor="#c03030" android:pathData="M68.44,29.25 H74.62 A4.12,4.12 0 0 1 78.75,33.38 V39.56 A4.12,4.12 0 0 1 74.62,43.69 H68.44 A4.12,4.12 0 0 1 64.31,39.56 V33.38 A4.12,4.12 0 0 1 68.44,29.25 Z" />
+    <path android:fillColor="#1b1b1b" android:pathData="M33.38,46.78 H39.56 A4.12,4.12 0 0 1 43.69,50.91 V57.09 A4.12,4.12 0 0 1 39.56,61.22 H33.38 A4.12,4.12 0 0 1 29.25,57.09 V50.91 A4.12,4.12 0 0 1 33.38,46.78 Z" />
+    <path android:fillColor="#e8c547" android:pathData="M50.91,54.00 H57.09 A4.12,4.12 0 0 1 61.22,58.12 V64.31 A4.12,4.12 0 0 1 57.09,68.44 H50.91 A4.12,4.12 0 0 1 46.78,64.31 V58.12 A4.12,4.12 0 0 1 50.91,54.00 Z" />
+    <path android:fillColor="#1b1b1b" android:pathData="M68.44,46.78 H74.62 A4.12,4.12 0 0 1 78.75,50.91 V57.09 A4.12,4.12 0 0 1 74.62,61.22 H68.44 A4.12,4.12 0 0 1 64.31,57.09 V50.91 A4.12,4.12 0 0 1 68.44,46.78 Z" />
+    <path android:fillColor="#2f5fb3" android:pathData="M33.38,64.31 H39.56 A4.12,4.12 0 0 1 43.69,68.44 V74.62 A4.12,4.12 0 0 1 39.56,78.75 H33.38 A4.12,4.12 0 0 1 29.25,74.62 V68.44 A4.12,4.12 0 0 1 33.38,64.31 Z" />
+    <path android:fillColor="#2f5fb3" android:pathData="M68.44,64.31 H74.62 A4.12,4.12 0 0 1 78.75,68.44 V74.62 A4.12,4.12 0 0 1 74.62,78.75 H68.44 A4.12,4.12 0 0 1 64.31,74.62 V68.44 A4.12,4.12 0 0 1 68.44,64.31 Z" />
+</vector>

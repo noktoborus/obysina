@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xvfb xauth imagemagick xdotool \
         grim wtype meson ninja-build libwayland-dev wayland-protocols \
         libxkbcommon-dev libpixman-1-dev libdrm-dev libseat-dev \
-        unzip mingw-w64
+        unzip mingw-w64 openjdk-17-jdk-headless
 
 # The window is run and looked at with no display. X11: Xvfb, import and
 # xdotool, above. Wayland: cage in headless mode, grim and wtype. cage 0.1.4 of
@@ -49,6 +49,17 @@ RUN set -e; cd /tmp; \
     rm ndk.zip
 ENV ANDROID_NDK_HOME=/opt/android-ndk-r30
 RUN cargo install cargo-ndk
+RUN rustup target add x86_64-linux-android
+ENV ANDROID_HOME=/opt/android-sdk
+RUN set -e; cd /tmp; \
+    curl -fsSL -o tools.zip https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip; \
+    echo "e025545c62a8e64c7559119566a569fb1dec5f60  tools.zip" | sha1sum -c -; \
+    unzip -q tools.zip -d /tmp/tools; \
+    mkdir -p $ANDROID_HOME/cmdline-tools; \
+    mv /tmp/tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest; \
+    rm -rf tools.zip /tmp/tools; \
+    { yes || true; } | $ANDROID_HOME/cmdline-tools/latest/bin/android sdk --sdk=$ANDROID_HOME \
+        install platforms/android-37.0 build-tools/37.0.0 platform-tools
 RUN cargo install cargo-brief
 RUN cargo install ruskel
 RUN cargo install cargo-audit

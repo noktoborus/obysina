@@ -7,7 +7,7 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 APPDIR = $(DESTDIR)$(PREFIX)/share/applications
 ICONDIR = $(DESTDIR)$(PREFIX)/share/icons/hicolor
 
-.PHONY: build build-windows build-android install uninstall
+.PHONY: build build-windows build-android apk apk-release aab install uninstall
 
 build:
 	cargo build --release
@@ -20,6 +20,18 @@ build-windows:
 # target/aarch64-linux-android/release/libobusina_android.so.
 build-android:
 	cargo ndk -t arm64-v8a build --release -p obusina-android
+
+# The package of android, built by gradle, which builds the library of every
+# ABI itself. It needs ANDROID_HOME and ANDROID_NDK_HOME. A release is signed
+# when OBUSINA_KEYSTORE names a keystore (android/README.md), else unsigned.
+apk:
+	cd android && ./gradlew --no-daemon assembleDebug
+
+apk-release:
+	cd android && ./gradlew --no-daemon assembleRelease
+
+aab:
+	cd android && ./gradlew --no-daemon bundleRelease
 
 install:
 	@test -x target/release/obusina || { echo "run 'make build' first"; exit 1; }
