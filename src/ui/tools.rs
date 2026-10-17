@@ -1,5 +1,6 @@
 //! The floating panel of tools.
 
+use obusina_canvas::Turn;
 use obusina_panel::{FloatingPanel, Orientation};
 use rust_i18n::t;
 
@@ -15,6 +16,8 @@ pub fn show(app: &mut App, context: &egui::Context) {
         .place(egui::Align2::LEFT_TOP, PLACE)
         .show(context, |ui, orientation| {
             history(app, ui);
+            gap(ui, orientation);
+            turns(app, ui);
             gap(ui, orientation);
             tools(app, ui);
             gap(ui, orientation);
@@ -44,6 +47,22 @@ fn history(app: &mut App, ui: &mut egui::Ui) {
     }
     if button::icon(ui, icons::REDO, &t!("edit.redo"), app.history.can_redo()).clicked() {
         app.redo();
+    }
+}
+
+/// The quarter turns of the field, each way.
+fn turns(app: &mut App, ui: &mut egui::Ui) {
+    for (turn, icon, name) in [
+        (
+            Turn::CounterClockwise,
+            icons::TURN_LEFT,
+            t!("view.turn_left"),
+        ),
+        (Turn::Clockwise, icons::TURN_RIGHT, t!("view.turn_right")),
+    ] {
+        if button::icon(ui, icon, &name, true).clicked() {
+            app.turn(turn);
+        }
     }
 }
 

@@ -99,6 +99,12 @@ impl App {
         }
     }
 
+    /// Turns the field a quarter; the pattern stays as it is.
+    pub(crate) fn turn(&mut self, turn: obusina_canvas::Turn) {
+        let extent = obusina_canvas::extent(&self.pattern, self.view.bead);
+        self.view.turn(turn, extent);
+    }
+
     /// Undoes the last step.
     pub(crate) fn undo(&mut self) {
         self.history.undo(&mut self.pattern);

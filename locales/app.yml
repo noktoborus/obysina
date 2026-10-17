@@ -22,6 +22,13 @@ edit.redo:
   en: "Redo"
   ru: "Повторить"
 
+view.turn_left:
+  en: "Turn the field counter clockwise"
+  ru: "Повернуть поле против часовой стрелки"
+view.turn_right:
+  en: "Turn the field clockwise"
+  ru: "Повернуть поле по часовой стрелке"
+
 tool.pencil:
   en: "Pencil"
   ru: "Карандаш"

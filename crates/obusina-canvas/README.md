@@ -9,6 +9,9 @@ The field of beads: an egui widget that draws an
   outline.
 - Puts the pattern in the middle of the field the first time the field has a
   size.
+- Turns the field by quarters, `View::turn`: 90, 180, 270, and 360, which is
+  where it started. The middle of the pattern stays where it is. Only the
+  showing turns; the pattern is the same.
 - Moves and zooms the field by its [`View`]:
 
   | Input | Result |
@@ -26,10 +29,12 @@ The field of beads: an egui widget that draws an
 | Loom | ![Loom][picture-loom] |
 | Peyote | ![Peyote][picture-peyote] |
 | Brick | ![Brick][picture-brick] |
+| Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 
 [picture-loom]: img/loom.png
 [picture-peyote]: img/peyote.png
 [picture-brick]: img/brick.png
+[picture-peyote-turned]: img/peyote-turned.png
 
 ## Boundaries
 

@@ -3,10 +3,17 @@
 //! Each is taken from the list `cargo run -p glyphs` writes, from a face of
 //! the proportional family. The test below fails if no font carries one.
 
-/// Undo, the arrow turning left.
-pub const UNDO: &str = "\u{27f2}";
-/// Redo, the arrow turning right.
-pub const REDO: &str = "\u{27f3}";
+/// Undo, the arrow bending back to the left.
+pub const UNDO: &str = "\u{21a9}";
+/// Redo, the arrow bending on to the right.
+pub const REDO: &str = "\u{21aa}";
+/// A quarter turn of the field counter clockwise, the open circle arrow.
+///
+/// Undo and redo are the bent arrows so that these two, turning, are not
+/// read as them.
+pub const TURN_LEFT: &str = "\u{21ba}";
+/// A quarter turn of the field clockwise, the open circle arrow.
+pub const TURN_RIGHT: &str = "\u{21bb}";
 /// The pencil, which paints one bead at a time.
 pub const PENCIL: &str = "\u{270f}";
 /// The fill, which paints a region of one colour.
@@ -24,7 +31,9 @@ pub const GRID: &str = "\u{229e}";
 
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
-pub const ALL: &[&str] = &[UNDO, REDO, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY, GRID];
+pub const ALL: &[&str] = &[
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY, GRID,
+];
 
 #[cfg(test)]
 mod tests {

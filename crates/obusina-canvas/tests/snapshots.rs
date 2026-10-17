@@ -3,7 +3,7 @@
 //! draws them again.
 
 use egui_kittest::{Harness, SnapshotOptions};
-use obusina_canvas::{Canvas, View};
+use obusina_canvas::{Canvas, Turn, View};
 use obusina_pattern::{Bead, Cell, Grid, Pattern, Rgb};
 
 /// Where the pictures are kept: beside the README, which shows them.
@@ -46,8 +46,15 @@ fn pattern(grid: Grid) -> Pattern {
     pattern
 }
 
-/// Draws the field of `grid` and compares it with `img/<name>.png`.
-fn picture(grid: Grid, name: &str) {
+/// Draws the field of `grid`, turned by `turns`, and compares it with
+/// `img/<name>.png`.
+fn picture(grid: Grid, turns: &[Turn], name: &str) {
+    let pattern = pattern(grid);
+    let mut view = View::default();
+    let extent = obusina_canvas::extent(&pattern, view.bead);
+    for turn in turns {
+        view.turn(*turn, extent);
+    }
     let mut harness = Harness::builder()
         .with_size(SIZE)
         .with_theme(egui::Theme::Dark)
@@ -55,7 +62,7 @@ fn picture(grid: Grid, name: &str) {
             |ui, (pattern, view): &mut (Pattern, View)| {
                 Canvas::new(pattern, view).show(ui);
             },
-            (pattern(grid), View::default()),
+            (pattern, view),
         );
     harness.run();
     harness.snapshot_options(name, &SnapshotOptions::new().output_path(PICTURES));
@@ -63,15 +70,21 @@ fn picture(grid: Grid, name: &str) {
 
 #[test]
 fn loom() {
-    picture(Grid::Loom, "loom");
+    picture(Grid::Loom, &[], "loom");
 }
 
 #[test]
 fn peyote() {
-    picture(Grid::Peyote, "peyote");
+    picture(Grid::Peyote, &[], "peyote");
 }
 
 #[test]
 fn brick() {
-    picture(Grid::Brick, "brick");
+    picture(Grid::Brick, &[], "brick");
+}
+
+/// Peyote turned a quarter clockwise: its columns stand as rows.
+#[test]
+fn peyote_turned() {
+    picture(Grid::Peyote, &[Turn::Clockwise], "peyote-turned");
 }

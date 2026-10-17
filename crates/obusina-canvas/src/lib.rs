@@ -4,7 +4,7 @@
 
 mod view;
 
-pub use view::{MAX_BEAD, MIN_BEAD, View};
+pub use view::{MAX_BEAD, MIN_BEAD, Turn, View};
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, pos2, vec2};
 use obusina_pattern::{Cell, Pattern};
@@ -149,30 +149,29 @@ impl<'a> Canvas<'a> {
         self.cell_at(origin, point).map(|cell| (cell, press))
     }
 
-    /// The size of the whole pattern on the screen.
+    /// The size of the whole pattern, not turned, in points.
     fn extent(&self) -> Vec2 {
-        let pattern = self.pattern;
-        let (width, height) =
-            pattern
-                .grid()
-                .extent(pattern.width(), pattern.height(), pattern.ratio());
-        vec2(width, height) * self.view.bead
+        extent(self.pattern, self.view.bead)
     }
 
-    /// The rectangle of one bead on the screen.
+    /// The rectangle of one bead on the screen, turned with the field.
     fn bead_rect(&self, origin: Pos2, cell: Cell) -> Rect {
         let pattern = self.pattern;
         let (x, y) = pattern.grid().origin(cell, pattern.ratio());
-        let size = vec2(pattern.ratio(), 1.0) * self.view.bead;
-        let gap = Vec2::splat(self.view.bead * GAP);
-        let min = origin + vec2(x, y) * self.view.bead;
-        Rect::from_min_size(min + gap / 2.0, size - gap)
+        let min = vec2(x, y) * self.view.bead;
+        let max = min + vec2(pattern.ratio(), 1.0) * self.view.bead;
+        let extent = self.extent();
+        let shown = Rect::from_two_pos(
+            origin + self.view.to_shown(min, extent),
+            origin + self.view.to_shown(max, extent),
+        );
+        shown.shrink(self.view.bead * GAP / 2.0)
     }
 
     /// The bead under a point of the screen.
     fn cell_at(&self, origin: Pos2, point: Pos2) -> Option<Cell> {
         let pattern = self.pattern;
-        let at = (point - origin) / self.view.bead;
+        let at = self.view.to_pattern(point - origin, self.extent()) / self.view.bead;
         pattern.grid().cell_at(
             at.x,
             at.y,
@@ -183,10 +182,20 @@ impl<'a> Canvas<'a> {
     }
 }
 
+/// The size of the whole of `pattern`, not turned, in points, with beads
+/// `bead` points high: what [`View::turn`] keeps the middle of.
+pub fn extent(pattern: &Pattern, bead: f32) -> Vec2 {
+    let (width, height) = pattern
+        .grid()
+        .extent(pattern.width(), pattern.height(), pattern.ratio());
+    vec2(width, height) * bead
+}
+
 /// The point of the screen at the centre of a bead, for a test that presses
 /// on it.
 pub fn bead_centre(pattern: &Pattern, view: &View, field: Rect, cell: Cell) -> Pos2 {
     let (x, y) = pattern.grid().origin(cell, pattern.ratio());
     let centre = vec2(x + pattern.ratio() / 2.0, y + 0.5) * view.bead;
-    pos2(field.min.x, field.min.y) + view.offset + centre
+    let shown = view.to_shown(centre, extent(pattern, view.bead));
+    pos2(field.min.x, field.min.y) + view.offset + shown
 }

@@ -23,6 +23,7 @@ const COLUMN: usize = 2;
 pub fn show(app: &mut App, context: &egui::Context) {
     FloatingPanel::new("palette", t!("panel.palette"))
         .place(egui::Align2::RIGHT_TOP, PLACE)
+        .orientation(Orientation::Vertical)
         .show(context, |ui, orientation| {
             let per_line = match orientation {
                 Orientation::Horizontal => ROW,

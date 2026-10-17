@@ -583,7 +583,8 @@ fn a_column_is_as_narrow_as_its_buttons() {
 
 #[test]
 fn the_buttons_of_a_row_stand_on_one_line() {
-    let window = window();
+    let mut window = window();
+    window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, 8.0));
     let first = swatch(window.harness.state(), 0);
     let line = window.harness.get_by_label(&first).rect().center().y;
 
@@ -599,4 +600,35 @@ fn the_buttons_of_a_row_stand_on_one_line() {
             "{name} at {centre}, the row at {line}"
         );
     }
+}
+
+#[test]
+fn the_field_turns_both_ways_and_the_pattern_stays() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    let pattern = window.harness.state().pattern.clone();
+    let start = window.harness.state().view;
+
+    for degrees in [90, 180, 270, 0] {
+        window.click(&t!("view.turn_right"));
+        assert_eq!(window.harness.state().view.degrees(), degrees);
+    }
+    assert_eq!(window.harness.state().view, start);
+
+    window.click(&t!("view.turn_left"));
+    assert_eq!(window.harness.state().view.degrees(), 270);
+    assert_eq!(window.harness.state().pattern, pattern);
+    assert!(!window.harness.state().history.can_redo());
+}
+
+#[test]
+fn a_press_on_a_turned_field_reaches_its_bead() {
+    let mut window = window();
+    window.click(&t!("view.turn_right"));
+    let cell = Cell { column: 3, row: 25 };
+
+    window.press(cell, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(cell), Some(0));
+    assert_eq!(window.harness.state().pattern.counts()[0], 1);
 }
