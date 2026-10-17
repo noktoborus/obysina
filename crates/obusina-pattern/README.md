@@ -6,6 +6,8 @@ A bead pattern: its grid, its palette, its beads and its JSON file.
 
 - `Pattern`: a grid of `width` by `height` cells; each holds a colour of the
   palette or nothing.
+- `Pattern::revision`: changes with every change of the pattern; no other
+  pattern has it unless it is a clone. A drawing of the pattern is kept by it.
 - `Grid`: where a bead stands, which bead is under a point, which beads touch
   it.
 - `read`, `write`, `Pattern::to_json`, `Pattern::from_json`: the file.

@@ -1,5 +1,7 @@
 //! A pattern: a grid, a palette and a bead or an empty place in every cell.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use crate::error::{PatternError, Result};
 use crate::grid::{Cell, Grid};
 use crate::palette::{Bead, EMPTY_KEY};
@@ -7,8 +9,20 @@ use crate::palette::{Bead, EMPTY_KEY};
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
 
+/// The next revision any pattern takes: one counter for all of them, so that
+/// two patterns that are not clones never share a revision.
+static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
+
+/// A revision no pattern had before.
+fn next_revision() -> u64 {
+    NEXT_REVISION.fetch_add(1, Ordering::Relaxed)
+}
+
 /// A bead pattern.
-#[derive(Debug, Clone, PartialEq)]
+///
+/// Two patterns are equal when they hold the same beads; the revision is not
+/// compared.
+#[derive(Debug, Clone)]
 pub struct Pattern {
     grid: Grid,
     width: usize,
@@ -16,6 +30,18 @@ pub struct Pattern {
     ratio: f32,
     palette: Vec<Bead>,
     cells: Vec<Option<usize>>,
+    revision: u64,
+}
+
+impl PartialEq for Pattern {
+    fn eq(&self, other: &Self) -> bool {
+        self.grid == other.grid
+            && self.width == other.width
+            && self.height == other.height
+            && self.ratio == other.ratio
+            && self.palette == other.palette
+            && self.cells == other.cells
+    }
 }
 
 impl Pattern {
@@ -48,6 +74,7 @@ impl Pattern {
             ratio,
             palette,
             cells: vec![None; width * height],
+            revision: next_revision(),
         })
     }
 
@@ -58,7 +85,10 @@ impl Pattern {
 
     /// Changes the kind of grid; the beads keep their cells.
     pub fn set_grid(&mut self, grid: Grid) {
-        self.grid = grid;
+        if self.grid != grid {
+            self.grid = grid;
+            self.revision = next_revision();
+        }
     }
 
     /// Columns.
@@ -74,6 +104,13 @@ impl Pattern {
     /// The width of a bead to its height.
     pub fn ratio(&self) -> f32 {
         self.ratio
+    }
+
+    /// A number that changes with every change of the pattern, and that no
+    /// other pattern has unless it is a clone of this one: what a drawing of
+    /// the pattern can be kept by.
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     /// The colours.
@@ -101,7 +138,11 @@ impl Pattern {
         if colour.is_some_and(|index| index >= self.palette.len()) {
             return self.cells[slot];
         }
-        std::mem::replace(&mut self.cells[slot], colour)
+        let before = std::mem::replace(&mut self.cells[slot], colour);
+        if before != colour {
+            self.revision = next_revision();
+        }
+        before
     }
 
     /// How many beads of each colour, in the order of the palette.
@@ -188,6 +229,28 @@ mod tests {
 
         assert_eq!(region.len(), 3);
         assert!(region.iter().all(|cell| cell.column == 0));
+    }
+
+    #[test]
+    fn a_change_gives_a_new_revision_and_no_change_none() {
+        let mut pattern =
+            Pattern::new(Grid::Loom, 2, 2, DEFAULT_BEAD_RATIO, vec![bead('A')]).expect("a pattern");
+        let other =
+            Pattern::new(Grid::Loom, 2, 2, DEFAULT_BEAD_RATIO, vec![bead('A')]).expect("a pattern");
+        let first = pattern.revision();
+        assert_ne!(first, other.revision());
+        assert_eq!(pattern, other, "the revision is not compared");
+
+        pattern.set(Cell { column: 0, row: 0 }, None);
+        pattern.set_grid(Grid::Loom);
+        assert_eq!(pattern.revision(), first);
+
+        pattern.set(Cell { column: 0, row: 0 }, Some(0));
+        let second = pattern.revision();
+        assert_ne!(second, first);
+
+        pattern.set_grid(Grid::Brick);
+        assert_ne!(pattern.revision(), second);
     }
 
     #[test]

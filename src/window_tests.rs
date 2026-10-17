@@ -632,3 +632,17 @@ fn a_press_on_a_turned_field_reaches_its_bead() {
     assert_eq!(window.harness.state().pattern.get(cell), Some(0));
     assert_eq!(window.harness.state().pattern.counts()[0], 1);
 }
+
+#[test]
+fn a_moved_field_draws_its_beads_where_they_are_pressed() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    window.drag_field(Cell { column: 2, row: 2 }, egui::vec2(120.0, 60.0));
+
+    let point = window.bead(FREE);
+    let picture = window.harness.render().expect("the window renders");
+    let scale = window.harness.ctx.pixels_per_point();
+    let pixel = picture.get_pixel((point.x * scale) as u32, (point.y * scale) as u32);
+
+    assert_eq!(&pixel.0[..3], &[0x1b, 0x1b, 0x1b], "the bead at {point:?}");
+}

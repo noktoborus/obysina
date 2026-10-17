@@ -2,6 +2,7 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+mod mesh;
 mod view;
 
 pub use view::{MAX_BEAD, MIN_BEAD, Turn, View};
@@ -36,6 +37,9 @@ pub struct CanvasResponse {
     pub hovered: Option<Cell>,
     /// The bead pressed on and let go without a drag, and by which button.
     pub pressed: Option<(Cell, Press)>,
+    /// The beads were tessellated anew in this frame; otherwise the mesh of
+    /// an earlier frame was drawn, moved where the field is.
+    pub tessellated: bool,
 }
 
 /// The field of beads: draws a pattern over all the space it is given.
@@ -71,27 +75,7 @@ impl<'a> Canvas<'a> {
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, PAPER);
         let origin = rect.min + self.view.offset;
-        for cell in self.pattern.cells() {
-            let bead = self.bead_rect(origin, cell);
-            if !rect.intersects(bead) {
-                continue;
-            }
-            let rounding = bead.height() * ROUNDING;
-            match self.pattern.get(cell) {
-                Some(index) => {
-                    let [red, green, blue] = self.pattern.palette()[index].rgb.0;
-                    painter.rect_filled(bead, rounding, Color32::from_rgb(red, green, blue));
-                }
-                None => {
-                    painter.rect_stroke(
-                        bead,
-                        rounding,
-                        Stroke::new(1.0, EMPTY),
-                        StrokeKind::Inside,
-                    );
-                }
-            }
-        }
+        let tessellated = self.draw_beads(ui, &painter, response.id, origin);
 
         let hovered = response
             .hover_pos()
@@ -101,7 +85,60 @@ impl<'a> Canvas<'a> {
             response,
             hovered,
             pressed,
+            tessellated,
         }
+    }
+
+    /// Draws the beads from the mesh kept for the field, tessellated anew
+    /// only when what they look like changed. True when it was tessellated.
+    fn draw_beads(&self, ui: &Ui, painter: &egui::Painter, field: egui::Id, origin: Pos2) -> bool {
+        let id = field.with("beads");
+        let key = mesh::Key {
+            revision: self.pattern.revision(),
+            bead: self.view.bead,
+            degrees: self.view.degrees(),
+            pixels_per_point: ui.ctx().pixels_per_point(),
+        };
+        let kept = ui
+            .data_mut(|data| data.remove_temp::<mesh::Kept>(id))
+            .filter(|kept| kept.key == key);
+        let tessellated = kept.is_none();
+        let mut kept =
+            kept.unwrap_or_else(|| mesh::tessellate(ui, key, origin, self.bead_shapes(origin)));
+        kept.move_to(origin);
+        painter.add(egui::Shape::Mesh(kept.mesh.clone()));
+        ui.data_mut(|data| data.insert_temp(id, kept));
+        tessellated
+    }
+
+    /// A shape for every bead, the pattern standing at `origin`.
+    ///
+    /// The rounding is a part of the height of a bead before the field is
+    /// turned, so a turned bead is rounded the same.
+    fn bead_shapes(&self, origin: Pos2) -> Vec<egui::Shape> {
+        self.pattern
+            .cells()
+            .map(|cell| {
+                let bead = self.bead_rect(origin, cell);
+                let rounding = self.view.bead * (1.0 - GAP) * ROUNDING;
+                match self.pattern.get(cell) {
+                    Some(index) => {
+                        let [red, green, blue] = self.pattern.palette()[index].rgb.0;
+                        egui::Shape::rect_filled(
+                            bead,
+                            rounding,
+                            Color32::from_rgb(red, green, blue),
+                        )
+                    }
+                    None => egui::Shape::rect_stroke(
+                        bead,
+                        rounding,
+                        Stroke::new(1.0, EMPTY),
+                        StrokeKind::Inside,
+                    ),
+                }
+            })
+            .collect()
     }
 
     /// Moves and zooms the view by what the input asks.

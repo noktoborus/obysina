@@ -9,6 +9,10 @@ The field of beads: an egui widget that draws an
   outline.
 - Puts the pattern in the middle of the field the first time the field has a
   size.
+- Keeps the beads as one tessellated mesh. It is tessellated anew only when
+  the pattern (its revision), the size of a bead, the turn or the pixels of
+  the screen change; a move of the field moves the mesh. `tessellated` in
+  `CanvasResponse` says which frame built it.
 - Turns the field by quarters, `View::turn`: 90, 180, 270, and 360, which is
   where it started. The middle of the pattern stays where it is. Only the
   showing turns; the pattern is the same.
