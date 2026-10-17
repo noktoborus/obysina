@@ -340,6 +340,13 @@ THEN the content of a panel lays itself out by the `Orientation` it is given
 RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller
 
+RULE ui.render = `render::native_options` starts the window, on every platform
+WHY  a modest chip ends up drawn by the processor unless the adapter is
+     picked by hand and the limits asked are cut to what it grants; the same
+     code runs the window of zyterm
+THEN the glyph atlas is cut to `render::ATLAS_SIDE` in `App::raw_input_hook`
+REF  src/render.rs
+
 RULE ui.undo : every change to a pattern can be undone
 THEN a change goes through one edit type of the binary; nothing writes the
      model past it

@@ -6,6 +6,7 @@
 mod app;
 mod edit;
 mod error;
+mod render;
 mod ui;
 
 #[cfg(test)]
@@ -30,13 +31,11 @@ pub fn desktop() -> std::process::ExitCode {
     env_logger::init();
     choose_locale();
     let path = std::env::args_os().nth(1).map(PathBuf::from);
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_app_id(APP_ID)
-            .with_title(rust_i18n::t!("app.name"))
-            .with_inner_size([1000.0, 700.0]),
-        ..Default::default()
-    };
+    let viewport = egui::ViewportBuilder::default()
+        .with_app_id(APP_ID)
+        .with_title(rust_i18n::t!("app.name"))
+        .with_inner_size([1000.0, 700.0]);
+    let options = render::native_options(viewport);
     match run(options, path) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(error) => {
@@ -56,7 +55,7 @@ pub fn android(android: winit::platform::android::activity::AndroidApp) {
         .map(|directory| directory.join(DEFAULT_FILE));
     let options = eframe::NativeOptions {
         android_app: Some(android),
-        ..Default::default()
+        ..render::native_options(egui::ViewportBuilder::default())
     };
     if let Err(error) = run(options, path) {
         log::error!("the window failed: {error}");
@@ -68,7 +67,12 @@ fn run(options: eframe::NativeOptions, path: Option<PathBuf>) -> eframe::Result 
     eframe::run_native(
         "Obusina",
         options,
-        Box::new(move |_| Ok(Box::new(App::open(path)))),
+        Box::new(move |creation| {
+            if let Some(state) = &creation.wgpu_render_state {
+                render::log_adapter(state);
+            }
+            Ok(Box::new(App::open(path)))
+        }),
     )
 }
 

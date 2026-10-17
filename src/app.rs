@@ -177,6 +177,15 @@ impl App {
 }
 
 impl eframe::App for App {
+    /// Cuts the texture side the toolkit is told about down to
+    /// [`crate::render::ATLAS_SIDE`]: the glyph atlas is as wide as this
+    /// number, and the device is asked for the largest texture it grants.
+    fn raw_input_hook(&mut self, _context: &egui::Context, raw_input: &mut egui::RawInput) {
+        if let Some(side) = raw_input.max_texture_side.as_mut() {
+            *side = (*side).min(crate::render::ATLAS_SIDE);
+        }
+    }
+
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
         self.shortcuts(ui);

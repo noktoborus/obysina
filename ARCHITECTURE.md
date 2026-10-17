@@ -50,6 +50,12 @@ A change of the kind of grid is one step too.
 | Linux, Windows | `src/main.rs` → `obusina::desktop` | the file named on the command line |
 | Android | `android_main` of `android/` → `obusina::android` | `pattern.json` in the internal data path |
 
+## Rendering
+
+`src/render.rs` starts the window on `wgpu` the way zyterm does: a graphics
+chip before a software adapter, and the limits of the device cut to what the
+adapter grants, so a small chip still gets its window.
+
 ## Errors
 
 Each library crate has one error enum. `AppError` of `src/error.rs` wraps them
