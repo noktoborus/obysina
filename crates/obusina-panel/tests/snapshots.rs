@@ -56,3 +56,28 @@ fn folded() {
     harness.get_by_label(GRIP).click();
     picture(&mut harness, "folded");
 }
+
+/// The zones drawn while the grip is dragged to the left edge, before it is
+/// let go.
+#[test]
+fn zones() {
+    let mut harness = harness(Orientation::Horizontal);
+    harness.run();
+    let start = harness.get_by_label(GRIP).rect().center();
+    harness.event(egui::Event::PointerMoved(start));
+    harness.event(egui::Event::PointerButton {
+        pos: start,
+        button: egui::PointerButton::Primary,
+        pressed: true,
+        modifiers: egui::Modifiers::NONE,
+    });
+    harness.step();
+    let target = egui::pos2(12.0, SIZE.y / 2.0);
+    for step in 1..=5 {
+        let point = start + (target - start) * (step as f32 / 5.0);
+        harness.event(egui::Event::PointerMoved(point));
+        harness.step();
+    }
+    harness.step();
+    harness.snapshot_options("zones", &SnapshotOptions::new().output_path(PICTURES));
+}

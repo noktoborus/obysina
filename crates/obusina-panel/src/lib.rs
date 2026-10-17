@@ -16,6 +16,13 @@ const GRIP_LONG: f32 = 36.0;
 const DOT_STEP: f32 = 6.0;
 /// The radius of a dot of the grip.
 const DOT_RADIUS: f32 = 1.5;
+/// The width of the lines between the zones.
+const ZONE_LINE: f32 = 1.5;
+/// How strong the lines between the zones are.
+const ZONE_LINE_ALPHA: f32 = 0.6;
+/// How strong the fill of the zone under the pointer is.
+const ZONE_FILL_ALPHA: f32 = 0.35;
+
 /// What a panel remembers from frame to frame.
 #[derive(Debug, Clone, Copy)]
 struct State {
@@ -150,6 +157,12 @@ impl FloatingPanel {
                 .grab
                 .map(|grab| grab.clamp(start, start + grip_size(orientation)));
         }
+        if grip.dragged() {
+            let under = grip
+                .interact_pointer_pos()
+                .map(|point| Zone::of(window, point));
+            draw_zones(context, window, under);
+        }
         if !held {
             state.grab = None;
         }
@@ -213,6 +226,30 @@ impl FloatingPanel {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
         }
         response
+    }
+}
+
+/// The zones of the window, drawn over the field and under the panels while
+/// a panel is dragged; the zone under the pointer is filled.
+fn draw_zones(context: &Context, window: Rect, under: Option<Zone>) {
+    let layer = egui::LayerId::new(egui::Order::Middle, Id::unique("floating-panel-zones"));
+    let painter = context.layer_painter(layer);
+    let selection = context.global_style().visuals.selection;
+    let line = egui::Stroke::new(
+        ZONE_LINE,
+        selection.stroke.color.gamma_multiply(ZONE_LINE_ALPHA),
+    );
+    for zone in Zone::ALL {
+        let fill = if under == Some(zone) {
+            selection.bg_fill.gamma_multiply(ZONE_FILL_ALPHA)
+        } else {
+            egui::Color32::TRANSPARENT
+        };
+        painter.add(egui::Shape::convex_polygon(
+            zone.outline(window).to_vec(),
+            fill,
+            line,
+        ));
     }
 }
 

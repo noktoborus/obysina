@@ -335,6 +335,8 @@ RULE ui.zones : the window has five zones, the four edges split by the
      diagonals from the corners, and the large centre
 THEN a panel dragged to the left or the right edge is a column, to the top
      or the bottom a row; in the centre it keeps its shape
+THEN the zones are drawn while a panel is dragged, the one under the pointer
+     filled
 THEN the content of a panel lays itself out by the `Orientation` it is given
 
 RULE ui.narrow : the window works at the width of a phone

@@ -61,6 +61,53 @@ impl Zone {
         }
     }
 
+    /// Every zone, in the order they are drawn.
+    pub const ALL: [Zone; 5] = [
+        Zone::Top,
+        Zone::Right,
+        Zone::Bottom,
+        Zone::Left,
+        Zone::Centre,
+    ];
+
+    /// The outline of the zone in `window`, clockwise: a rectangle for the
+    /// centre, a trapezoid between two diagonals for an edge.
+    pub fn outline(self, window: Rect) -> [Pos2; 4] {
+        let centre = window.shrink2(window.size() * EDGE);
+        match self {
+            Zone::Top => [
+                window.left_top(),
+                window.right_top(),
+                centre.right_top(),
+                centre.left_top(),
+            ],
+            Zone::Right => [
+                window.right_top(),
+                window.right_bottom(),
+                centre.right_bottom(),
+                centre.right_top(),
+            ],
+            Zone::Bottom => [
+                window.right_bottom(),
+                window.left_bottom(),
+                centre.left_bottom(),
+                centre.right_bottom(),
+            ],
+            Zone::Left => [
+                window.left_bottom(),
+                window.left_top(),
+                centre.left_top(),
+                centre.left_bottom(),
+            ],
+            Zone::Centre => [
+                centre.left_top(),
+                centre.right_top(),
+                centre.right_bottom(),
+                centre.left_bottom(),
+            ],
+        }
+    }
+
     /// How a panel stands in this zone: a column along the sides, a row along
     /// the top and the bottom. In the centre a panel keeps what it had.
     pub fn orientation(self) -> Option<Orientation> {
@@ -98,6 +145,27 @@ mod tests {
         assert_eq!(Zone::of(WINDOW, pos2(50.0, 20.0)), Zone::Top);
         assert_eq!(Zone::of(WINDOW, pos2(20.0, 50.0)), Zone::Left);
         assert_eq!(Zone::of(WINDOW, pos2(980.0, 590.0)), Zone::Bottom);
+    }
+
+    /// A point is inside the outline of the zone it is in.
+    #[test]
+    fn the_outline_holds_the_zone() {
+        for x in (5..1000).step_by(45) {
+            for y in (5..600).step_by(45) {
+                let point = pos2(x as f32, y as f32);
+                let zone = Zone::of(WINDOW, point);
+                assert!(inside(zone.outline(WINDOW), point), "{point:?} in {zone:?}");
+            }
+        }
+    }
+
+    /// True when `point` is inside a convex outline given clockwise.
+    fn inside(outline: [Pos2; 4], point: Pos2) -> bool {
+        (0..4).all(|index| {
+            let a = outline[index];
+            let b = outline[(index + 1) % 4];
+            (b - a).x * (point - a).y - (b - a).y * (point - a).x >= 0.0
+        })
     }
 
     #[test]
