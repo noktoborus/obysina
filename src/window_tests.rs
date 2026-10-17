@@ -580,3 +580,23 @@ fn a_column_is_as_narrow_as_its_buttons() {
     );
     assert!(undo.max.x < 100.0, "the column is {} wide", undo.max.x);
 }
+
+#[test]
+fn the_buttons_of_a_row_stand_on_one_line() {
+    let window = window();
+    let first = swatch(window.harness.state(), 0);
+    let line = window.harness.get_by_label(&first).rect().center().y;
+
+    for name in [
+        t!("palette.empty"),
+        t!("palette.first"),
+        t!("palette.second"),
+        t!("palette.swap"),
+    ] {
+        let centre = window.harness.get_by_label(&name).rect().center().y;
+        assert!(
+            (centre - line).abs() < 0.5,
+            "{name} at {centre}, the row at {line}"
+        );
+    }
+}

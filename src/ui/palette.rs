@@ -12,6 +12,8 @@ use crate::ui::{button, icons};
 
 /// Where the panel stands the first time, from the top right of the window.
 const PLACE: egui::Vec2 = vec2(-16.0, 16.0);
+/// The space between two swatches.
+const SPACING: egui::Vec2 = vec2(4.0, 4.0);
 /// Swatches in one line of a row.
 const ROW: usize = 8;
 /// Swatches in one line of a column.
@@ -34,38 +36,42 @@ pub fn show(app: &mut App, context: &egui::Context) {
 
 /// One swatch for each colour, and one for an empty place, `per_line` in a
 /// line.
+///
+/// The lines are one block, laid out like any other widget of the panel, so
+/// the block stands in the middle across the panel with the rest. A grid of
+/// egui would place its cells by a layout of its own.
 fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
     let counts = app.pattern.counts();
     let entries: Vec<Option<usize>> = (0..app.pattern.palette().len())
         .map(Some)
         .chain([None])
         .collect();
-    egui::Grid::new("swatches")
-        .spacing(vec2(4.0, 4.0))
-        .show(ui, |ui| {
-            for (place, colour) in entries.into_iter().enumerate() {
-                let name = match colour {
-                    Some(index) => t!(
-                        "palette.bead",
-                        key = app.pattern.palette()[index].key,
-                        rgb = app.pattern.palette()[index].rgb,
-                        count = counts[index]
-                    )
-                    .to_string(),
-                    None => t!("palette.empty").to_string(),
-                };
-                let response = swatch(app, ui, colour, app.colours[0] == colour, &name);
-                if response.clicked() {
-                    app.colours[0] = colour;
+    ui.vertical(|ui| {
+        ui.spacing_mut().item_spacing = SPACING;
+        for line in entries.chunks(per_line) {
+            ui.horizontal(|ui| {
+                for colour in line.iter().copied() {
+                    let name = match colour {
+                        Some(index) => t!(
+                            "palette.bead",
+                            key = app.pattern.palette()[index].key,
+                            rgb = app.pattern.palette()[index].rgb,
+                            count = counts[index]
+                        )
+                        .to_string(),
+                        None => t!("palette.empty").to_string(),
+                    };
+                    let response = swatch(app, ui, colour, app.colours[0] == colour, &name);
+                    if response.clicked() {
+                        app.colours[0] = colour;
+                    }
+                    if response.secondary_clicked() {
+                        app.colours[1] = colour;
+                    }
                 }
-                if response.secondary_clicked() {
-                    app.colours[1] = colour;
-                }
-                if place % per_line == per_line - 1 {
-                    ui.end_row();
-                }
-            }
-        });
+            });
+        }
+    });
 }
 
 /// The two colours in hand and the button that swaps them, which is the way
