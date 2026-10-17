@@ -112,6 +112,11 @@ RULE pattern.version : a pattern file carries `format`, an integer. Every
      format this program ever wrote is read.
 WHY  a pattern is the work of a person, not a file of the program.
      `RULE config.legacy` does not apply to it.
+EXC  before version 1.0.0, by the user's word: no old format has to be read.
+     A change of shape may change format 1 itself, its loader and its file
+     in `tests/patterns/`, instead of adding format 2.
+THEN the commit that sets `[workspace.package] version` to 1.0.0 deletes this
+     EXC; from then on every format is read
 RULE pattern.loader : only the loader knows old formats
 THEN one loader per format, `crates/obusina-pattern/src/load/v<N>.rs`; it
      turns its file into the current `Pattern`. The model and the writer know
