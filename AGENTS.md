@@ -74,7 +74,7 @@ RULE crate.deps : a library crate depends on no other library crate of this
 WHY  a crate that needs a sibling is not one purpose any more
 THEN move the shared part into the binary, or make it its own crate both use
 EX+  obusina-canvas -> obusina-pattern    the one allowed exception, it draws it
-EX+  obusina-panel, which knows egui only
+EX+  obusina-panel, obusina-button, which know egui only
 EX-  obusina-pattern -> obusina-config
 REF  ARCHITECTURE.md
 
@@ -340,7 +340,8 @@ THEN the zones are drawn while a panel is dragged, the one under the pointer
 THEN the content of a panel lays itself out by the `Orientation` it is given
 
 RULE ui.button : a button of a panel is made by `ui::button`, all of one
-     size, `button::SIZE`, the size of a swatch
+     size, `button::SIZE`, the size of a swatch; each is an
+     `obusina_button::SquareButton`, its label in the middle
 WHY  a row or a column of buttons of one size reads as one row, and each is
      large enough for a finger
 EX+  button::icon(ui, icons::UNDO, &t!("edit.undo"), can_undo)
@@ -452,6 +453,7 @@ WHY  a widget is drawn the same way wherever it is used, so its pixels are its
 THEN the window is tested by its tree (`RULE test.window`), not by its pixels
 EX+  `obusina-canvas`: one picture per kind of grid
 EX+  `obusina-panel`: a row, a column, a folded panel
+EX+  `obusina-button`: every kind of button in one row
 EX-  a picture of the main window of `obusina` committed as a reference
 
 RULE test.picture.tool = `egui_kittest` with `wgpu` and `snapshot`, a

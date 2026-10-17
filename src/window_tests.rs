@@ -566,3 +566,17 @@ fn the_pattern_opens_in_the_middle_of_the_window() {
     );
 }
 
+#[test]
+fn a_column_is_as_narrow_as_its_buttons() {
+    let mut window = window();
+
+    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
+
+    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
+    let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
+    assert!(
+        (undo.center().x - grip.center().x).abs() < 1.0,
+        "the button {undo:?} stands under the grip {grip:?}"
+    );
+    assert!(undo.max.x < 100.0, "the column is {} wide", undo.max.x);
+}

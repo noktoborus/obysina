@@ -2532,6 +2532,7 @@ dependencies = [
  "egui_kittest",
  "env_logger",
  "log",
+ "obusina-button",
  "obusina-canvas",
  "obusina-panel",
  "obusina-pattern",
@@ -2550,6 +2551,16 @@ version = "0.1.0"
 dependencies = [
  "obusina",
  "winit",
+]
+
+[[package]]
+name = "obusina-button"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "eframe",
+ "egui",
+ "egui_kittest",
 ]
 
 [[package]]

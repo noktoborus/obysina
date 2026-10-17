@@ -1,0 +1,17 @@
+[package]
+name = "obusina-button"
+description = "egui widget: a button of a fixed size with its label in the middle, plain, selected or filled with a colour"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+egui.workspace = true
+
+[build-dependencies]
+base64.workspace = true
+
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest.workspace = true

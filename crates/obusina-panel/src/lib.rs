@@ -35,6 +35,9 @@ struct State {
     /// While the grip is held: the point of the panel under the pointer,
     /// from its top left corner.
     grab: Option<Vec2>,
+    /// The content changed its shape: the next frame measures the panel
+    /// again instead of laying the content out in the size it had.
+    measure: bool,
 }
 
 /// What the panel did in this frame.
@@ -50,7 +53,8 @@ pub struct PanelResponse<R> {
 }
 
 /// A floating panel with no title: a grip of dots moves it, a tap on the grip
-/// folds it.
+/// folds it. Its content stands in the middle across the panel: on one
+/// line in a row, on one axis in a column.
 ///
 /// While it is dragged, the zone of the window under the pointer lays it out
 /// ([`Zone::orientation`]). It is kept inside the window.
@@ -102,12 +106,14 @@ impl FloatingPanel {
             folded: false,
             orientation: self.orientation,
             grab: None,
+            measure: false,
         });
         let (pointer, held) =
             context.input(|input| (input.pointer.latest_pos(), input.pointer.primary_down()));
         if let (Some(grab), Some(pointer), true) = (state.grab, pointer, held) {
             state.position = pointer - grab;
         }
+        let measure = std::mem::take(&mut state.measure);
         let pivot = if stored.is_some() {
             Align2::LEFT_TOP
         } else {
@@ -119,16 +125,16 @@ impl FloatingPanel {
             .movable(false)
             .constrain(false)
             .pivot(pivot)
+            .sizing_pass(measure)
             .current_pos(state.position)
             .show(context, |ui| {
-                egui::Frame::window(ui.style()).show(ui, |ui| match state.orientation {
-                    Orientation::Horizontal => {
-                        ui.horizontal(|ui| self.body(ui, &state, add_contents))
-                            .inner
-                    }
-                    Orientation::Vertical => {
-                        ui.vertical(|ui| self.body(ui, &state, add_contents)).inner
-                    }
+                egui::Frame::window(ui.style()).show(ui, |ui| {
+                    let layout = match state.orientation {
+                        Orientation::Horizontal => egui::Layout::left_to_right(egui::Align::Center),
+                        Orientation::Vertical => egui::Layout::top_down(egui::Align::Center),
+                    };
+                    ui.with_layout(layout, |ui| self.body(ui, &state, add_contents))
+                        .inner
                 })
             });
         let (grip, inner) = shown.inner.inner;
@@ -152,6 +158,7 @@ impl FloatingPanel {
             && orientation != state.orientation
         {
             state.orientation = orientation;
+            state.measure = true;
             let start = grip.rect.min - rect.min;
             state.grab = state
                 .grab
@@ -168,6 +175,7 @@ impl FloatingPanel {
         }
         if grip.clicked() {
             state.folded = !state.folded;
+            state.measure = true;
         }
         let measured = window.is_positive();
         if measured {
