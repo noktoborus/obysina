@@ -8,7 +8,8 @@ obusina (binary and library)
  ├── obusina-button
  ├── obusina-canvas ──► obusina-pattern
  ├── obusina-panel
- └── obusina-pattern
+ ├── obusina-pattern
+ └── plate-menu         (a copy of the crate of zyterm)
 experiments/glyphs     (nothing depends on it)
 ```
 
@@ -17,6 +18,7 @@ experiments/glyphs     (nothing depends on it)
 | `obusina-pattern` | the model: grid, palette, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
+| `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
 | `obusina-panel` | a floating panel with a grip, laid out by the zone of the window it is dragged to |
 | `obusina` | the window, the panels, the history of edits, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |

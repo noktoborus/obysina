@@ -74,7 +74,7 @@ RULE crate.deps : a library crate depends on no other library crate of this
 WHY  a crate that needs a sibling is not one purpose any more
 THEN move the shared part into the binary, or make it its own crate both use
 EX+  obusina-canvas -> obusina-pattern    the one allowed exception, it draws it
-EX+  obusina-panel, obusina-button, which know egui only
+EX+  obusina-panel, obusina-button, plate-menu, which know egui only
 EX-  obusina-pattern -> obusina-config
 REF  ARCHITECTURE.md
 
@@ -84,6 +84,14 @@ EX+  obusina_pattern::Pattern, the crate's own type
 EX+  a widget crate that knows egui and nothing of this application
 EX-  obusina_pattern::Pattern reading `settings.yaml`
 EX-  obusina_pattern depending on egui for `Color32`
+
+RULE plate_menu.copy : `crates/plate-menu` is a copy of the crate of zyterm,
+     moved to egui 0.37
+WHY  zyterm is on egui 0.36, and a path to its crate brings a second egui
+     whose types do not meet those of this one
+THEN a fix made here is made in zyterm too, and the other way; the copy goes
+     once both share one crate on one egui
+EXC  the copy, by the user's word, until then
 
 RULE crate.readme : every crate has a README.md naming its scope, boundaries
      and errors
@@ -347,6 +355,11 @@ WHY  a row or a column of buttons of one size reads as one row, and each is
 EX+  button::icon(ui, icons::UNDO, &t!("edit.undo"), can_undo)
 EX-  ui.add(egui::Button::new(icons::UNDO)) in a panel
 REF  src/ui/button.rs
+
+RULE ui.menu : a choice among variants is a `plate_menu::PlateMenu` in the
+     middle of the window, opened by a button of a panel
+EX+  the kinds of grid, `src/ui/grid_menu.rs`
+EX-  an `egui::Popup` or a `ComboBox` under the button
 
 RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller

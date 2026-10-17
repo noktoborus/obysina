@@ -57,6 +57,8 @@ pub struct App {
     pub(crate) history: History,
     /// A line for the user: what was saved, what failed.
     pub(crate) message: Option<String>,
+    /// The menu of the kinds of grid.
+    pub(crate) menu: plate_menu::PlateMenu,
 }
 
 impl App {
@@ -79,6 +81,7 @@ impl App {
             colours: [Some(0), None],
             history: History::default(),
             message,
+            menu: plate_menu::PlateMenu::new(),
         }
     }
 
@@ -186,6 +189,7 @@ impl eframe::App for App {
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
         crate::ui::palette::show(self, ui.ctx());
+        crate::ui::grid_menu::show(self, ui.ctx());
     }
 }
 

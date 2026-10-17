@@ -1,7 +1,6 @@
 //! The floating panel of tools.
 
 use obusina_panel::{FloatingPanel, Orientation};
-use obusina_pattern::Grid;
 use rust_i18n::t;
 
 use crate::app::{App, Tool};
@@ -61,29 +60,12 @@ fn tools(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// The kind of grid: a button that opens the list of kinds.
+/// The kind of grid: a button that opens the menu of kinds
+/// ([`crate::ui::grid_menu`]).
 fn grid(app: &mut App, ui: &mut egui::Ui) {
-    let response = button::icon(ui, icons::GRID, &t!("grid.kind"), true);
-    egui::Popup::menu(&response).show(|ui| {
-        for grid in Grid::ALL {
-            if ui
-                .selectable_label(app.pattern.grid() == grid, grid_name(grid))
-                .clicked()
-            {
-                app.set_grid(grid);
-            }
-        }
-    });
-}
-
-/// The name of a kind of grid.
-fn grid_name(grid: Grid) -> String {
-    match grid {
-        Grid::Loom => t!("grid.loom"),
-        Grid::Peyote => t!("grid.peyote"),
-        Grid::Brick => t!("grid.brick"),
+    if button::icon(ui, icons::GRID, &t!("grid.kind"), true).clicked() {
+        crate::ui::grid_menu::open(app);
     }
-    .to_string()
 }
 
 /// Save, when there is a file to save to.

@@ -32,6 +32,10 @@ tool.pick:
   en: "Pick a colour"
   ru: "Взять цвет"
 
+menu.nothing_found:
+  en: "Nothing found"
+  ru: "Ничего не найдено"
+
 grid.kind:
   en: "Grid"
   ru: "Сетка"

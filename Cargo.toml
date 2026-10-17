@@ -15,6 +15,7 @@ egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 env_logger = "0.11"
 log = "0.4"
+nucleo-matcher = "0.3"
 rust-i18n = "4.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -29,6 +30,7 @@ obusina-button = { path = "crates/obusina-button", version = "0.1.0" }
 obusina-canvas = { path = "crates/obusina-canvas", version = "0.1.0" }
 obusina-panel = { path = "crates/obusina-panel", version = "0.1.0" }
 obusina-pattern = { path = "crates/obusina-pattern", version = "0.1.0" }
+plate-menu = { path = "crates/plate-menu", version = "0.1.0" }
 
 [profile.release]
 lto = "fat"
@@ -52,6 +54,7 @@ obusina-button.workspace = true
 obusina-canvas.workspace = true
 obusina-panel.workspace = true
 obusina-pattern.workspace = true
+plate-menu.workspace = true
 rust-i18n.workspace = true
 sys-locale.workspace = true
 thiserror.workspace = true
