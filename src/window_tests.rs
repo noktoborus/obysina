@@ -42,23 +42,40 @@ impl Window {
         obusina_canvas::bead_centre(&app.pattern, &app.view, field, cell)
     }
 
-    /// The first button pressed at one bead, moved over the others and let go.
-    fn stroke(&mut self, cells: &[Cell]) {
-        let points: Vec<Pos2> = cells.iter().map(|cell| self.bead(*cell)).collect();
+    /// `button` pressed and let go in place at a bead.
+    fn press(&mut self, cell: Cell, button: PointerButton) {
+        let point = self.bead(cell);
+        self.harness.event(Event::PointerMoved(point));
+        for pressed in [true, false] {
+            self.harness.event(Event::PointerButton {
+                pos: point,
+                button,
+                pressed,
+                modifiers: Modifiers::NONE,
+            });
+            self.harness.step();
+        }
+        self.harness.run();
+    }
+
+    /// The first button pressed at a bead and dragged by `by`.
+    fn drag_field(&mut self, cell: Cell, by: egui::Vec2) {
+        let start = self.bead(cell);
         let button = |pos, pressed| Event::PointerButton {
             pos,
             button: PointerButton::Primary,
             pressed,
             modifiers: Modifiers::NONE,
         };
-        self.harness.event(Event::PointerMoved(points[0]));
-        self.harness.event(button(points[0], true));
+        self.harness.event(Event::PointerMoved(start));
+        self.harness.event(button(start, true));
         self.harness.step();
-        for point in &points[1..] {
-            self.harness.event(Event::PointerMoved(*point));
+        for step in 1..=10 {
+            self.harness
+                .event(Event::PointerMoved(start + by * (step as f32 / 10.0)));
             self.harness.step();
         }
-        self.harness.event(button(*points.last().unwrap(), false));
+        self.harness.event(button(start + by, false));
         self.harness.run();
     }
 
@@ -116,7 +133,7 @@ fn a_press_paints_a_bead_and_the_panel_counts_it() {
     let red = swatch(window.harness.state(), 2);
     window.click(&red);
 
-    window.stroke(&[FREE]);
+    window.press(FREE, PointerButton::Primary);
 
     assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
     let counted = swatch(window.harness.state(), 2);
@@ -125,40 +142,50 @@ fn a_press_paints_a_bead_and_the_panel_counts_it() {
 }
 
 #[test]
-fn a_stroke_is_undone_and_redone_as_one_step() {
+fn a_second_press_empties_the_bead() {
     let mut window = window();
-    let cells = [
-        FREE,
-        Cell {
-            column: 11,
-            row: 20,
-        },
-        Cell {
-            column: 12,
-            row: 20,
-        },
-    ];
+    window.press(FREE, PointerButton::Primary);
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(0));
 
-    window.stroke(&cells);
-    assert!(
-        cells
-            .iter()
-            .all(|cell| window.harness.state().pattern.get(*cell) == Some(0))
-    );
+    window.press(FREE, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(FREE), None);
+}
+
+#[test]
+fn a_press_of_the_second_button_paints_the_second_colour() {
+    let mut window = window();
+    let red = swatch(window.harness.state(), 2);
+    window.harness.get_by_label(&red).click_secondary();
+    window.harness.run();
+
+    window.press(FREE, PointerButton::Secondary);
+
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
+}
+
+#[test]
+fn a_drag_moves_the_field_and_paints_nothing() {
+    let mut window = window();
+    let before = window.harness.state().view.offset;
+
+    window.drag_field(FREE, egui::vec2(120.0, 60.0));
+
+    let app = window.harness.state();
+    assert_eq!(app.view.offset - before, egui::vec2(120.0, 60.0));
+    assert!(app.pattern.counts().iter().all(|count| *count == 0));
+}
+
+#[test]
+fn a_press_is_undone_and_redone() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
 
     window.click(&t!("edit.undo"));
-    assert!(
-        cells
-            .iter()
-            .all(|cell| window.harness.state().pattern.get(*cell).is_none())
-    );
+    assert_eq!(window.harness.state().pattern.get(FREE), None);
 
     window.click(&t!("edit.redo"));
-    assert!(
-        cells
-            .iter()
-            .all(|cell| window.harness.state().pattern.get(*cell) == Some(0))
-    );
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(0));
 }
 
 #[test]
@@ -166,76 +193,10 @@ fn the_fill_paints_the_whole_region() {
     let mut window = window();
     window.click(&t!("tool.fill"));
 
-    window.stroke(&[FREE]);
+    window.press(FREE, PointerButton::Primary);
 
     let pattern = &window.harness.state().pattern;
     assert_eq!(pattern.counts()[0], pattern.width() * pattern.height());
-}
-
-/// Two fingers, sent as winit sends them: the first finger is also the
-/// pointer, pressed a frame before the second finger comes.
-#[test]
-fn a_pinch_zooms_and_paints_nothing() {
-    let mut window = window();
-    let before = window.harness.state().view.bead;
-    let centre = window.bead(FREE);
-    let touch = |id, phase, pos| Event::Touch {
-        device_id: TouchDeviceId(1),
-        id: TouchId(id),
-        phase,
-        pos,
-        force: None,
-    };
-    let button = |pos, pressed| Event::PointerButton {
-        pos,
-        button: PointerButton::Primary,
-        pressed,
-        modifiers: Modifiers::NONE,
-    };
-    let spread = |step: usize| egui::vec2(20.0 + 10.0 * step as f32, 0.0);
-
-    let first = centre - spread(0);
-    window.harness.event(touch(1, TouchPhase::Start, first));
-    window.harness.event(Event::PointerMoved(first));
-    window.harness.event(button(first, true));
-    window.harness.step();
-    window
-        .harness
-        .event(touch(2, TouchPhase::Start, centre + spread(0)));
-    window.harness.step();
-    for step in 1..=5 {
-        window
-            .harness
-            .event(touch(1, TouchPhase::Move, centre - spread(step)));
-        window
-            .harness
-            .event(Event::PointerMoved(centre - spread(step)));
-        window
-            .harness
-            .event(touch(2, TouchPhase::Move, centre + spread(step)));
-        window.harness.step();
-    }
-    window
-        .harness
-        .event(touch(2, TouchPhase::End, centre + spread(5)));
-    window.harness.step();
-    window
-        .harness
-        .event(touch(1, TouchPhase::Move, centre - spread(6)));
-    window
-        .harness
-        .event(Event::PointerMoved(centre - spread(6)));
-    window.harness.step();
-    window
-        .harness
-        .event(touch(1, TouchPhase::End, centre - spread(6)));
-    window.harness.event(button(centre - spread(6), false));
-    window.harness.run();
-
-    let app = window.harness.state();
-    assert!(app.view.bead > before, "{} > {before}", app.view.bead);
-    assert!(app.pattern.counts().iter().all(|count| *count == 0));
-    assert!(!app.history.can_undo());
 }
 
 #[test]
@@ -263,7 +224,7 @@ fn a_change_of_grid_is_undone() {
 #[test]
 fn a_saved_pattern_opens_again() {
     let mut window = window();
-    window.stroke(&[FREE]);
+    window.press(FREE, PointerButton::Primary);
 
     window.click(&t!("file.save"));
 
@@ -366,4 +327,137 @@ fn a_panel_stays_inside_the_window() {
     let screen = egui::Rect::from_min_size(Pos2::ZERO, SIZE);
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     assert!(screen.contains_rect(grip), "{grip:?} in {screen:?}");
+}
+
+impl Window {
+    /// Two fingers on the field, from `from` points apart to `to`, sent as
+    /// winit sends them.
+    fn pinch(&mut self, from: f32, to: f32) {
+        let centre = self.bead(FREE);
+        let touch = |id, phase, pos| Event::Touch {
+            device_id: TouchDeviceId(1),
+            id: TouchId(id),
+            phase,
+            pos,
+            force: None,
+        };
+        let half = |distance: f32| egui::vec2(distance / 2.0, 0.0);
+        let button = |pos, pressed| Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        };
+        self.harness
+            .event(touch(1, TouchPhase::Start, centre - half(from)));
+        self.harness.event(Event::PointerMoved(centre - half(from)));
+        self.harness.event(button(centre - half(from), true));
+        self.harness.step();
+        self.harness
+            .event(touch(2, TouchPhase::Start, centre + half(from)));
+        self.harness.step();
+        for step in 1..=5 {
+            let distance = from + (to - from) * step as f32 / 5.0;
+            self.harness
+                .event(touch(1, TouchPhase::Move, centre - half(distance)));
+            self.harness
+                .event(Event::PointerMoved(centre - half(distance)));
+            self.harness
+                .event(touch(2, TouchPhase::Move, centre + half(distance)));
+            self.harness.step();
+        }
+        self.harness
+            .event(touch(2, TouchPhase::End, centre + half(to)));
+        self.harness
+            .event(touch(1, TouchPhase::End, centre - half(to)));
+        self.harness.event(button(centre - half(to), false));
+        self.harness.run();
+    }
+
+    /// The wheel turned by `lines` over the field with `modifiers` held.
+    fn wheel(&mut self, lines: f32, modifiers: Modifiers) {
+        let point = self.bead(FREE);
+        self.harness.event(Event::PointerMoved(point));
+        self.harness.event(Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Line,
+            delta: egui::vec2(0.0, lines),
+            phase: egui::TouchPhase::Move,
+            modifiers,
+            source: egui::MouseWheelSource::Wheel,
+        });
+        self.harness.run();
+    }
+
+    /// A pinch of the touchpad, as winit gives it: a factor of zoom.
+    fn touchpad(&mut self, factor: f32) {
+        let point = self.bead(FREE);
+        self.harness.event(Event::PointerMoved(point));
+        self.harness.event(Event::Zoom(factor));
+        self.harness.run();
+    }
+
+    /// The height of a bead now.
+    fn bead_size(&self) -> f32 {
+        self.harness.state().view.bead
+    }
+}
+
+#[test]
+fn two_fingers_zoom_in_and_out() {
+    let mut window = window();
+    let start = window.bead_size();
+
+    window.pinch(40.0, 120.0);
+    let larger = window.bead_size();
+    assert!(larger > start, "{larger} > {start}");
+
+    window.pinch(120.0, 40.0);
+    let smaller = window.bead_size();
+    assert!(smaller < larger, "{smaller} < {larger}");
+    assert!(
+        window
+            .harness
+            .state()
+            .pattern
+            .counts()
+            .iter()
+            .all(|count| *count == 0)
+    );
+}
+
+#[test]
+fn the_wheel_with_ctrl_zooms_in_and_out() {
+    let mut window = window();
+    let start = window.bead_size();
+
+    window.wheel(3.0, Modifiers::COMMAND);
+    let larger = window.bead_size();
+    assert!(larger > start, "{larger} > {start}");
+
+    window.wheel(-3.0, Modifiers::COMMAND);
+    assert!(window.bead_size() < larger);
+}
+
+#[test]
+fn the_touchpad_zooms_in_and_out() {
+    let mut window = window();
+    let start = window.bead_size();
+
+    window.touchpad(1.5);
+    let larger = window.bead_size();
+    assert!(larger > start, "{larger} > {start}");
+
+    window.touchpad(0.5);
+    assert!(window.bead_size() < larger);
+}
+
+#[test]
+fn the_wheel_alone_moves_the_field() {
+    let mut window = window();
+    let (offset, bead) = (window.harness.state().view.offset, window.bead_size());
+
+    window.wheel(-3.0, Modifiers::NONE);
+
+    assert_eq!(window.bead_size(), bead);
+    assert!(window.harness.state().view.offset.y < offset.y);
 }

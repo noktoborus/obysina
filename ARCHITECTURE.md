@@ -35,13 +35,12 @@ The format of the file is `crates/obusina-pattern/README.md`.
 
 Every change goes through `edit::History` (`src/edit.rs`):
 
-```
-press ──► History::paint ──► … ──► release ──► History::finish ──► one step
-             │
-             └── a second finger comes ──► History::cancel ──► nothing
+```text
+press on a bead ──► App::press ──► History::paint(cells, colour) ──► one step
+drag            ──► the field moves; the pattern does not change
 ```
 
-A change of the kind of grid is one step too.
+A fill is one step. A change of the kind of grid is one step too.
 
 ## Start
 

@@ -31,7 +31,8 @@ const SAVE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::S)
 /// What a press on the field does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tool {
-    /// Paints the beads under the pointer.
+    /// Switches the bead pressed on: to the colour, or to empty when it has
+    /// the colour already.
     Pencil,
     /// Paints the region of one colour under the pointer.
     Fill,
@@ -56,8 +57,6 @@ pub struct App {
     pub(crate) history: History,
     /// A line for the user: what was saved, what failed.
     pub(crate) message: Option<String>,
-    /// The press that goes on has filled its region already.
-    filled: bool,
 }
 
 impl App {
@@ -80,7 +79,6 @@ impl App {
             colours: [Some(0), None],
             history: History::default(),
             message,
-            filled: false,
         }
     }
 
@@ -127,14 +125,17 @@ impl App {
         };
         let colour = self.colours[which];
         match self.tool {
-            Tool::Pencil => self.history.paint(&mut self.pattern, cell, colour),
-            Tool::Fill if !self.filled => {
-                self.filled = true;
-                for cell in self.pattern.region(cell) {
-                    self.history.paint(&mut self.pattern, cell, colour);
-                }
+            Tool::Pencil => {
+                let switched = match self.pattern.get(cell) {
+                    present if present == colour => None,
+                    _ => colour,
+                };
+                self.history.paint(&mut self.pattern, &[cell], switched);
             }
-            Tool::Fill => {}
+            Tool::Fill => {
+                let region = self.pattern.region(cell);
+                self.history.paint(&mut self.pattern, &region, colour);
+            }
             Tool::Pick => self.colours[which] = self.pattern.get(cell),
         }
     }
@@ -163,15 +164,8 @@ impl App {
     fn field(&mut self, ui: &mut egui::Ui) {
         let field = Canvas::new(&self.pattern, &mut self.view).show(ui);
         field.response.named(&t!("field"));
-        if field.moving {
-            self.history.cancel(&mut self.pattern);
-        }
         if let Some((cell, press)) = field.pressed {
             self.press(cell, press);
-        }
-        if field.released {
-            self.history.finish();
-            self.filled = false;
         }
     }
 }

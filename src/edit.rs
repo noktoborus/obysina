@@ -58,52 +58,36 @@ impl Edit {
 pub struct History {
     done: Vec<Edit>,
     undone: Vec<Edit>,
-    stroke: Vec<Change>,
 }
 
 impl History {
     /// Applies an edit and keeps it.
     pub fn apply(&mut self, pattern: &mut Pattern, edit: Edit) {
-        self.finish();
         edit.apply(pattern);
         self.done.push(edit);
         self.undone.clear();
     }
 
-    /// Paints one bead as a part of the stroke that goes on.
-    pub fn paint(&mut self, pattern: &mut Pattern, cell: Cell, colour: Option<usize>) {
-        let before = pattern.get(cell);
-        if before == colour {
-            return;
-        }
-        pattern.set(cell, colour);
-        self.stroke.push(Change {
-            cell,
-            before,
-            after: colour,
-        });
-    }
-
-    /// Ends the stroke that goes on: all its beads are one step.
-    pub fn finish(&mut self) {
-        if self.stroke.is_empty() {
-            return;
-        }
-        self.done
-            .push(Edit::Beads(std::mem::take(&mut self.stroke)));
-        self.undone.clear();
-    }
-
-    /// Takes back the stroke that goes on, as if it never was.
-    pub fn cancel(&mut self, pattern: &mut Pattern) {
-        for change in std::mem::take(&mut self.stroke).iter().rev() {
-            pattern.set(change.cell, change.before);
+    /// Puts colours in cells as one step; a cell that has its colour already
+    /// is left out, and nothing is kept when no cell changes.
+    pub fn paint(&mut self, pattern: &mut Pattern, cells: &[Cell], colour: Option<usize>) {
+        let changes: Vec<Change> = cells
+            .iter()
+            .map(|cell| Change {
+                cell: *cell,
+                before: pattern.get(*cell),
+                after: colour,
+            })
+            .filter(|change| change.before != change.after)
+            .collect();
+        if !changes.is_empty() {
+            self.apply(pattern, Edit::Beads(changes));
         }
     }
 
     /// True when there is a step to undo.
     pub fn can_undo(&self) -> bool {
-        !self.done.is_empty() || !self.stroke.is_empty()
+        !self.done.is_empty()
     }
 
     /// True when there is a step to redo.
@@ -113,7 +97,6 @@ impl History {
 
     /// Undoes the last step.
     pub fn undo(&mut self, pattern: &mut Pattern) {
-        self.finish();
         if let Some(edit) = self.done.pop() {
             edit.revert(pattern);
             self.undone.push(edit);
@@ -122,7 +105,6 @@ impl History {
 
     /// Does again the last step undone.
     pub fn redo(&mut self, pattern: &mut Pattern) {
-        self.finish();
         if let Some(edit) = self.undone.pop() {
             edit.apply(pattern);
             self.done.push(edit);
@@ -146,14 +128,12 @@ mod tests {
     }
 
     #[test]
-    fn a_stroke_is_undone_as_one_step() {
+    fn a_painting_is_undone_as_one_step() {
         let mut pattern = pattern();
         let empty = pattern.clone();
         let mut history = History::default();
-        for column in 0..3 {
-            history.paint(&mut pattern, Cell { column, row: 0 }, Some(0));
-        }
-        history.finish();
+        let cells: Vec<Cell> = (0..3).map(|column| Cell { column, row: 0 }).collect();
+        history.paint(&mut pattern, &cells, Some(0));
         let painted = pattern.clone();
 
         history.undo(&mut pattern);
@@ -176,25 +156,10 @@ mod tests {
         );
         history.undo(&mut pattern);
 
-        history.paint(&mut pattern, Cell { column: 0, row: 0 }, Some(0));
-        history.finish();
+        history.paint(&mut pattern, &[Cell { column: 0, row: 0 }], Some(0));
 
         assert!(!history.can_redo());
         assert_eq!(pattern.grid(), Grid::Loom);
-    }
-
-    #[test]
-    fn a_cancelled_stroke_leaves_no_trace() {
-        let mut pattern = pattern();
-        let empty = pattern.clone();
-        let mut history = History::default();
-        history.paint(&mut pattern, Cell { column: 1, row: 1 }, Some(0));
-
-        history.cancel(&mut pattern);
-        history.finish();
-
-        assert_eq!(pattern, empty);
-        assert!(!history.can_undo());
     }
 
     #[test]
@@ -202,8 +167,7 @@ mod tests {
         let mut pattern = pattern();
         let mut history = History::default();
 
-        history.paint(&mut pattern, Cell { column: 0, row: 0 }, None);
-        history.finish();
+        history.paint(&mut pattern, &[Cell { column: 0, row: 0 }], None);
 
         assert!(!history.can_undo());
     }

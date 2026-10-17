@@ -14,10 +14,12 @@ An editor of bead patterns, for Linux, Windows and Android.
     save;
   - **Beads**: the colours of the pattern with their counts, an empty place,
     and the two colours in hand.
-- The first button paints with the first colour, the second button with the
-  second. On a touch screen the button with the turning arrows swaps them.
-- Two fingers, the wheel and the middle button move the field. A pinch and the
-  wheel with ctrl zoom it.
+- A press on a bead switches it: to the colour in hand, or to empty when it
+  has that colour already. The first button uses the first colour, the second
+  button the second. On a touch screen a tap is the first button, and the
+  button with the turning arrows swaps the colours.
+- A drag moves the field, with any button or one finger. A pinch and the wheel
+  with ctrl zoom it.
 - A pattern is a JSON file. Every format the program ever wrote opens.
 
 | Key | Action |

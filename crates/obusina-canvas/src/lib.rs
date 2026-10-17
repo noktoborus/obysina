@@ -19,10 +19,10 @@ const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
 /// The outline of an empty place.
 const EMPTY: Color32 = Color32::from_rgb(0xa8, 0xa6, 0xa0);
 
-/// Which colour a press asks for.
+/// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Press {
-    /// The first button, or one finger.
+    /// The first button, or a tap of one finger.
     Primary,
     /// The second button.
     Secondary,
@@ -34,20 +34,21 @@ pub struct CanvasResponse {
     pub response: Response,
     /// The bead under the pointer.
     pub hovered: Option<Cell>,
-    /// The bead pressed on, and how; `None` while the field is moved.
+    /// The bead pressed on and let go without a drag, and by which button.
     pub pressed: Option<(Cell, Press)>,
-    /// The press that goes on became a move: a second finger came, or the
-    /// middle button. What the press painted is to be taken back.
-    pub moving: bool,
-    /// A press ended in this frame.
-    pub released: bool,
 }
 
 /// The field of beads: draws a pattern over all the space it is given.
 ///
-/// Two fingers, the wheel and the middle button move the field; a pinch and
-/// the wheel with ctrl zoom it. One finger and the other buttons press on a
-/// bead.
+/// ```text
+/// press, let go in place      ──► a press on the bead under it
+/// press, drag (any button)    ──► the field moves with the pointer
+/// two fingers                 ──► the field moves and zooms
+/// wheel / ctrl + wheel        ──► the field moves / zooms
+/// ```
+///
+/// egui tells a click from a drag: a press that moves further than a few
+/// points, or is held too long, is a drag and presses on nothing.
 pub struct Canvas<'a> {
     pattern: &'a Pattern,
     view: &'a mut View,
@@ -62,7 +63,7 @@ impl<'a> Canvas<'a> {
     /// Draws the field over all the space left in `ui`.
     pub fn show(mut self, ui: &mut Ui) -> CanvasResponse {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
-        let moving = self.navigate(ui, &response);
+        self.navigate(ui, &response);
 
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, PAPER);
@@ -89,46 +90,36 @@ impl<'a> Canvas<'a> {
             }
         }
 
-        let moving = self.moving(ui, &response, moving);
         let hovered = response
             .hover_pos()
             .and_then(|point| self.cell_at(origin, point));
-        let pressed = if moving {
-            None
-        } else {
-            self.pressed(ui, &response, origin)
-        };
-        let released =
-            response.drag_stopped() || response.clicked() || response.secondary_clicked();
+        let pressed = self.pressed(&response, origin);
         CanvasResponse {
             response,
             hovered,
             pressed,
-            moving,
-            released,
         }
     }
 
-    /// Moves and zooms the view by what the input asks. True while the field
-    /// is moved, so that no bead is pressed on by the same gesture.
+    /// Moves and zooms the view by what the input asks.
     ///
     /// A touch does not move the pointer, so two fingers are asked where they
-    /// are, not whether the field is hovered.
-    fn navigate(&mut self, ui: &Ui, response: &Response) -> bool {
+    /// are, not whether the field is hovered. Their first finger is also a
+    /// drag of the pointer, which is then not counted twice.
+    fn navigate(&mut self, ui: &Ui, response: &Response) {
         let rect = response.rect;
-        let (touch, zoom, scroll, middle) = ui.input(|input| {
+        let (touch, zoom, scroll) = ui.input(|input| {
             (
                 input.multi_touch(),
                 input.zoom_delta(),
                 input.smooth_scroll_delta(),
-                input.pointer.middle_down(),
             )
         });
         if let Some(touch) = touch.filter(|touch| rect.contains(touch.center_pos)) {
             self.view
                 .zoom(touch.zoom_delta, touch.center_pos - rect.min);
             self.view.offset += touch.translation_delta;
-            return true;
+            return;
         }
         if let Some(pointer) = response.hover_pos() {
             if zoom != 1.0 {
@@ -136,38 +127,22 @@ impl<'a> Canvas<'a> {
             }
             self.view.offset += scroll;
         }
-        if middle && response.dragged() {
+        if response.dragged() {
             self.view.offset += response.drag_delta();
         }
-        middle
     }
 
-    /// True from the frame a press becomes a move until nothing is down.
-    ///
-    /// The first finger of a pinch comes as a press, a frame before the
-    /// second one; the press stays a move until the last finger is lifted.
-    fn moving(&self, ui: &Ui, response: &Response, now: bool) -> bool {
-        let id = response.id.with("moving");
-        let before = ui.data(|data| data.get_temp::<bool>(id)).unwrap_or(false);
-        let down = ui.input(|input| input.pointer.any_down() || input.any_touches());
-        let moving = (before || now) && (down || now);
-        ui.data_mut(|data| data.insert_temp(id, moving));
-        moving
-    }
-
-    /// The bead pressed on in this frame, and by which button.
-    fn pressed(&self, ui: &Ui, response: &Response, origin: Pos2) -> Option<(Cell, Press)> {
+    /// The bead pressed on and let go in place in this frame, and by which
+    /// button.
+    fn pressed(&self, response: &Response, origin: Pos2) -> Option<(Cell, Press)> {
+        let press = if response.clicked() {
+            Press::Primary
+        } else if response.secondary_clicked() {
+            Press::Secondary
+        } else {
+            return None;
+        };
         let point = response.interact_pointer_pos()?;
-        let down = |button| ui.input(|input| input.pointer.button_down(button));
-        let held = response.is_pointer_button_down_on();
-        let press =
-            if (held && down(egui::PointerButton::Secondary)) || response.secondary_clicked() {
-                Press::Secondary
-            } else if (held && down(egui::PointerButton::Primary)) || response.clicked() {
-                Press::Primary
-            } else {
-                return None;
-            };
         self.cell_at(origin, point).map(|cell| (cell, press))
     }
 

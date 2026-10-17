@@ -7,10 +7,17 @@ The field of beads: an egui widget that draws an
 
 - Draws every bead at its proportions, with a small gap. An empty place is an
   outline.
-- Moves and zooms the field by its [`View`]: two fingers, the wheel and the
-  middle button move it; a pinch and the wheel with ctrl zoom it.
-- Says which bead is hovered and which is pressed, and by which button.
-  A press of two fingers is a move, never a press on a bead.
+- Moves and zooms the field by its [`View`]:
+
+  | Input | Result |
+  | --- | --- |
+  | press and let go in place | a press on the bead, by its button |
+  | press and drag, any button, one finger | the field moves |
+  | two fingers | the field moves and zooms |
+  | wheel, ctrl + wheel | the field moves, zooms |
+
+- Says which bead is hovered and which is pressed. egui tells a press from a
+  drag: a press that moves or is held too long is a drag.
 
 | Grid | Picture |
 | --- | --- |
