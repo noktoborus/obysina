@@ -19,10 +19,12 @@ pub const SWAP: &str = "\u{1f503}";
 pub const SAVE: &str = "\u{1f4be}";
 /// An empty place, the cross.
 pub const EMPTY: &str = "\u{2716}";
+/// The kind of grid, the square cut in four.
+pub const GRID: &str = "\u{229e}";
 
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
-pub const ALL: &[&str] = &[UNDO, REDO, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY];
+pub const ALL: &[&str] = &[UNDO, REDO, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY, GRID];
 
 #[cfg(test)]
 mod tests {

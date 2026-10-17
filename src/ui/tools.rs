@@ -5,8 +5,7 @@ use obusina_pattern::Grid;
 use rust_i18n::t;
 
 use crate::app::{App, Tool};
-use crate::ui::access::Named;
-use crate::ui::icons;
+use crate::ui::{button, icons};
 
 /// Where the panel stands the first time, from the top left of the window.
 const PLACE: egui::Vec2 = egui::vec2(16.0, 16.0);
@@ -41,12 +40,10 @@ pub fn gap(ui: &mut egui::Ui, orientation: Orientation) {
 
 /// Undo and redo.
 fn history(app: &mut App, ui: &mut egui::Ui) {
-    let undo = ui.add_enabled(app.history.can_undo(), egui::Button::new(icons::UNDO));
-    if undo.tip(&t!("edit.undo")).clicked() {
+    if button::icon(ui, icons::UNDO, &t!("edit.undo"), app.history.can_undo()).clicked() {
         app.undo();
     }
-    let redo = ui.add_enabled(app.history.can_redo(), egui::Button::new(icons::REDO));
-    if redo.tip(&t!("edit.redo")).clicked() {
+    if button::icon(ui, icons::REDO, &t!("edit.redo"), app.history.can_redo()).clicked() {
         app.redo();
     }
 }
@@ -58,29 +55,25 @@ fn tools(app: &mut App, ui: &mut egui::Ui) {
         (Tool::Fill, icons::FILL, t!("tool.fill")),
         (Tool::Pick, icons::PICK, t!("tool.pick")),
     ] {
-        if ui
-            .selectable_label(app.tool == tool, icon)
-            .tip(&name)
-            .clicked()
-        {
+        if button::toggle(ui, app.tool == tool, icon, &name).clicked() {
             app.tool = tool;
         }
     }
 }
 
-/// The kind of grid.
+/// The kind of grid: a button that opens the list of kinds.
 fn grid(app: &mut App, ui: &mut egui::Ui) {
-    let mut chosen = app.pattern.grid();
-    egui::ComboBox::from_id_salt("grid")
-        .selected_text(grid_name(chosen))
-        .show_ui(ui, |ui| {
-            for grid in Grid::ALL {
-                ui.selectable_value(&mut chosen, grid, grid_name(grid));
+    let response = button::icon(ui, icons::GRID, &t!("grid.kind"), true);
+    egui::Popup::menu(&response).show(|ui| {
+        for grid in Grid::ALL {
+            if ui
+                .selectable_label(app.pattern.grid() == grid, grid_name(grid))
+                .clicked()
+            {
+                app.set_grid(grid);
             }
-        })
-        .response
-        .named(&t!("grid.kind"));
-    app.set_grid(chosen);
+        }
+    });
 }
 
 /// The name of a kind of grid.
@@ -99,8 +92,7 @@ fn save(app: &mut App, ui: &mut egui::Ui) {
         Some(_) => t!("file.save"),
         None => t!("file.nowhere"),
     };
-    let button = ui.add_enabled(app.path.is_some(), egui::Button::new(icons::SAVE));
-    if button.tip(&hint).clicked() {
+    if button::icon(ui, icons::SAVE, &hint, app.path.is_some()).clicked() {
         app.save();
     }
 }

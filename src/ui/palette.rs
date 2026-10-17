@@ -1,20 +1,17 @@
 //! The floating panel of beads: the colours of the pattern and the two in
 //! hand.
 
-use egui::{Color32, RichText, Stroke, vec2};
+use egui::{Color32, vec2};
 use rust_i18n::t;
 
 use obusina_panel::{FloatingPanel, Orientation};
 
 use crate::app::App;
-use crate::ui::access::Named;
-use crate::ui::icons;
 use crate::ui::tools::gap;
+use crate::ui::{button, icons};
 
 /// Where the panel stands the first time, from the top right of the window.
 const PLACE: egui::Vec2 = vec2(-16.0, 16.0);
-/// The size of a swatch: large enough for a finger.
-const SWATCH: egui::Vec2 = vec2(44.0, 36.0);
 /// Swatches in one line of a row.
 const ROW: usize = 8;
 /// Swatches in one line of a column.
@@ -57,7 +54,7 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
                     .to_string(),
                     None => t!("palette.empty").to_string(),
                 };
-                let response = swatch(app, ui, colour, app.colours[0] == colour).named(&name);
+                let response = swatch(app, ui, colour, app.colours[0] == colour, &name);
                 if response.clicked() {
                     app.colours[0] = colour;
                 }
@@ -75,16 +72,22 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
 /// to the second colour by touch (`RULE ui.touch`).
 fn in_hand(app: &mut App, ui: &mut egui::Ui) {
     let [first, second] = app.colours;
-    swatch(app, ui, first, false).named(&t!("palette.first"));
-    swatch(app, ui, second, false).named(&t!("palette.second"));
-    if ui.button(icons::SWAP).tip(&t!("palette.swap")).clicked() {
+    swatch(app, ui, first, false, &t!("palette.first"));
+    swatch(app, ui, second, false, &t!("palette.second"));
+    if button::icon(ui, icons::SWAP, &t!("palette.swap"), true).clicked() {
         app.colours.swap(0, 1);
     }
 }
 
-/// A button of the colour `colour`, its key on it.
-fn swatch(app: &App, ui: &mut egui::Ui, colour: Option<usize>, selected: bool) -> egui::Response {
-    let (fill, text) = match colour {
+/// The swatch of a colour of the palette, or of an empty place.
+fn swatch(
+    app: &App,
+    ui: &mut egui::Ui,
+    colour: Option<usize>,
+    selected: bool,
+    name: &str,
+) -> egui::Response {
+    let (fill, label) = match colour {
         Some(index) => {
             let bead = &app.pattern.palette()[index];
             let [red, green, blue] = bead.rgb.0;
@@ -92,26 +95,5 @@ fn swatch(app: &App, ui: &mut egui::Ui, colour: Option<usize>, selected: bool) -
         }
         None => (ui.visuals().extreme_bg_color, icons::EMPTY.to_string()),
     };
-    let stroke = if selected {
-        Stroke::new(3.0, ui.visuals().selection.stroke.color)
-    } else {
-        Stroke::new(1.0, ui.visuals().widgets.inactive.bg_stroke.color)
-    };
-    ui.add(
-        egui::Button::new(RichText::new(text).color(contrast(fill)).strong())
-            .fill(fill)
-            .stroke(stroke)
-            .min_size(SWATCH),
-    )
-}
-
-/// Black or white, whichever reads on `fill`.
-fn contrast(fill: Color32) -> Color32 {
-    let light =
-        0.299 * f32::from(fill.r()) + 0.587 * f32::from(fill.g()) + 0.114 * f32::from(fill.b());
-    if light > 140.0 {
-        Color32::BLACK
-    } else {
-        Color32::WHITE
-    }
+    button::swatch(ui, fill, &label, selected, name)
 }

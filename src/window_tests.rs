@@ -471,7 +471,7 @@ fn a_panel_follows_the_pointer_exactly() {
         .get_by_label(&t!("panel.tools"))
         .rect()
         .center();
-    let by = egui::vec2(-150.0, 90.0);
+    let by = egui::vec2(-150.0, -60.0);
 
     window.drag(&t!("panel.tools"), start + by);
 
@@ -521,4 +521,28 @@ fn a_panel_dragged_slowly_follows_the_pointer() {
     }
     window.harness.event(button(point, false));
     window.harness.run();
+}
+
+#[test]
+fn every_button_of_the_panels_has_one_size() {
+    let window = window();
+    let first = swatch(window.harness.state(), 0);
+
+    for name in [
+        t!("edit.undo"),
+        t!("edit.redo"),
+        t!("tool.pencil"),
+        t!("tool.fill"),
+        t!("tool.pick"),
+        t!("grid.kind"),
+        t!("file.save"),
+        t!("palette.empty"),
+        t!("palette.first"),
+        t!("palette.second"),
+        t!("palette.swap"),
+        first.into(),
+    ] {
+        let size = window.harness.get_by_label(&name).rect().size();
+        assert_eq!(size, crate::ui::button::SIZE, "{name}");
+    }
 }

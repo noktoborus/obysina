@@ -339,6 +339,14 @@ THEN the zones are drawn while a panel is dragged, the one under the pointer
      filled
 THEN the content of a panel lays itself out by the `Orientation` it is given
 
+RULE ui.button : a button of a panel is made by `ui::button`, all of one
+     size, `button::SIZE`, the size of a swatch
+WHY  a row or a column of buttons of one size reads as one row, and each is
+     large enough for a finger
+EX+  button::icon(ui, icons::UNDO, &t!("edit.undo"), can_undo)
+EX-  ui.add(egui::Button::new(icons::UNDO)) in a panel
+REF  src/ui/button.rs
+
 RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller
 
