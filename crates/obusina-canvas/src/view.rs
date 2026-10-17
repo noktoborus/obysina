@@ -14,18 +14,28 @@ pub struct View {
     pub offset: Vec2,
     /// The height of a bead, in points.
     pub bead: f32,
+    /// The pattern has been put in the middle of the field once.
+    pub centred: bool,
 }
 
 impl Default for View {
     fn default() -> Self {
         View {
-            offset: Vec2::splat(16.0),
+            offset: Vec2::ZERO,
             bead: 20.0,
+            centred: false,
         }
     }
 }
 
 impl View {
+    /// Puts a pattern of `extent` points in the middle of a field of `field`
+    /// points.
+    pub fn centre(&mut self, field: Vec2, extent: Vec2) {
+        self.offset = (field - extent) / 2.0;
+        self.centred = true;
+    }
+
     /// Zooms by `factor`, keeping the point `anchor` of the field still.
     pub fn zoom(&mut self, factor: f32, anchor: Vec2) {
         let bead = (self.bead * factor).clamp(MIN_BEAD, MAX_BEAD);
@@ -44,6 +54,7 @@ mod tests {
         let mut view = View {
             offset: Vec2::new(10.0, 10.0),
             bead: 20.0,
+            centred: true,
         };
         let anchor = Vec2::new(50.0, 30.0);
         let before = (anchor - view.offset) / view.bead;
@@ -52,6 +63,16 @@ mod tests {
 
         assert_eq!(view.bead, 40.0);
         assert_eq!((anchor - view.offset) / view.bead, before);
+    }
+
+    #[test]
+    fn a_pattern_is_centred_in_the_field() {
+        let mut view = View::default();
+
+        view.centre(Vec2::new(1000.0, 700.0), Vec2::new(400.0, 600.0));
+
+        assert_eq!(view.offset, Vec2::new(300.0, 50.0));
+        assert!(view.centred);
     }
 
     #[test]

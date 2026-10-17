@@ -63,6 +63,9 @@ impl<'a> Canvas<'a> {
     /// Draws the field over all the space left in `ui`.
     pub fn show(mut self, ui: &mut Ui) -> CanvasResponse {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
+        if !self.view.centred && rect.is_positive() {
+            self.view.centre(rect.size(), self.extent());
+        }
         self.navigate(ui, &response);
 
         let painter = ui.painter_at(rect);
@@ -144,6 +147,16 @@ impl<'a> Canvas<'a> {
         };
         let point = response.interact_pointer_pos()?;
         self.cell_at(origin, point).map(|cell| (cell, press))
+    }
+
+    /// The size of the whole pattern on the screen.
+    fn extent(&self) -> Vec2 {
+        let pattern = self.pattern;
+        let (width, height) =
+            pattern
+                .grid()
+                .extent(pattern.width(), pattern.height(), pattern.ratio());
+        vec2(width, height) * self.view.bead
     }
 
     /// The rectangle of one bead on the screen.

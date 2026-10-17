@@ -546,3 +546,23 @@ fn every_button_of_the_panels_has_one_size() {
         assert_eq!(size, crate::ui::button::SIZE, "{name}");
     }
 }
+
+#[test]
+fn the_pattern_opens_in_the_middle_of_the_window() {
+    let window = window();
+    let app = window.harness.state();
+    let field = window.harness.get_by_label(&t!("field")).rect();
+    let (width, height) = app.pattern.grid().extent(
+        app.pattern.width(),
+        app.pattern.height(),
+        app.pattern.ratio(),
+    );
+    let middle = field.min + app.view.offset + egui::vec2(width, height) * app.view.bead / 2.0;
+
+    assert!(
+        (middle - field.center()).length() < 1.0,
+        "{middle:?} != {:?}",
+        field.center()
+    );
+}
+

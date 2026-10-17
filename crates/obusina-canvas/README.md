@@ -7,6 +7,8 @@ The field of beads: an egui widget that draws an
 
 - Draws every bead at its proportions, with a small gap. An empty place is an
   outline.
+- Puts the pattern in the middle of the field the first time the field has a
+  size.
 - Moves and zooms the field by its [`View`]:
 
   | Input | Result |
