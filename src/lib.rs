@@ -28,11 +28,12 @@ const DEFAULT_FILE: &str = "pattern.json";
 /// line, if any.
 pub fn desktop() -> std::process::ExitCode {
     env_logger::init();
+    choose_locale();
     let path = std::env::args_os().nth(1).map(PathBuf::from);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_app_id(APP_ID)
-            .with_title("Obusina")
+            .with_title(rust_i18n::t!("app.name"))
             .with_inner_size([1000.0, 700.0]),
         ..Default::default()
     };
@@ -49,6 +50,7 @@ pub fn desktop() -> std::process::ExitCode {
 /// program.
 #[cfg(target_os = "android")]
 pub fn android(android: winit::platform::android::activity::AndroidApp) {
+    choose_locale();
     let path = android
         .internal_data_path()
         .map(|directory| directory.join(DEFAULT_FILE));
@@ -63,7 +65,6 @@ pub fn android(android: winit::platform::android::activity::AndroidApp) {
 
 /// Runs the window until it is closed.
 fn run(options: eframe::NativeOptions, path: Option<PathBuf>) -> eframe::Result {
-    choose_locale();
     eframe::run_native(
         "Obusina",
         options,

@@ -1,6 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Obusina
+Name[ru]=Обусина
 Comment=Editor of bead patterns
 Comment[ru]=Редактор схем для бисера
 Exec=obusina %f

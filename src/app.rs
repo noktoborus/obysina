@@ -178,7 +178,7 @@ impl App {
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
-        crate::ui::access::name_window(ui.ctx(), "Obusina");
+        crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
         self.shortcuts(ui);
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
