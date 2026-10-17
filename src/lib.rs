@@ -1,7 +1,7 @@
 //! Obusina, an editor of bead patterns.
 //!
-//! The program is a library, so that android loads it as a `cdylib`, and a
-//! small binary for the desktop.
+//! The program is a library with two entries: [`desktop`], which
+//! `src/main.rs` calls, and `android`, which the `cdylib` of `android/` calls.
 
 mod app;
 mod edit;
@@ -48,8 +48,7 @@ pub fn desktop() -> std::process::ExitCode {
 /// Starts the window on android, with the pattern kept in the data of the
 /// program.
 #[cfg(target_os = "android")]
-#[unsafe(no_mangle)]
-fn android_main(android: eframe::winit::platform::android::activity::AndroidApp) {
+pub fn android(android: winit::platform::android::activity::AndroidApp) {
     let path = android
         .internal_data_path()
         .map(|directory| directory.join(DEFAULT_FILE));

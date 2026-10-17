@@ -3,6 +3,7 @@
 ## Crates
 
 ```
+obusina-android (cdylib, android only) ──► obusina
 obusina (binary and library)
  ├── obusina-canvas ──► obusina-pattern
  └── obusina-pattern
@@ -14,6 +15,7 @@ experiments/glyphs     (nothing depends on it)
 | `obusina-pattern` | the model: grid, palette, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina` | the window, the panels, the history of edits, the text of the user |
+| `obusina-android` | the library android loads; calls `obusina::android` |
 
 `obusina-canvas -> obusina-pattern` is the one dependency between library
 crates (`RULE crate.deps`).
@@ -44,7 +46,7 @@ A change of the kind of grid is one step too.
 | Platform | Entry | Pattern |
 | --- | --- | --- |
 | Linux, Windows | `src/main.rs` → `obusina::desktop` | the file named on the command line |
-| Android | `android_main` in `src/lib.rs` | `pattern.json` in the internal data path |
+| Android | `android_main` of `android/` → `obusina::android` | `pattern.json` in the internal data path |
 
 ## Errors
 

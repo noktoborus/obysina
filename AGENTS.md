@@ -32,18 +32,24 @@ RULE platform_code : platform specific code is `cfg` gated
 EX+  #[cfg(target_os = "android")] fn data_dir(app: &AndroidApp) -> PathBuf
 EX-  two source trees, one per platform
 
-RULE android = eframe with `android-game-activity`; the program is also a
-     `cdylib` with an `android_main`
+RULE android = eframe with `android-game-activity`; `android/` is the
+     `cdylib` android loads, its `android_main` calls `obusina::android`
 WHY  eframe gives accesskit on android only with the game activity
      (`RULE ui.name`)
 THEN `NativeOptions::android_app` carries the `AndroidApp` it is given; the
      pattern lives in the internal data path of the program
-REF  src/lib.rs
+RULE android.cdylib : only `android/` is a `cdylib`, and it is empty on any
+     other platform
+WHY  a `cdylib` of the whole program exports every symbol, and the linker of
+     mingw refuses that many
+REF  android/README.md
 
 ## Layout
 
-RULE binary = the root package `obusina`: a library, which android loads as
-     a `cdylib`, and `src/main.rs`, which starts it on the desktop
+RULE binary = the root package `obusina`: a library with an entry for each
+     platform, and `src/main.rs`, which starts it on the desktop
+RULE platform_entry = `android/`, the one other package that starts the
+     program
 RULE library_code = crates/*
 RULE experiments = experiments/*, a workspace member each, none of them
      depended on
@@ -429,12 +435,16 @@ EX-  a picture updated so a failing test passes, without opening it
 
 ## Checks before finishing
 
-RULE checks : all five are clean before the work is reported done
+RULE checks : all seven are clean before the work is reported done
 THEN cargo fmt --all
      tools/reap -- cargo clippy --workspace --all-targets
      tools/reap -- cargo build --workspace
      tools/reap -- cargo test --workspace
+     tools/reap -- make build-windows
+     tools/reap -- make build-android
      cargo audit
+WHY  code gated by `cfg` for one platform is compiled only on that platform;
+     a build of each is the one way to know it compiles
 
 ## Commits
 

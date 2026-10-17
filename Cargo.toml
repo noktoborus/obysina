@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/*", "experiments/*"]
+members = ["android", "crates/*", "experiments/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -22,7 +22,9 @@ serde_yaml_ng = "0.10"
 sys-locale = "0.3"
 tempfile = "3.27"
 thiserror = "2.0"
+winit = { version = "0.30", default-features = false }
 
+obusina = { path = ".", version = "0.1.0" }
 obusina-canvas = { path = "crates/obusina-canvas", version = "0.1.0" }
 obusina-pattern = { path = "crates/obusina-pattern", version = "0.1.0" }
 
@@ -39,9 +41,6 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 eframe.workspace = true
 egui.workspace = true
@@ -55,6 +54,7 @@ thiserror.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies]
 eframe = { workspace = true, features = ["android-game-activity"] }
+winit.workspace = true
 
 [dev-dependencies]
 egui_kittest = { workspace = true, features = ["eframe"] }

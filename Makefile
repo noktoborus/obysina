@@ -7,10 +7,19 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 APPDIR = $(DESTDIR)$(PREFIX)/share/applications
 ICONDIR = $(DESTDIR)$(PREFIX)/share/icons/hicolor
 
-.PHONY: build install uninstall
+.PHONY: build build-windows build-android install uninstall
 
 build:
 	cargo build --release
+
+# Windows, built with mingw: target/x86_64-pc-windows-gnu/release/obusina.exe.
+build-windows:
+	cargo build --release --target x86_64-pc-windows-gnu -p obusina
+
+# The library android loads, built with the NDK of ANDROID_NDK_HOME:
+# target/aarch64-linux-android/release/libobusina_android.so.
+build-android:
+	cargo ndk -t arm64-v8a build --release -p obusina-android
 
 install:
 	@test -x target/release/obusina || { echo "run 'make build' first"; exit 1; }

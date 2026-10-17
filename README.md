@@ -36,7 +36,11 @@ program.
 
 ## Building
 
-| Target | Command |
-| --- | --- |
-| Linux, Windows | `make build`, then `make install` on Linux |
-| Android | not packaged yet; the library builds with the NDK |
+| Target | Command | Result |
+| --- | --- | --- |
+| Linux | `make build`, then `make install` | `target/release/obusina` |
+| Windows | `make build-windows`, with mingw | `obusina.exe` |
+| Android | `make build-android`, with the NDK and `cargo-ndk` | `libobusina_android.so` |
+
+The Android library is not packaged into an APK yet.
+`.devcontainer/Dockerfile.claude` installs every tool these need.

@@ -2540,6 +2540,15 @@ dependencies = [
  "sys-locale",
  "tempfile",
  "thiserror 2.0.21",
+ "winit",
+]
+
+[[package]]
+name = "obusina-android"
+version = "0.1.0"
+dependencies = [
+ "obusina",
+ "winit",
 ]
 
 [[package]]
