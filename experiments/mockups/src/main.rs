@@ -1,8 +1,7 @@
 //! Mockups of the design of the window: a page served by trunk, or a window
 //! on the desktop. `make mockups` serves them.
 
-mod gallery;
-mod mock;
+use mockups::gallery::Gallery;
 
 /// The id of the canvas of `index.html`.
 #[cfg(target_arch = "wasm32")]
@@ -14,7 +13,7 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "obusina mockups",
         eframe::NativeOptions::default(),
-        Box::new(|_| Ok(Box::new(gallery::Gallery::new("")))),
+        Box::new(|_| Ok(Box::new(Gallery::new("")))),
     )
 }
 
@@ -35,7 +34,7 @@ fn main() {
                 eframe::WebOptions::default(),
                 Box::new(|context| {
                     let hash = context.integration_info.web_info.location.hash.clone();
-                    Ok(Box::new(gallery::Gallery::new(&hash)))
+                    Ok(Box::new(Gallery::new(&hash)))
                 }),
             )
             .await;

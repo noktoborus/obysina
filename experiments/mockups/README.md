@@ -17,11 +17,41 @@ Mockups of the design of the window, shown in a browser.
   `wasm-bindgen` and reloads the page when a file of the crate changes. A
   change of one mockup is rebuilt in about ten seconds.
 - `cargo run -p mockups` shows the same gallery in a window of the desktop.
+  It sends no note.
+
+### Notes
+
+A note says what is wrong with a part of a mockup. The switch "note" of the
+strip turns the mockup into a surface for notes:
+
+```text
+off ──switch──► pointing ──tap or drag──► writing ──send──► capturing
+                   ▲  ▲                      │                  │ picture
+                   │  └────────cancel────────┘                  ▼
+                   └──────────────answer of the receiver──── sending
+```
+
+- A tap takes the whole widget under it: the smallest one the mockup named
+  with `mock::named`, lit while the pointer is over it. A drag draws a box,
+  for a place between widgets or several of them.
+- The note carries the text, the box, the named widgets it touches, the
+  state of the mockup (`Mockup::state`) and a picture of the page with the
+  box on it (`ViewportCommand::Screenshot`).
+- trunk passes `/notes` to the receiver, `src/bin/notes`, on 127.0.0.1:6081.
+  It keeps a note as `notes/<id>.json` and its picture as `notes/<id>.png`.
+  Git ignores the directory.
+- A note is read, acted on and deleted with its picture. What it decided
+  goes to the plan or to the documentation; the note is not kept. The strip
+  counts the notes of the mockup still waiting, and the page draws their
+  boxes.
+- The strip is drawn above the windows of a mockup: a modal window of egui
+  blocks the layers under it.
 
 | Part | What it is |
 | --- | --- |
 | `index.html` | the page: one canvas, and the line that tells trunk to build the crate |
-| `Trunk.toml` | the port, the site in `target/mockups-site`, the profile, no downloads |
+| `Trunk.toml` | the port, the site in `target/mockups-site`, the profile, no downloads, the proxy to the receiver |
+| `src/bin/notes` | the receiver of the notes |
 | `[profile.mockups]` | of the workspace: `dev` with no debug information, the crates under it optimised |
 
 ## Boundaries
@@ -30,13 +60,17 @@ Mockups of the design of the window, shown in a browser.
   root package, which knows files and settings and is not built for wasm: a
   mockup of a panel copies its layout, not its code.
 - Nothing depends on it. It is no test of the window (`RULE test.window`);
-  its one test checks that every mockup draws.
+  its tests check that every mockup draws and that a tap takes a widget.
+- egui keeps no name of a widget that can be read back, so a note knows
+  only the widgets a mockup names itself.
 - Text is written in the code, in english or russian; it does not go through
   `rust_i18n`.
 
 ## Errors
 
-None of its own. trunk refuses a `wasm-bindgen` of another version than the
+The receiver answers a note it cannot keep with status 400 and the reason;
+the strip shows it. A page with no receiver says "no receiver". trunk
+refuses a `wasm-bindgen` of another version than the
 crate `wasm-bindgen` of `Cargo.lock`; `/opt/packages.sh` installs that one,
 and a new version of the crate is a new `WASM_BINDGEN` there.
 

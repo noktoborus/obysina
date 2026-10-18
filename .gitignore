@@ -17,3 +17,6 @@
 *.new.png
 *.diff.png
 *.old.png
+
+# The notes left on the mockups, until they are read
+/experiments/mockups/notes/

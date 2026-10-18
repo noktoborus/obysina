@@ -2,6 +2,8 @@
 
 mod palette_editor;
 
+use crate::note::Widget;
+
 /// A mockup: a part of the window drawn with made up data.
 pub trait Mockup {
     /// The name in the gallery and in the address, `#name`.
@@ -10,6 +12,12 @@ pub trait Mockup {
     /// Draws the mockup in the space of `ui`. A panel or a window of it is
     /// shown on the context of `ui`.
     fn show(&mut self, ui: &mut egui::Ui);
+
+    /// What the mockup shows, for a note: enough to draw it again the way
+    /// it was.
+    fn state(&self) -> serde_json::Value {
+        serde_json::Value::Null
+    }
 }
 
 /// Every mockup, in the order of the gallery.
@@ -25,6 +33,39 @@ pub const TEXT: f32 = 18.0;
 /// A button of a panel, as the window makes it.
 pub fn button(label: &str) -> obusina_button::SquareButton<'_> {
     obusina_button::SquareButton::new(label, BUTTON).text_size(TEXT)
+}
+
+/// The key the named widgets of a frame are kept by.
+fn named_id() -> egui::Id {
+    egui::Id::unique("mockups-named")
+}
+
+/// Gives a widget a name a note can carry: a note lists the named widgets
+/// its box touches. egui keeps no name of a widget that can be read back.
+pub fn named(ui: &egui::Ui, response: egui::Response, name: &str) -> egui::Response {
+    let rect = ui
+        .ctx()
+        .layer_transform_to_global(response.layer_id)
+        .map_or(response.rect, |transform| transform * response.rect);
+    let widget = Widget {
+        name: name.to_string(),
+        rect: [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
+    };
+    ui.ctx().data_mut(|data| {
+        data.get_temp_mut_or_default::<Vec<Widget>>(named_id())
+            .push(widget)
+    });
+    response
+}
+
+/// The widgets named in this frame.
+pub fn named_widgets(context: &egui::Context) -> Vec<Widget> {
+    context.data(|data| data.get_temp(named_id()).unwrap_or_default())
+}
+
+/// Forgets the widgets named in the last frame, at the start of a frame.
+pub fn forget_named(context: &egui::Context) {
+    context.data_mut(|data| data.remove::<Vec<Widget>>(named_id()));
 }
 
 #[cfg(test)]

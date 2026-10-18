@@ -41,9 +41,13 @@ install:
 	sudo update-desktop-database $(APPDIR) 2>/dev/null || true
 
 # The mockups of experiments/mockups on port 6080, rebuilt and reloaded in
-# the browser when a file of them changes. trunk and wasm-bindgen are the
+# the browser when a file of them changes, and the receiver of the notes
+# left on them, which stops with the server. trunk and wasm-bindgen are the
 # ones /opt/packages.sh installs: run after `. /opt/env.sh`.
 mockups:
+	cargo build -p mockups --bin notes
+	mkdir -p experiments/mockups/notes
+	target/debug/notes experiments/mockups/notes & trap 'kill $$!' EXIT; \
 	cd experiments/mockups && trunk serve
 
 uninstall:

@@ -14,3 +14,11 @@ open = false
 [tools]
 # The wasm-bindgen of /opt/packages.sh: trunk downloads nothing.
 wasm_bindgen = "0.2.129"
+
+[watch]
+# The notes the receiver writes are no change of the mockups.
+ignore = ["notes"]
+
+# The notes of the page go to the receiver, `src/bin/notes`.
+[[proxy]]
+backend = "http://127.0.0.1:6081/notes"

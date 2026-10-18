@@ -4,7 +4,7 @@
 
 use egui::{Color32, Id, Modal};
 
-use super::{Mockup, button};
+use super::{Mockup, button, named};
 
 /// The most colours a palette holds.
 const MAX_COLOURS: usize = 9;
@@ -39,6 +39,14 @@ impl Mockup for PaletteEditor {
         "palette-editor"
     }
 
+    fn state(&self) -> serde_json::Value {
+        serde_json::json!({
+            "colours": self.colours.iter().map(|colour| format!("#{:02x}{:02x}{:02x}", colour.r(), colour.g(), colour.b())).collect::<Vec<_>>(),
+            "chosen": self.chosen,
+            "open": self.open,
+        })
+    }
+
     fn show(&mut self, ui: &mut egui::Ui) {
         if ui.button("open the palette").clicked() {
             self.open = true;
@@ -47,6 +55,7 @@ impl Mockup for PaletteEditor {
             return;
         }
         let modal = Modal::new(Id::unique("palette-editor")).show(ui.ctx(), |ui| self.window(ui));
+        named(ui, modal.response.clone(), "palette window");
         if modal.should_close() {
             self.open = false;
         }
@@ -62,19 +71,19 @@ impl PaletteEditor {
                 ui.vertical(|ui| {
                     let key = (index + 1).to_string();
                     let chosen = self.chosen == Some(index);
-                    if ui
-                        .add(button(&key).fill(*colour).selected(chosen))
-                        .clicked()
-                    {
+                    let swatch = ui.add(button(&key).fill(*colour).selected(chosen));
+                    if named(ui, swatch, &format!("colour {key}")).clicked() {
                         self.chosen = Some(index);
                     }
-                    if ui.add(button("\u{2212}")).clicked() {
+                    let remove = ui.add(button("\u{2212}"));
+                    if named(ui, remove, &format!("remove colour {key}")).clicked() {
                         removed = Some(index);
                     }
                 });
             }
             let full = self.colours.len() >= MAX_COLOURS;
-            if ui.add_enabled(!full, button("+")).clicked() {
+            let add = ui.add_enabled(!full, button("+"));
+            if named(ui, add, "add a colour").clicked() {
                 self.colours.push(NEW_COLOUR);
                 self.chosen = Some(self.colours.len() - 1);
             }

@@ -10,6 +10,7 @@ license = "MIT"
 [workspace.dependencies]
 base64 = "0.23"
 directories = "6.0"
+ehttp = "0.7"
 clap = { version = "4.6", features = ["derive"] }
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"] }
@@ -19,6 +20,7 @@ env_logger = "0.11"
 ico = "0.6"
 log = "0.4"
 nucleo-matcher = "0.3"
+png = "0.18"
 resvg = { version = "0.48", default-features = false }
 rust-i18n = "4.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -27,6 +29,7 @@ serde_yaml_ng = "0.10"
 sys-locale = "0.3"
 tempfile = "3.27"
 thiserror = "2.0"
+tiny_http = "0.12"
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Document", "HtmlCanvasElement", "Window"] }
 winit = { version = "0.30", default-features = false }

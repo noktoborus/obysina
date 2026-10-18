@@ -327,6 +327,10 @@ THEN one module of `src/mock/` per mockup, drawn with the widget crates and
      made up data; the address `#<name>` opens it
 THEN a mockup is no test and no part of the window: the window is built and
      tested on its own (`RULE test.window`)
+RULE ui.mockup.notes : a note left on a mockup is read from
+     `experiments/mockups/notes/`, acted on, then deleted with its picture
+THEN what it decided goes to the plan or to the documentation; a note is not
+     kept
 REF  experiments/mockups/README.md
 
 RULE log.lang = english, through the `log` crate

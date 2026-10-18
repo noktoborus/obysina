@@ -6,19 +6,34 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "mockups"
+path = "src/main.rs"
+
+[[bin]]
+name = "notes"
+path = "src/bin/notes/main.rs"
+
 [dependencies]
+base64.workspace = true
 eframe.workspace = true
 egui.workspace = true
 log.workspace = true
 obusina-button.workspace = true
 obusina-panel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+ehttp.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger.workspace = true
+png.workspace = true
+tiny_http.workspace = true
 
 [dev-dependencies]
-egui_kittest.workspace = true
+egui_kittest = { workspace = true, features = ["eframe"] }
