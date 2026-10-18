@@ -7,7 +7,7 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 APPDIR = $(DESTDIR)$(PREFIX)/share/applications
 ICONDIR = $(DESTDIR)$(PREFIX)/share/icons/hicolor
 
-.PHONY: build build-windows build-android apk apk-release aab install uninstall
+.PHONY: build build-windows build-android apk apk-release aab install uninstall mockups
 
 build:
 	cargo build --release
@@ -39,6 +39,12 @@ install:
 	sudo install -Dm644 assets/$(ID).desktop $(APPDIR)/$(ID).desktop
 	sudo install -Dm644 assets/icon.svg $(ICONDIR)/scalable/apps/$(ID).svg
 	sudo update-desktop-database $(APPDIR) 2>/dev/null || true
+
+# The mockups of experiments/mockups on port 6080, rebuilt and reloaded in
+# the browser when a file of them changes. trunk and wasm-bindgen are the
+# ones /opt/packages.sh installs: run after `. /opt/env.sh`.
+mockups:
+	cd experiments/mockups && trunk serve
 
 uninstall:
 	sudo rm -f $(BINDIR)/obusina

@@ -27,6 +27,8 @@ serde_yaml_ng = "0.10"
 sys-locale = "0.3"
 tempfile = "3.27"
 thiserror = "2.0"
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Document", "HtmlCanvasElement", "Window"] }
 winit = { version = "0.30", default-features = false }
 
 obusina = { path = ".", version = "0.1.0" }
@@ -35,6 +37,16 @@ obusina-canvas = { path = "crates/obusina-canvas", version = "0.1.0" }
 obusina-panel = { path = "crates/obusina-panel", version = "0.1.0" }
 obusina-pattern = { path = "crates/obusina-pattern", version = "0.1.0" }
 plate-menu = { path = "crates/plate-menu", version = "0.1.0" }
+
+# The wasm of `experiments/mockups`: a build of `dev` with no debug
+# information. The crates under it are optimised once; unoptimised, they
+# make a module of tens of megabytes.
+[profile.mockups]
+inherits = "dev"
+debug = false
+
+[profile.mockups.package."*"]
+opt-level = 1
 
 [profile.release]
 lto = "fat"

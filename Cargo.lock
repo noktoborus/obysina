@@ -2148,6 +2148,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mockups"
+version = "0.1.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "egui_kittest",
+ "env_logger",
+ "log",
+ "obusina-button",
+ "obusina-panel",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "moxcms"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

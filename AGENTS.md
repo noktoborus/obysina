@@ -321,6 +321,14 @@ THEN the emoji faces come with the feature `monochrome_emoji_fonts` of egui;
      without it the toolkit carries no icon at all
 REF  experiments/glyphs/README.md
 
+RULE ui.mockup : a design discussed before it is built is shown as a mockup
+     of `experiments/mockups`, served by `make mockups` on port 6080
+THEN one module of `src/mock/` per mockup, drawn with the widget crates and
+     made up data; the address `#<name>` opens it
+THEN a mockup is no test and no part of the window: the window is built and
+     tested on its own (`RULE test.window`)
+REF  experiments/mockups/README.md
+
 RULE log.lang = english, through the `log` crate
 
 ## Interface

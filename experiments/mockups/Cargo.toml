@@ -1,0 +1,24 @@
+[package]
+name = "mockups"
+description = "Mockups of the design of the window, shown in a browser through wasm"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+eframe.workspace = true
+egui.workspace = true
+log.workspace = true
+obusina-button.workspace = true
+obusina-panel.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger.workspace = true
+
+[dev-dependencies]
+egui_kittest.workspace = true
