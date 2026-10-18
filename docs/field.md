@@ -43,7 +43,7 @@ on the field, columns 1 2 3       the file
 9. **The active area is the box itself,** with no margin around it. A bead
    can be drawn outside it all the same.
 
-## Open questions
-
-- Whether the pale outlines are hidden when a bead is drawn small, where a
-  screen holds tens of thousands of them.
+10. **The pale outlines are hidden when a bead is drawn small.** Below
+    `PALE_MIN_BEAD` the ground stays bare outside the active area.
+    - Why: a screen of small beads holds tens of thousands of outlines,
+      costly to draw and of no use to the eye.
