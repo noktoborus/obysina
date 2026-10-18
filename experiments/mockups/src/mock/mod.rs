@@ -9,9 +9,9 @@ pub trait Mockup {
     /// The name in the gallery and in the address, `#name`.
     fn name(&self) -> &'static str;
 
-    /// Draws the mockup in the space of `ui`. A panel or a window of it is
-    /// shown on the context of `ui`.
-    fn show(&mut self, ui: &mut egui::Ui);
+    /// Draws the mockup in the space of `ui`, its text in `lang`. A panel or
+    /// a window of it is shown on the context of `ui`.
+    fn show(&mut self, ui: &mut egui::Ui, lang: Lang);
 
     /// What the mockup shows, for a note: enough to draw it again the way
     /// it was.
@@ -20,9 +20,47 @@ pub trait Mockup {
     }
 }
 
+/// A language of the window, `locales/app.yml`: a mockup shows its text in
+/// each.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Lang {
+    /// Russian.
+    Ru,
+    /// English.
+    En,
+}
+
+impl Lang {
+    /// Every language, in the order of the strip.
+    pub const ALL: [Lang; 2] = [Lang::Ru, Lang::En];
+
+    /// The code of the language.
+    pub fn code(self) -> &'static str {
+        match self {
+            Lang::Ru => "ru",
+            Lang::En => "en",
+        }
+    }
+
+    /// The text in this language, of the two given.
+    pub fn tr<'a>(self, en: &'a str, ru: &'a str) -> &'a str {
+        match self {
+            Lang::Ru => ru,
+            Lang::En => en,
+        }
+    }
+}
+
 /// Every mockup, in the order of the gallery.
 pub fn all() -> Vec<Box<dyn Mockup>> {
-    vec![Box::new(palette_editor::PaletteEditor::default())]
+    vec![
+        Box::new(palette_editor::PaletteEditor::new(
+            palette_editor::Reorder::Menu,
+        )),
+        Box::new(palette_editor::PaletteEditor::new(
+            palette_editor::Reorder::Drag,
+        )),
+    ]
 }
 
 /// The size of a button of a panel, `button::SIZE` of the window.
@@ -83,8 +121,10 @@ mod tests {
     #[test]
     fn every_mockup_draws() {
         for mut mock in super::all() {
-            let mut harness = Harness::new_ui(move |ui| mock.show(ui));
-            harness.run();
+            for lang in super::Lang::ALL {
+                let mut harness = Harness::new_ui(|ui| mock.show(ui, lang));
+                harness.run();
+            }
         }
     }
 }

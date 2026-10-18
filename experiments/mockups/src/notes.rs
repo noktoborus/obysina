@@ -791,7 +791,7 @@ mod tests {
     fn a_tap_takes_the_whole_widget() {
         let mut harness = Harness::builder()
             .with_size(egui::vec2(800.0, 500.0))
-            .build_eframe(|_| Gallery::new("#palette-editor"));
+            .build_eframe(|_| Gallery::new("#palette-move"));
         harness.run();
         let swatch = harness.get_by_label("3").rect();
         harness.get_by_label("\u{270f} note").click();
@@ -843,12 +843,12 @@ mod tests {
     fn the_notes_leave_a_menu_of_the_mockup_open() {
         let mut harness = Harness::builder()
             .with_size(egui::vec2(800.0, 500.0))
-            .build_eframe(|_| Gallery::new("#palette-editor"));
+            .build_eframe(|_| Gallery::new("#palette-move"));
         harness.run();
         harness.get_by_label("3").click();
         harness.run();
         assert!(
-            harness.query_by_label("Remove").is_some(),
+            harness.query_by_label("Удалить").is_some(),
             "the menu is open"
         );
         let switch = harness.get_by_label("\u{270f} note").rect().center();
@@ -856,7 +856,7 @@ mod tests {
         press(&mut harness, switch);
         assert!(harness.state().notes.frozen());
         assert!(
-            harness.query_by_label("Remove").is_none(),
+            harness.query_by_label("Удалить").is_none(),
             "a frozen mockup is not drawn"
         );
 
@@ -864,7 +864,7 @@ mod tests {
         assert!(!harness.state().notes.frozen());
 
         assert!(
-            harness.query_by_label("Remove").is_some(),
+            harness.query_by_label("Удалить").is_some(),
             "the menu is open again"
         );
     }
@@ -875,11 +875,11 @@ mod tests {
     fn a_tap_takes_an_entry_of_a_menu() {
         let mut harness = Harness::builder()
             .with_size(egui::vec2(800.0, 500.0))
-            .build_eframe(|_| Gallery::new("#palette-editor"));
+            .build_eframe(|_| Gallery::new("#palette-move"));
         harness.run();
         harness.get_by_label("3").click();
         harness.run();
-        let entry = harness.get_by_label("Remove").rect();
+        let entry = harness.get_by_label("Удалить").rect();
         let switch = harness.get_by_label("\u{270f} note").rect().center();
         press(&mut harness, switch);
 
@@ -896,11 +896,11 @@ mod tests {
     fn a_covered_widget_is_not_taken() {
         let mut harness = Harness::builder()
             .with_size(egui::vec2(800.0, 500.0))
-            .build_eframe(|_| Gallery::new("#palette-editor"));
+            .build_eframe(|_| Gallery::new("#palette-move"));
         harness.run();
         harness.get_by_label("3").click();
         harness.run();
-        let entry = harness.get_by_label("Change the colour").rect();
+        let entry = harness.get_by_label("Выбрать цвет").rect();
         let covered = ["1", "2", "3", "4", "5"]
             .iter()
             .map(|key| harness.get_by_label(key).rect())
@@ -916,7 +916,7 @@ mod tests {
 
         let notes = &harness.state().notes;
         let picked = notes.picked.as_ref().expect("a widget is taken");
-        assert_eq!(picked.name, "Change the colour");
+        assert_eq!(picked.name, "Выбрать цвет");
         assert_eq!(picked.path, ["menu of colour 3"]);
         assert_eq!(notes.widgets_of(entry), std::slice::from_ref(picked));
     }

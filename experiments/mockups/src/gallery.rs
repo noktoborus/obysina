@@ -7,7 +7,7 @@
 
 use egui::{Event, Pos2, Rect};
 
-use crate::mock::{self, Mockup};
+use crate::mock::{self, Lang, Mockup};
 use crate::notes::Notes;
 
 /// The height of the strip.
@@ -26,6 +26,8 @@ pub struct Gallery {
     pressing: bool,
     /// The plugin of the notes is added to the context.
     plugged: bool,
+    /// The language of the mockups.
+    lang: Lang,
 }
 
 impl Gallery {
@@ -46,6 +48,7 @@ impl Gallery {
             press: None,
             pressing: false,
             plugged: false,
+            lang: Lang::Ru,
         }
     }
 
@@ -91,6 +94,12 @@ impl Gallery {
                         }
                     }
                     ui.separator();
+                    for lang in Lang::ALL {
+                        if tapped(&ui.selectable_label(self.lang == lang, lang.code())) {
+                            self.lang = lang;
+                        }
+                    }
+                    ui.separator();
                     self.notes.switch(ui, self.mocks[self.shown].name(), tapped);
                 });
             });
@@ -129,7 +138,7 @@ impl eframe::App for Gallery {
             if self.notes.frozen() {
                 self.notes.paint_frozen(ui);
             } else {
-                self.mocks[self.shown].show(ui);
+                self.mocks[self.shown].show(ui, self.lang);
             }
         });
         let mock = &self.mocks[self.shown];

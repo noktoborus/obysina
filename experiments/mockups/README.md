@@ -10,6 +10,8 @@ Mockups of the design of the window, shown in a browser.
   will.
 - One module of `src/mock/` is one mockup, a `Mockup`: a name and a function
   that draws it. `mock::all` lists them for the gallery.
+- A mockup shows its text in every language of the window
+  (`locales/app.yml`); the strip switches between them.
 - The gallery shows a strip of the names over the mockup chosen. The address
   `#<name>` opens that mockup first.
 - `make mockups`, after `. /opt/env.sh`, serves the page on port 6080 of
@@ -96,8 +98,8 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   its tests check that every mockup draws and that a tap takes a widget.
 - The plugin turns accesskit on for the page, which costs a tree of the
   widgets in every frame.
-- Text is written in the code, in english or russian; it does not go through
-  `rust_i18n`.
+- Text is written in the code in both languages, `Lang::tr`; it does not
+  go through `rust_i18n`.
 
 ## Errors
 
