@@ -2,6 +2,12 @@
 //! of text, a picture of the page, posted to the receiver
 //! (`src/bin/notes`).
 //!
+//! While the switch or the list is on, the mockup is frozen: the first
+//! frame is taken as a picture and the named widgets are kept; from then on
+//! the mockup is not drawn and gets no event, the picture stands in its
+//! place. A menu or a picker of the mockup stays as it was, and is there
+//! again when the switch goes off.
+//!
 //! A tap takes the whole widget under it: the smallest one the mockup named
 //! (`mock::named`), lit while the pointer is over it. A drag draws a box,
 //! for a place between widgets or several of them.
@@ -22,7 +28,7 @@ use egui::{
 };
 
 use crate::mock::{self, Mockup};
-use crate::note::{Kept, Note, Posted, Shot};
+use crate::note::{Kept, Note, Posted, Shot, Widget};
 
 /// Where the receiver is: the proxy of trunk passes it on.
 #[cfg(target_arch = "wasm32")]
@@ -67,17 +73,34 @@ pub(crate) enum Phase {
 /// What comes back from another thread or the browser.
 #[derive(Default)]
 struct Inbox {
-    /// The picture of the page.
+    /// The picture of the page with a note on it.
     shot: Option<Arc<ColorImage>>,
+    /// The picture of the mockup as it was frozen.
+    frozen: Option<Arc<ColorImage>>,
     /// The notes the receiver keeps; `None` until it answered.
     kept: Option<Vec<Kept>>,
     /// A line for the user: what was sent, what failed.
     message: Option<String>,
 }
 
+/// The mockup as it was when the notes froze it.
+struct Frozen {
+    /// The widgets it named.
+    widgets: Vec<Widget>,
+    /// What it showed, from `Mockup::state`.
+    state: serde_json::Value,
+    /// Its picture; `None` until the picture comes.
+    picture: Option<egui::TextureHandle>,
+}
+
 /// The notes of the gallery.
 #[derive(Default)]
 pub struct Notes {
+    /// The mockup frozen while the notes are on.
+    frozen: Option<Frozen>,
+    /// The notes were switched on in this frame: the mockup is frozen when
+    /// it has been drawn.
+    freezing: bool,
     pub(crate) phase: Phase,
     start: Option<Pos2>,
     pub(crate) rect: Option<Rect>,
@@ -91,29 +114,101 @@ pub struct Notes {
 impl Notes {
     /// The switch of the strip, and how many notes on `mock` wait to be
     /// read.
-    pub fn switch(&mut self, ui: &mut egui::Ui, mock: &str) {
+    ///
+    /// `tapped` tells whether a widget of the strip was tapped: the strip
+    /// takes its presses before the mockup sees them.
+    pub fn switch(
+        &mut self,
+        ui: &mut egui::Ui,
+        mock: &str,
+        tapped: impl Fn(&egui::Response) -> bool,
+    ) {
         if !self.asked {
             self.asked = true;
             fetch(&self.inbox, ui.ctx());
         }
-        let mut on = self.phase != Phase::Off;
-        if ui.toggle_value(&mut on, "\u{270f} note").clicked() {
-            self.phase = if on { Phase::Pointing } else { Phase::Off };
+        let on = self.phase != Phase::Off;
+        if tapped(&ui.selectable_label(on, "\u{270f} note")) {
+            self.phase = if on { Phase::Off } else { Phase::Pointing };
             self.rect = None;
+            self.text.clear();
+        }
+        let (here, all) = {
+            let inbox = self.inbox.lock().expect("the inbox is never poisoned");
+            let kept = inbox.kept.as_deref().unwrap_or_default();
+            let here = kept.iter().filter(|note| note.note.mock == mock).count();
+            (here, kept.len())
+        };
+        let label = format!("\u{2630} waiting: {here} of {all}");
+        if tapped(&ui.selectable_label(self.listing, label)) {
+            self.listing = !self.listing;
+        }
+        let active = self.phase != Phase::Off || self.listing;
+        match (active, self.frozen.is_some() || self.freezing) {
+            (true, false) => self.freezing = true,
+            (false, true) => {
+                self.frozen = None;
+                self.freezing = false;
+            }
+            _ => {}
         }
         let inbox = self.inbox.lock().expect("the inbox is never poisoned");
-        let kept = inbox.kept.as_deref().unwrap_or_default();
-        let here = kept.iter().filter(|note| note.note.mock == mock).count();
-        let label = format!("\u{2630} waiting: {here} of {}", kept.len());
-        ui.toggle_value(&mut self.listing, label);
         if let Some(message) = &inbox.message {
             ui.label(message);
+        }
+    }
+
+    /// True while the mockup is frozen: it is not drawn, its picture is.
+    pub fn frozen(&self) -> bool {
+        self.frozen.is_some()
+    }
+
+    /// Turns the notes off, as when another mockup is shown.
+    pub fn off(&mut self) {
+        self.phase = Phase::Off;
+        self.listing = false;
+        self.rect = None;
+        self.frozen = None;
+        self.freezing = false;
+    }
+
+    /// Draws the picture of the frozen mockup over the whole window, as it
+    /// was taken; `ui` clips it to the space of the mockup.
+    pub fn paint_frozen(&mut self, ui: &egui::Ui) {
+        let Some(frozen) = &mut self.frozen else {
+            return;
+        };
+        if frozen.picture.is_none() {
+            let image = self
+                .inbox
+                .lock()
+                .expect("the inbox is never poisoned")
+                .frozen
+                .take();
+            match image {
+                Some(image) => {
+                    frozen.picture = Some(ui.ctx().load_texture(
+                        "mockups-frozen",
+                        Arc::unwrap_or_clone(image),
+                        egui::TextureOptions::NEAREST,
+                    ));
+                }
+                None => ui.ctx().request_repaint(),
+            }
+        }
+        if let Some(picture) = &frozen.picture {
+            let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+            ui.painter()
+                .image(picture.id(), ui.ctx().content_rect(), uv, Color32::WHITE);
         }
     }
 
     /// Draws the notes over `area`, the space of the mockup, and takes the
     /// presses there while the switch is on.
     pub fn show(&mut self, context: &Context, area: Rect, mock: &dyn Mockup) {
+        if self.freezing {
+            self.freeze(context, mock);
+        }
         if self.listing {
             self.list(context, area, mock.name());
         }
@@ -127,7 +222,7 @@ impl Notes {
                 let (_, response) = ui.allocate_exact_size(area.size(), Sense::click_and_drag());
                 let under = response
                     .hover_pos()
-                    .and_then(|pointer| widget_at(context, pointer));
+                    .and_then(|pointer| self.widget_at(pointer));
                 self.point(&response, under);
                 let painter = ui.painter();
                 if let (Phase::Pointing, None, Some(widget)) = (self.phase, self.start, under) {
@@ -142,9 +237,44 @@ impl Notes {
             });
         match self.phase {
             Phase::Writing => self.form(context, area),
-            Phase::Capturing => self.capture(context, mock),
+            Phase::Capturing => self.capture(context, mock.name()),
             _ => {}
         }
+    }
+
+    /// Keeps the widgets and the state of the mockup drawn in this frame,
+    /// and asks for the picture of the frame.
+    fn freeze(&mut self, context: &Context, mock: &dyn Mockup) {
+        self.freezing = false;
+        self.frozen = Some(Frozen {
+            widgets: mock::named_widgets(context),
+            state: mock.state(),
+            picture: None,
+        });
+        let inbox = Arc::clone(&self.inbox);
+        let repaint = context.clone();
+        context.send_viewport_cmd(egui::ViewportCommand::Screenshot(
+            egui::ScreenshotCallback::new(move |image| {
+                inbox.lock().expect("the inbox is never poisoned").frozen = Some(image);
+                repaint.request_repaint();
+            }),
+        ));
+        context.request_repaint();
+    }
+
+    /// The widgets the frozen mockup named.
+    fn widgets(&self) -> &[Widget] {
+        self.frozen.as_ref().map_or(&[], |frozen| &frozen.widgets)
+    }
+
+    /// The smallest named widget under `pointer`: a button rather than the
+    /// window it stands in.
+    fn widget_at(&self, pointer: Pos2) -> Option<Rect> {
+        self.widgets()
+            .iter()
+            .map(bounds)
+            .filter(|rect| rect.contains(pointer))
+            .min_by(|first, second| first.area().total_cmp(&second.area()))
     }
 
     /// A tap takes the widget `under` the pointer, or a point where there is
@@ -317,7 +447,7 @@ impl Notes {
     }
 
     /// Waits for the picture, then posts the note with it.
-    fn capture(&mut self, context: &Context, mock: &dyn Mockup) {
+    fn capture(&mut self, context: &Context, mock: &str) {
         let shot = self
             .inbox
             .lock()
@@ -331,23 +461,29 @@ impl Notes {
         let Some(rect) = self.rect else {
             return;
         };
-        let widgets = mock::named_widgets(context)
-            .into_iter()
+        let widgets = self
+            .widgets()
+            .iter()
             .filter(|widget| {
                 let bounds = bounds(widget);
                 bounds.intersects(rect) || bounds.contains(rect.min)
             })
+            .cloned()
             .collect();
+        let state = self
+            .frozen
+            .as_ref()
+            .map_or(serde_json::Value::Null, |frozen| frozen.state.clone());
         let window = context.content_rect().size();
         let posted = Posted {
             note: Note {
-                mock: mock.name().to_string(),
+                mock: mock.to_string(),
                 text: std::mem::take(&mut self.text),
                 rect: [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
                 window: [window.x, window.y],
                 pixels_per_point: context.pixels_per_point(),
                 widgets,
-                state: mock.state(),
+                state,
             },
             shot: Some(Shot {
                 size: image.size,
@@ -384,19 +520,9 @@ impl Notes {
 }
 
 /// Where a named widget stands.
-fn bounds(widget: &crate::note::Widget) -> Rect {
+fn bounds(widget: &Widget) -> Rect {
     let [left, top, right, bottom] = widget.rect;
     Rect::from_min_max(Pos2::new(left, top), Pos2::new(right, bottom))
-}
-
-/// The smallest named widget under `pointer`: a button rather than the
-/// window it stands in.
-fn widget_at(context: &Context, pointer: Pos2) -> Option<Rect> {
-    mock::named_widgets(context)
-        .iter()
-        .map(bounds)
-        .filter(|rect| rect.contains(pointer))
-        .min_by(|first, second| first.area().total_cmp(&second.area()))
 }
 
 /// Posts the body of a note; the answer sets the message and asks for the
@@ -499,5 +625,58 @@ mod tests {
         let notes = &harness.state().notes;
         assert_eq!(notes.rect, Some(swatch));
         assert_eq!(notes.phase, super::Phase::Writing);
+    }
+
+    /// A press of the pointer at `point`, let go in place, through the
+    /// filter of `Gallery::raw_input_hook`: the harness calls no hook.
+    fn press(harness: &mut Harness<'_, Gallery>, point: egui::Pos2) {
+        harness.event(egui::Event::PointerMoved(point));
+        for pressed in [true, false] {
+            let mut events = vec![egui::Event::PointerButton {
+                pos: point,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            }];
+            harness.state_mut().take_strip_presses(&mut events);
+            for event in events {
+                harness.event(event);
+            }
+            harness.step();
+        }
+        harness.run();
+    }
+
+    /// The notes switched on and off by the pointer leave a menu of the
+    /// mockup open: the press on the strip never reaches it, and the frozen
+    /// mockup gets no event.
+    #[test]
+    fn the_notes_leave_a_menu_of_the_mockup_open() {
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(800.0, 500.0))
+            .build_eframe(|_| Gallery::new("#palette-editor"));
+        harness.run();
+        harness.get_by_label("3").click();
+        harness.run();
+        assert!(
+            harness.query_by_label("Remove").is_some(),
+            "the menu is open"
+        );
+        let switch = harness.get_by_label("\u{270f} note").rect().center();
+
+        press(&mut harness, switch);
+        assert!(harness.state().notes.frozen());
+        assert!(
+            harness.query_by_label("Remove").is_none(),
+            "a frozen mockup is not drawn"
+        );
+
+        press(&mut harness, switch);
+        assert!(!harness.state().notes.frozen());
+
+        assert!(
+            harness.query_by_label("Remove").is_some(),
+            "the menu is open again"
+        );
     }
 }

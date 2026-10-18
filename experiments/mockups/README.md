@@ -49,6 +49,16 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   while its line is under the pointer; the cross deletes it.
 - The strip is drawn above the windows of a mockup: a modal window of egui
   blocks the layers under it.
+- A press on the strip is taken out of the input in `raw_input_hook`,
+  before egui reads it, and the strip reads it from there. The mockup never
+  sees it, so a menu of the mockup that closes on a press beside it stays
+  open. `egui_kittest` calls no hook: a test passes its presses through the
+  same filter.
+- While "note" or "waiting" is on, the mockup is frozen. Its first frame is
+  taken as a picture, with its named widgets and its state; from then on
+  the mockup is not drawn and gets no event, and the picture stands in its
+  place. Off again, the mockup is drawn as it was: a menu or a picker of it
+  is still open.
 
 | Part | What it is |
 | --- | --- |
