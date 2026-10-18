@@ -46,10 +46,11 @@ on the field, columns 1 2 3       the file
      colour, and the active area is seen as a whole.
 9. **The active area is the box itself,** with no margin around it. A bead
    can be drawn outside it all the same.
-10. **The outlines are hidden when a bead is drawn small.** Below
-    `OUTLINE_MIN_BEAD` only the ground is drawn: the paper and the shade.
-    - Why: a screen of small beads is a dense net of lines, of no use to the
-      eye.
+10. **The outlines are drawn at every size of a bead.** A zoom never hides
+    the grid.
+    - Was: hidden below a smallest bead, because tens of thousands of
+      outlines cost too much to draw. One repeating tile costs the same at
+      any size (decision 15), so the reason is gone.
 11. **A new pattern is an empty field,** shown on cell (0, 0). A pattern
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
@@ -92,8 +93,8 @@ on the field, columns 1 2 3       the file
     of outlines is drawn once for the size of a bead; a column of the field
     is one quad of it. The beads are their own mesh.
     - Why: the outlines were most of one mesh and were built again on every
-      press. At the smallest bead with outlines in a window of 1000 by 700
-      points, a press took about 40 ms of a release build; now a press, a
+      press. At a bead of 10 points in a window of 1000 by 700 points, a
+      press took about 40 ms of a release build; now a press, a
       step of a zoom and a move each take a few ms.
 16. **A bead is a sprite.** One white bead is drawn into a texture for the
     size of a bead; every bead is a quad of it, tinted its colour. Nothing is

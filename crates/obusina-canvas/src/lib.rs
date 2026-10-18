@@ -26,10 +26,6 @@ const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
 /// The outline of an empty place: a faint dark line, seen on the paper and
 /// in the shade alike.
 const OUTLINE_COLOUR: Color32 = Color32::from_black_alpha(40);
-/// The smallest height of a bead, in points, at which the outlines of the
-/// empty places are drawn. Below it the ground stays bare: a screen of small
-/// beads would be a dense net of lines.
-pub const OUTLINE_MIN_BEAD: f32 = 10.0;
 
 /// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -164,15 +160,12 @@ impl<'a> Canvas<'a> {
 
     /// The outlines of the empty places of the field on the screen, as
     /// quads of the repeating tile, one look on the paper and in the shade.
-    /// They are left out below [`OUTLINE_MIN_BEAD`]. A bead is drawn over
-    /// its outline, which lies inside it.
+    /// They are drawn at every size of a bead. A bead is drawn over its
+    /// outline, which lies inside it.
     fn draw_outlines(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
         let Some(cells) = self.field().and_then(|field| field.intersection(visible)) else {
             return;
         };
-        if self.view.bead < OUTLINE_MIN_BEAD {
-            return;
-        }
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let texture = tile::texture(
             ui.ctx(),

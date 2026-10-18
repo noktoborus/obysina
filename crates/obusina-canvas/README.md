@@ -13,8 +13,7 @@ The field of beads: an egui widget that draws an
   bare and a press does nothing. Only its cells on the screen are drawn.
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is paper; the rest of the field is in shade. An empty place is
-  a faint outline, the same on both, and is not drawn below
-  `OUTLINE_MIN_BEAD`.
+  a faint outline, the same on both, at every size of a bead.
 - Puts the middle of the active area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Nothing is tessellated. Two textures are drawn by the distance to a
