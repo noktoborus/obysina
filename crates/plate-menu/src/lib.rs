@@ -4,11 +4,13 @@
 
 mod error;
 mod item;
+mod notice;
 mod search;
 mod state;
 mod view;
 
 pub use error::{MenuError, Result};
 pub use item::MenuItem;
+pub use notice::Notice;
 pub use state::{MenuState, Row};
 pub use view::{Beside, Chosen, PlateMenu};

@@ -4,6 +4,7 @@ mod whole;
 
 use crate::error::{MenuError, Result};
 use crate::item::MenuItem;
+use crate::notice::Notice;
 use crate::state::{MenuState, Row};
 use egui::text::{LayoutJob, TextFormat};
 use egui::{
@@ -84,7 +85,7 @@ pub struct Chosen {
 pub struct PlateMenu {
     id: Id,
     state: Option<MenuState>,
-    notice: Option<String>,
+    notice: Option<Notice>,
     nothing_found: String,
     step_in_label: String,
     beside: Beside,
@@ -181,10 +182,11 @@ impl PlateMenu {
     /// It is set after the menu was opened, because an opening clears it: a
     /// sentence that belongs to one question must not stand over the next menu.
     /// It stands above the query and above every level, so it is still there
-    /// when the entries of an entry are stepped into.
-    pub fn notice(&mut self, text: impl Into<String>) {
-        let text = text.into();
-        self.notice = (!text.trim().is_empty()).then_some(text);
+    /// when the entries of an entry are stepped into. It is a text, or a
+    /// widget of the caller made by [`Notice::widget`].
+    pub fn notice(&mut self, notice: impl Into<Notice>) {
+        let notice = notice.into();
+        self.notice = (!notice.is_blank()).then_some(notice);
         self.layout = None;
     }
 
@@ -535,7 +537,9 @@ impl PlateMenu {
             Frame::popup(ui.style())
                 .show(ui, |ui| {
                     ui.set_width(width);
-                    notice(ui, self.notice.as_deref());
+                    if let Some(notice) = &self.notice {
+                        notice.show(ui);
+                    }
                     header(ui, &query, caret);
                     let start = ui.cursor().top();
                     if windowed {
@@ -710,17 +714,6 @@ fn hidden(rows: &[Row], first: usize, last: usize) -> (usize, usize) {
 /// The query on one line: a paste of several lines is one query.
 fn one_line(text: &str) -> String {
     text.replace("\r\n", " ").replace(['\r', '\n', '\t'], " ")
-}
-
-/// The line above everything: what the menu is about, in as many lines as it
-/// takes. It is the one text of the menu that is not an entry, so it is drawn
-/// strongly and wraps instead of being cut.
-fn notice(ui: &mut egui::Ui, notice: Option<&str>) {
-    let Some(text) = notice else {
-        return;
-    };
-    ui.add(egui::Label::new(egui::RichText::new(text).strong()).wrap());
-    ui.separator();
 }
 
 /// The line above the plates: what was typed so far, and the caret in it.
@@ -1371,14 +1364,33 @@ mod tests {
         let mut menu = PlateMenu::new();
         menu.open(items(3)).expect("the menu opens");
         menu.notice("what happened");
-        assert_eq!(menu.notice.as_deref(), Some("what happened"));
+        assert!(matches!(&menu.notice, Some(Notice::Text(text)) if text == "what happened"));
 
         menu.notice("   ");
-        assert_eq!(menu.notice, None, "a notice of blanks is no notice");
+        assert!(menu.notice.is_none(), "a notice of blanks is no notice");
 
         menu.notice("what happened");
         menu.open(items(3)).expect("the menu opens");
-        assert_eq!(menu.notice, None, "an opening clears it");
+        assert!(menu.notice.is_none(), "an opening clears it");
+    }
+
+    /// A widget of the caller stands above the plates and is drawn while
+    /// the menu is shown.
+    #[test]
+    fn a_notice_may_be_a_widget_of_the_caller() {
+        let drawn = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let mut menu = PlateMenu::new();
+        menu.open(items(3)).expect("the menu opens");
+        let mark = std::sync::Arc::clone(&drawn);
+        menu.notice(Notice::widget(move |ui| {
+            mark.store(true, std::sync::atomic::Ordering::Relaxed);
+            ui.label("a widget");
+        }));
+
+        let context = Context::default();
+        frame(&context, &mut menu, Vec::new());
+
+        assert!(drawn.load(std::sync::atomic::Ordering::Relaxed));
     }
 
     /// One frame of a window 800 by 600 with these events.

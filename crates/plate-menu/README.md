@@ -38,7 +38,7 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | `open(items)` | opens on the first entry; resets `notice` and `beside` |
 | `open_at(items, id)` | opens on that entry, in the level that carries it |
 | `refill(items)` | new entries; the query, the level and the selection stay |
-| `notice(text)` | the lines above everything |
+| `notice(text)`, `notice(Notice::widget(f))` | the lines above everything, or a widget of the caller drawn there |
 | `nothing_found(text)` | the line of a query that finds nothing; kept across `open` |
 | `step_in_label(text)` | what a screen reader calls the zone `›` of a split entry; kept across `open` |
 | `beside(Closes \| Ignored)` | what a click beside the menu does |
@@ -72,7 +72,7 @@ and never read: what `Shift+Enter` means is the caller's.
 
 | part | |
 | --- | --- |
-| notice | `notice(text)`, wrapped, above everything |
+| notice | `notice(text)`, wrapped, or a widget of the caller, above everything |
 | query | while typing, under the notice, with its caret |
 | `›` | the entry has children |
 | detail | right of the label, weak |
