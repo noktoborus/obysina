@@ -24,6 +24,11 @@ THEN the window `app_id`, the desktop entry, its `StartupWMClass`, the icon
      file and the android package all carry it; `APP_ID` of `src/lib.rs` and
      `ID` in the Makefile hold it
 
+RULE icon.source = `assets/icon.svg`, the one picture of the icon
+THEN `build.rs` draws from it the icon of the window and, for windows, the
+     `icon.ico` of the resource linked into `obusina.exe`
+EX-  an `icon.ico` or a PNG of the icon committed beside the SVG
+
 RULE lang = rust, edition 2024
 RULE toolkit = egui and eframe
 
@@ -499,15 +504,16 @@ THEN cargo fmt --all
      tools/reap -- cargo clippy --workspace --all-targets
      tools/reap -- cargo build --workspace
      tools/reap -- cargo test --workspace
-     tools/reap -- make build-windows
+     . /opt/env.sh && tools/reap -- make build-windows
      cargo audit
 WHY  code gated by `cfg` for windows is compiled only for windows; the tests
      run on the linux build
+WHY  `/opt/env.sh` puts mingw on the path; `windres` of it compiles the icon
 
 RULE checks.android : the android package is built when a change touches
      `android/`, the code gated for android or what it calls, or when the
      user asks
-THEN tools/reap -- make apk, after `. /etc/profile.d/workspace-packages.sh`
+THEN tools/reap -- make apk, after `. /opt/env.sh`
 
 ## Commits
 

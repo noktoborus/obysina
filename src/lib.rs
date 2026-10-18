@@ -8,6 +8,7 @@ mod edit;
 mod error;
 mod render;
 mod ui;
+mod window_icon;
 
 #[cfg(test)]
 mod window_tests;
@@ -34,7 +35,8 @@ pub fn desktop() -> std::process::ExitCode {
     let viewport = egui::ViewportBuilder::default()
         .with_app_id(APP_ID)
         .with_title(rust_i18n::t!("app.name"))
-        .with_inner_size([1000.0, 700.0]);
+        .with_inner_size([1000.0, 700.0])
+        .with_icon(window_icon::icon());
     let options = render::native_options(viewport);
     match run(options, path) {
         Ok(()) => std::process::ExitCode::SUCCESS,

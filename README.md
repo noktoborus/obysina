@@ -49,6 +49,9 @@ program.
 | Windows | `make build-windows`, with mingw | `obusina.exe` |
 | Android | `make apk`, `make apk-release`, `make aab` | `android/app/build/outputs/` |
 
+The icon is drawn from `assets/icon.svg` at build time. On Windows it is a
+resource of `obusina.exe`, built with `windres` of mingw.
+
 Android needs the NDK, the SDK, a JDK and `cargo-ndk`, named by
 `ANDROID_HOME` and `ANDROID_NDK_HOME`. `.devcontainer/Dockerfile.claude`
 installs every tool these need. A release is signed as `android/README.md`
