@@ -3,12 +3,14 @@
 //! place: "Move" of its menu, or a drag.
 //!
 //! ```text
-//! tap a colour ──► PlateMenu ──pick──► the picker, under the line
+//! tap a colour ──► PlateMenu: the picker of the colour on top, then
 //!                     │──move────► the next tap on a colour puts it there
 //!                     └──remove──► gone
 //! drag a colour ──► the line shows it in its new place, renumbered ──let go──► it stays
-//! tap "+" ──► the colour farthest from the others and the paper, in the picker
+//! tap "+" ──► the colour farthest from the others and the paper, its menu open
 //! ```
+
+use std::sync::{Arc, Mutex};
 
 use egui::{Color32, Id, Modal, Order, Pos2, Rect, Sense, vec2};
 use palette::{FromColor, Oklab, Oklch, Srgb};
@@ -26,11 +28,6 @@ const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
 const LIGHTNESS: [f32; 5] = [0.25, 0.4, 0.55, 0.7, 0.85];
 const CHROMA: [f32; 3] = [0.0, 0.08, 0.16];
 const HUE_STEP: f32 = 30.0;
-/// The height of the parts of the picker of egui besides its square: the
-/// row of buttons, the colour and the strip of hues, with their gaps.
-const PICKER_PARTS: f32 = 110.0;
-/// The side of the square of the picker when the window is short.
-const PICKER_SMALLEST: f32 = 100.0;
 /// The swatch in the notice of the menu of a colour.
 const NOTICE_SWATCH: egui::Vec2 = vec2(28.0, 20.0);
 
@@ -48,8 +45,6 @@ pub enum Reorder {
 enum Doing {
     /// Opens the menu of the colour.
     Nothing,
-    /// The picker of this colour is open under the line.
-    Picking(usize),
     /// This colour goes where the next tap is.
     Moving(usize),
 }
@@ -64,6 +59,9 @@ pub struct PaletteEditor {
     menu: PlateMenu,
     /// The colour whose menu is open.
     menu_of: Option<usize>,
+    /// The colour the picker in the notice of the menu changes; it goes
+    /// back to the palette in every frame the menu is open.
+    editing: Arc<Mutex<Color32>>,
     /// Where each colour stood in the last frame.
     cells: Vec<Rect>,
     /// Where the window stood in the last frame.
@@ -91,6 +89,7 @@ impl PaletteEditor {
             doing: Doing::Nothing,
             menu: PlateMenu::new().with_id(Id::unique(("palette-editor-menu", reorder))),
             menu_of: None,
+            editing: Arc::new(Mutex::new(Color32::BLACK)),
             cells: Vec::new(),
             window: Rect::NOTHING,
             dragging: None,
@@ -133,12 +132,10 @@ impl Mockup for PaletteEditor {
             .show(ui.ctx(), |ui| self.window(ui));
         self.window = modal.response.rect;
         named(ui.ctx(), modal.response.clone(), "palette window");
-        let busy = self.menu.is_open() || matches!(self.doing, Doing::Picking(_));
-        if modal.should_close() && !busy {
+        if modal.should_close() && !self.menu.is_open() {
             self.open = false;
             self.doing = Doing::Nothing;
         }
-        self.picker(ui.ctx());
         self.menu(ui.ctx());
     }
 }
@@ -177,7 +174,7 @@ impl PaletteEditor {
             if named(ui.ctx(), add, lang.tr("add a colour", "добавить цвет")).clicked()
             {
                 self.colours.push(next_colour(&self.colours));
-                self.doing = Doing::Picking(self.colours.len() - 1);
+                tapped = Some(self.colours.len() - 1);
             }
         });
         if let Doing::Moving(from) = self.doing {
@@ -282,10 +279,7 @@ impl PaletteEditor {
             self.doing = Doing::Nothing;
             return;
         }
-        let mut items = vec![MenuItem::new(
-            "pick",
-            lang.tr("Pick a colour", "Выбрать цвет"),
-        )];
+        let mut items = Vec::new();
         if self.reorder == Reorder::Menu {
             items.push(
                 MenuItem::new("move", lang.tr("Move", "Переместить"))
@@ -297,25 +291,29 @@ impl PaletteEditor {
             log::error!("the menu of a colour does not open: {error}");
             return;
         }
-        let colour = self.colours[index];
-        let title = format!(
-            "{} {} · {}",
-            lang.tr("Colour", "Цвет"),
-            index + 1,
-            hex(colour)
-        );
+        *self.editing.lock().expect("the colour is never poisoned") = self.colours[index];
+        let editing = Arc::clone(&self.editing);
+        let name = format!("{} {}", lang.tr("Colour", "Цвет"), index + 1);
         self.menu.notice(Notice::widget(move |ui| {
+            let mut colour = editing.lock().expect("the colour is never poisoned");
             ui.horizontal(|ui| {
                 let (swatch, _) = ui.allocate_exact_size(NOTICE_SWATCH, Sense::hover());
-                ui.painter().rect_filled(swatch, 4.0, colour);
+                ui.painter().rect_filled(swatch, 4.0, *colour);
                 ui.painter().rect_stroke(
                     swatch,
                     4.0,
                     ui.visuals().widgets.noninteractive.bg_stroke,
                     egui::StrokeKind::Inside,
                 );
-                ui.label(egui::RichText::new(&title).strong());
+                let title = format!("{name} · {}", hex(*colour));
+                ui.label(egui::RichText::new(title).strong());
             });
+            ui.spacing_mut().slider_width = ui.available_width();
+            egui::color_picker::color_picker_color32(
+                ui,
+                &mut colour,
+                egui::color_picker::Alpha::Opaque,
+            );
         }));
         self.menu_of = Some(index);
     }
@@ -323,75 +321,36 @@ impl PaletteEditor {
     /// The menu of a colour, while it is open.
     fn menu(&mut self, context: &egui::Context) {
         let chosen = self.menu.show(context);
+        if let Some(colour) = self.menu_of.and_then(|index| self.colours.get_mut(index)) {
+            *colour = *self.editing.lock().expect("the colour is never poisoned");
+        }
         if let (true, Some(index)) = (self.menu.is_open(), self.menu_of) {
             let layer = self.menu.layer_id().id;
             if let Some(rect) = context.memory(|memory| memory.area_rect(layer)) {
-                named_rect(context, rect, &format!("menu of colour {}", index + 1));
+                named_rect(
+                    context,
+                    rect,
+                    &format!("menu of colour {}", index + 1),
+                    Some(self.menu.layer_id()),
+                );
             }
         }
         let Some(chosen) = chosen else {
+            if !self.menu.is_open() {
+                self.menu_of = None;
+            }
             return;
         };
         let Some(index) = self.menu_of.take() else {
             return;
         };
         match chosen.id.as_str() {
-            "pick" => self.doing = Doing::Picking(index),
             "move" => self.doing = Doing::Moving(index),
             "remove" => {
                 self.colours.remove(index);
                 self.doing = Doing::Nothing;
             }
             _ => {}
-        }
-    }
-
-    /// The picker of a colour, under its cell and as wide as the window,
-    /// above it; a tap beside it closes it.
-    fn picker(&mut self, context: &egui::Context) {
-        let Doing::Picking(index) = self.doing else {
-            return;
-        };
-        if index >= self.colours.len() {
-            self.doing = Doing::Nothing;
-            return;
-        }
-        let (Some(cell), true) = (self.cells.get(index), self.window.is_positive()) else {
-            context.request_repaint();
-            return;
-        };
-        let width = self.window.width();
-        let top = cell.bottom() + 6.0;
-        let room = context.content_rect().bottom() - top - PICKER_PARTS;
-        let colour = &mut self.colours[index];
-        let area = egui::Area::new(Id::unique(("palette-editor-picker", self.reorder)))
-            .order(Order::Tooltip)
-            .fixed_pos(Pos2::new(self.window.left(), top))
-            .constrain(true)
-            .show(context, |ui| {
-                let frame = egui::Frame::popup(ui.style());
-                let inner = width - frame.total_margin().sum().x;
-                frame.show(ui, |ui| {
-                    ui.set_width(inner);
-                    ui.spacing_mut().slider_width = inner.min(room).max(PICKER_SMALLEST);
-                    egui::color_picker::color_picker_color32(
-                        ui,
-                        colour,
-                        egui::color_picker::Alpha::Opaque,
-                    );
-                });
-            });
-        named(context, area.response.clone(), "colour picker");
-        let beside = context.input(|input| {
-            input.pointer.any_pressed()
-                && input
-                    .pointer
-                    .interact_pos()
-                    .is_some_and(|pointer| !area.response.rect.contains(pointer))
-        });
-        let escape = context.input(|input| input.key_pressed(egui::Key::Escape));
-        if beside || escape {
-            self.doing = Doing::Nothing;
         }
     }
 }

@@ -9,19 +9,20 @@ window does not have it yet.
 1. **The palette is filled in a window with no title,** a modal over the
    field. The colours stand in a line, a "+" at its end. A palette holds
    at most nine colours; at nine the "+" is off.
-2. **A tap on a colour opens a `PlateMenu` of it:** pick a colour, move,
-   remove (`RULE ui.menu`). No button stands under a colour.
-   - Its notice shows the colour: a swatch, the number and `#rrggbb`. The
-     notice of a `PlateMenu` takes a widget of the caller
-     (`Notice::widget`).
-   - The words: en "Pick a colour", ru "Выбрать цвет".
+2. **A tap on a colour opens a `PlateMenu` of it** (`RULE ui.menu`): the
+   picker of the colour on top, then move and remove. No button stands
+   under a colour. "+" adds a colour and opens its menu.
    - Was: a "-" under each colour, which doubled the line and was read as
      a colour of its own.
-3. **The picker opens at the colour it changes,** under its cell, as wide
-   as the window of the palette. Its square is as large as the room under
-   the line lets it be. A tap beside it or Esc closes it.
-   - Was: a picker under the line, for the colour chosen last; then one at
-     the cell, of the size egui gives it, which was too small.
+3. **The picker is the notice of the menu,** as wide as the menu: a
+   swatch, the number and `#rrggbb` over it, which change as it changes.
+   The colour changes in the palette at once. The notice of a `PlateMenu`
+   takes a widget of the caller (`Notice::widget`); a drag that begins
+   on it and the keys while it holds the focus are its own, not the
+   menu's.
+   - Was: a picker under the line, for the colour chosen last; then one
+     at the cell, too small; then one under the cell opened by "Pick a
+     colour" of the menu, one step more than needed.
 4. **How a colour is moved is open between two variants,** each a mockup:
    - `palette-move`: "Move" lifts the colour; the next tap on a colour puts
      it in that place.
@@ -34,14 +35,15 @@ window does not have it yet.
 5. **"+" adds the colour farthest from the others.** Of the steps of
    lightness, chroma and hue of OKLCh a screen can show, it takes the one
    whose nearest neighbour, among the colours and the paper of the field,
-   is farthest in OKLab. The picker opens on it.
+   is farthest in OKLab. Its menu opens, the picker on top.
    - Why: a fixed grey was the same every time and near the paper.
 
 ```text
-tap a colour ──► PlateMenu ──change──► the picker, under that colour
+tap a colour ──► PlateMenu: the picker of the colour on top, then
                     │──move────► the next tap on a colour puts it there
                     └──remove──► gone
-tap "+" ──► the colour farthest from the others and the paper, in the picker
+drag a colour ──► the line shows it in its new place, renumbered ──let go──► it stays
+tap "+" ──► the colour farthest from the others and the paper, its menu open
 ```
 
 ## Open

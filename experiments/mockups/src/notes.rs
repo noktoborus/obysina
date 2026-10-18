@@ -99,9 +99,6 @@ struct Frozen {
     state: serde_json::Value,
     /// Its picture; `None` until the picture comes.
     picture: Option<egui::TextureHandle>,
-    /// Where its layers stood, back to front: a widget is seen only where
-    /// no layer above its own covers it.
-    layers: Vec<Rect>,
 }
 
 /// The notes of the gallery.
@@ -306,7 +303,9 @@ impl Notes {
                     frozen.widgets.push(widget.clone());
                 }
             }
-            frozen.layers = layers(context);
+            for widget in &mut frozen.widgets {
+                widget.covered = covered(context, widget);
+            }
             frozen.picture = Some(context.load_texture(
                 "mockups-frozen",
                 Arc::unwrap_or_clone(image),
@@ -324,7 +323,6 @@ impl Notes {
             named: mock::named_widgets(context),
             state: mock.state(),
             picture: None,
-            layers: Vec::new(),
         });
         let inbox = Arc::clone(&self.inbox);
         let repaint = context.clone();
@@ -347,22 +345,8 @@ impl Notes {
     fn widget_at(&self, pointer: Pos2) -> Option<&Widget> {
         self.widgets()
             .iter()
-            .filter(|widget| bounds(widget).contains(pointer) && self.seen_at(widget, pointer))
+            .filter(|widget| bounds(widget).contains(pointer) && !widget.covered)
             .min_by(|first, second| bounds(first).area().total_cmp(&bounds(second).area()))
-    }
-
-    /// True when `widget` is not covered at `point`: it lies in the top
-    /// layer there.
-    fn seen_at(&self, widget: &Widget, point: Pos2) -> bool {
-        let layers = self
-            .frozen
-            .as_ref()
-            .map_or(&[][..], |frozen| &frozen.layers);
-        layers
-            .iter()
-            .rev()
-            .find(|layer| layer.contains(point))
-            .is_none_or(|top| top.expand(1.0).contains_rect(bounds(widget)))
     }
 
     /// The widgets a note on `rect` names: the one tapped, or those seen
@@ -380,7 +364,7 @@ impl Notes {
             .iter()
             .filter(|widget| {
                 let bounds = bounds(widget);
-                rect.expand(1.0).contains_rect(bounds) && self.seen_at(widget, bounds.center())
+                rect.expand(1.0).contains_rect(bounds) && !widget.covered
             })
             .map(|widget| self.with_path(widget))
             .collect()
@@ -418,7 +402,7 @@ impl Notes {
                 let outer = bounds(holder);
                 *holder != widget
                     && outer.expand(1.0).contains_rect(inner)
-                    && self.seen_at(holder, inner.center())
+                    && holder.layer == widget.layer
             })
             .collect();
         holders.sort_by(|first, second| bounds(second).area().total_cmp(&bounds(first).area()));
@@ -755,18 +739,15 @@ fn shorten(text: &str) -> String {
     format!("\u{2026}{tail}")
 }
 
-/// The rects of the visible layers of the last frame, back to front, but
-/// the strip of the gallery, which is no part of a mockup.
-fn layers(context: &Context) -> Vec<Rect> {
-    let strip = Id::unique("mockups-strip");
-    context.memory(|memory| {
-        let visible = memory.areas().visible_layer_ids();
-        memory
-            .layer_ids()
-            .filter(|layer| visible.contains(layer) && layer.id != strip)
-            .filter_map(|layer| memory.area_rect(layer.id))
-            .collect()
-    })
+/// True when another layer than its own lies over the middle of a widget
+/// in the last frame. A widget of no known layer is never covered.
+fn covered(context: &Context, widget: &Widget) -> bool {
+    let Some(own) = widget.layer else {
+        return false;
+    };
+    context
+        .layer_id_at(bounds(widget).center())
+        .is_some_and(|top| top.id.value() != own)
 }
 
 /// Where a named widget stands.
@@ -949,11 +930,21 @@ mod tests {
 
         let notes = &harness.state().notes;
         assert_eq!(notes.rect, Some(entry));
+        let picked = notes.picked.as_ref().expect("the entry is taken");
+        assert_eq!(picked.path, ["menu of colour 3"]);
+        let named = "menu of colour 3 \u{203a} Удалить";
+        assert!(
+            harness
+                .query_by_label(&format!("\u{270f} {named}"))
+                .is_some(),
+            "the strip names it"
+        );
+        assert!(harness.query_by_label(named).is_some(), "the form names it");
     }
 
-    /// A tap where an entry of the menu covers a colour takes the entry: a
-    /// widget a layer above covers is not seen. The note names it alone,
-    /// with the path of what it stands in.
+    /// A tap where the menu covers a colour takes a part of the menu, not
+    /// the colour under it: a widget a layer above covers is not seen. The
+    /// note names it alone, with the path of what it stands in.
     #[test]
     fn a_covered_widget_is_not_taken() {
         let mut harness = Harness::builder()
@@ -962,15 +953,13 @@ mod tests {
         harness.run();
         harness.get_by_label("3").click();
         harness.run();
-        let entry = harness.get_by_label("Выбрать цвет").rect();
+        let menu = harness.get_by_label("Удалить").rect();
         let covered = ["1", "2", "3", "4", "5"]
             .iter()
-            .map(|key| harness.get_by_label(key).rect())
-            .find_map(|swatch| {
-                let both = swatch.intersect(entry);
-                both.is_positive().then_some(both.center())
-            })
-            .expect("the menu covers a colour");
+            .filter_map(|key| harness.query_by_label(key).map(|node| node.rect()))
+            .find(|swatch| swatch.center().x > menu.left() && swatch.center().x < menu.right())
+            .expect("the menu stands over a colour")
+            .center();
         let switch = harness.get_by_label_contains("\u{270f}").rect().center();
         press(&mut harness, switch);
 
@@ -978,17 +967,15 @@ mod tests {
 
         let notes = &harness.state().notes;
         let picked = notes.picked.as_ref().expect("a widget is taken");
-        assert_eq!(picked.name, "Выбрать цвет");
-        assert_eq!(picked.path, ["menu of colour 3"]);
-        let named = "menu of colour 3 \u{203a} Выбрать цвет";
         assert!(
-            harness
-                .query_by_label(&format!("\u{270f} {named}"))
-                .is_some(),
-            "the strip names it"
+            !picked.name.starts_with("цвет"),
+            "{picked:?} is a colour under the menu"
         );
-        assert!(harness.query_by_label(named).is_some(), "the form names it");
-
-        assert_eq!(notes.widgets_of(entry), std::slice::from_ref(picked));
+        let in_menu = picked.name == "menu of colour 3"
+            || picked
+                .path
+                .first()
+                .is_some_and(|holder| holder == "menu of colour 3");
+        assert!(in_menu, "{picked:?} is a part of the menu");
     }
 }

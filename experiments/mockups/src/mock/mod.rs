@@ -85,17 +85,25 @@ pub fn named(context: &egui::Context, response: egui::Response, name: &str) -> e
     let rect = context
         .layer_transform_to_global(response.layer_id)
         .map_or(response.rect, |transform| transform * response.rect);
-    named_rect(context, rect, name);
+    named_rect(context, rect, name, Some(response.layer_id));
     response
 }
 
 /// Names a part of the window by where it stands, such as a menu the
 /// mockup knows only the layer of.
-pub fn named_rect(context: &egui::Context, rect: egui::Rect, name: &str) {
+/// `layer` is the layer of egui it is drawn on, when it is known.
+pub fn named_rect(
+    context: &egui::Context,
+    rect: egui::Rect,
+    name: &str,
+    layer: Option<egui::LayerId>,
+) {
     let widget = Widget {
         name: name.to_string(),
         rect: [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
         path: Vec::new(),
+        layer: layer.map(|layer| layer.id.value()),
+        covered: false,
     };
     context.data_mut(|data| {
         data.get_temp_mut_or_default::<Vec<Widget>>(named_id())

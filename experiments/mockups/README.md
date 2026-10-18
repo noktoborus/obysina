@@ -47,12 +47,14 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   The form of the note names it above the text.
 - Ctrl+Enter in the text sends the note, Esc drops it.
 - A tap names the widget taken alone; a box names the widgets seen whole
-  inside it. A widget is seen only where no layer above its own covers it:
-  the layers of the mockup, back to front, are kept with its picture
-  (`Memory::layer_ids`, `area_rect`).
+  inside it. A widget is seen only when no other layer lies over its
+  middle. Its layer comes from the tree of accesskit, whose node right
+  under the root has the `Id` of the layer of egui; the layer over its
+  middle is asked of egui (`Context::layer_id_at`) when the picture is
+  taken.
 - A widget carries its path: the names of the widgets of the tree of
   accesskit it stands in, then the parts the mockup named that hold it in
-  the same layer, such as `menu of colour 3 › Change the colour`. It tells
+  the same layer, such as `menu of colour 3 › Удалить`. It tells
   two widgets of one name apart.
 - The note carries the text, the box, the widgets it names, the
   state of the mockup (`Mockup::state`) and a picture of the page with the

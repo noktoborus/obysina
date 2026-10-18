@@ -43,6 +43,8 @@ impl egui::Plugin for Seen {
                     name,
                     rect: [bounds.x0, bounds.y0, bounds.x1, bounds.y1].map(|side| side as f32),
                     path: path(*id, &parents, nodes),
+                    layer: layer(*id, &parents),
+                    covered: false,
                 })
             })
             .collect();
@@ -89,4 +91,20 @@ fn path(
     }
     path.reverse();
     path
+}
+
+/// The layer of egui a node is drawn on: the node right under the root
+/// that holds it, whose id is the `Id` of the layer.
+fn layer(
+    id: accesskit::NodeId,
+    parents: &HashMap<accesskit::NodeId, accesskit::NodeId>,
+) -> Option<u64> {
+    let mut at = id;
+    while let Some(parent) = parents.get(&at) {
+        if !parents.contains_key(parent) {
+            return Some(at.0);
+        }
+        at = *parent;
+    }
+    None
 }

@@ -15,6 +15,13 @@ pub struct Widget {
     /// tells two widgets of one name apart.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub path: Vec<String>,
+    /// The `Id` of the layer of egui it is drawn on, from the tree of
+    /// accesskit, whose node under the root is the layer. Not written.
+    #[serde(skip)]
+    pub layer: Option<u64>,
+    /// Another layer lies over its middle. Not written.
+    #[serde(skip)]
+    pub covered: bool,
 }
 
 /// A note as the page sends it.
