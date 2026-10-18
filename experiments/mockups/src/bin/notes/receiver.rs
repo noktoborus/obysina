@@ -61,6 +61,12 @@ fn answer(directory: &Path, mut request: Request) {
                 }),
             }
         }
+        (Method::Delete, _) if path.starts_with(&format!("{PATH}/")) => {
+            let id = path[PATH.len() + 1..].to_string();
+            delete(directory, &id)
+                .and_then(|()| list(directory))
+                .and_then(|kept| json(&kept))
+        }
         _ => {
             let _ = request.respond(Response::empty(404));
             return;
@@ -135,6 +141,24 @@ fn keep(directory: &Path, body: &[u8]) -> Result<Kept> {
     std::fs::write(&path, json(&kept)?).map_err(|source| NotesError::File { path, source })?;
     log::info!("note {id} on {}: {}", kept.note.mock, kept.note.text);
     Ok(kept)
+}
+
+/// Deletes a note and its picture; a note that is not there is gone
+/// already.
+fn delete(directory: &Path, id: &str) -> Result<()> {
+    let id: u32 = id.parse().map_err(|_| NotesError::Id {
+        text: id.to_string(),
+    })?;
+    for extension in ["json", "png"] {
+        let path = directory.join(format!("{id:04}.{extension}"));
+        match std::fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(source) => return Err(NotesError::File { path, source }),
+        }
+    }
+    log::info!("note {id} deleted");
+    Ok(())
 }
 
 /// Writes the pixels of a picture as PNG.

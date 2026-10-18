@@ -31,6 +31,13 @@ pub enum NotesError {
         source: std::io::Error,
     },
 
+    /// The number of a note to delete is not a number.
+    #[error("the note {text:?} is not a number")]
+    Id {
+        /// What was given.
+        text: String,
+    },
+
     /// A note is not the JSON of a note.
     #[error("the note is not valid JSON")]
     Json {

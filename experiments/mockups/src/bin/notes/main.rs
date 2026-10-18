@@ -9,6 +9,7 @@
 //! | --- | --- |
 //! | `GET /notes` | every note kept, as a JSON list |
 //! | `POST /notes` | the note kept, with its number |
+//! | `DELETE /notes/<id>` | the notes left |
 
 #[cfg(not(target_arch = "wasm32"))]
 mod error;

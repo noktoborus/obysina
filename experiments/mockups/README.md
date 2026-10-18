@@ -34,6 +34,7 @@ off ──switch──► pointing ──tap or drag──► writing ──send
 - A tap takes the whole widget under it: the smallest one the mockup named
   with `mock::named`, lit while the pointer is over it. A drag draws a box,
   for a place between widgets or several of them.
+- Ctrl+Enter in the text sends the note, Esc drops it.
 - The note carries the text, the box, the named widgets it touches, the
   state of the mockup (`Mockup::state`) and a picture of the page with the
   box on it (`ViewportCommand::Screenshot`).
@@ -42,8 +43,10 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   Git ignores the directory.
 - A note is read, acted on and deleted with its picture. What it decided
   goes to the plan or to the documentation; the note is not kept. The strip
-  counts the notes of the mockup still waiting, and the page draws their
-  boxes.
+  counts the notes waiting, of the mockup shown and of all, and the page
+  draws their boxes.
+- "waiting" opens the list of the notes waiting. The box of a note is lit
+  while its line is under the pointer; the cross deletes it.
 - The strip is drawn above the windows of a mockup: a modal window of egui
   blocks the layers under it.
 

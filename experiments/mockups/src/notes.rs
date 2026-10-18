@@ -16,7 +16,10 @@
 use std::sync::{Arc, Mutex};
 
 use base64::Engine;
-use egui::{Align2, Color32, ColorImage, Context, Id, Order, Pos2, Rect, Sense, Stroke, vec2};
+use egui::{
+    Align2, Color32, ColorImage, Context, Id, Key, Modifiers, Order, Pos2, Rect, Sense, Stroke,
+    vec2,
+};
 
 use crate::mock::{self, Mockup};
 use crate::note::{Kept, Note, Posted, Shot};
@@ -40,8 +43,10 @@ const WAITING: Stroke = Stroke {
     width: 1.5,
     color: Color32::from_rgb(0xff, 0xa0, 0x20),
 };
-/// The width of the form a note is written in.
+/// The width of the form a note is written in, and of the list.
 const FORM_WIDTH: f32 = 320.0;
+/// The key that sends the note being written.
+const SEND: egui::KeyboardShortcut = egui::KeyboardShortcut::new(Modifiers::COMMAND, Key::Enter);
 
 /// What the notes are doing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -79,6 +84,8 @@ pub struct Notes {
     text: String,
     inbox: Arc<Mutex<Inbox>>,
     asked: bool,
+    /// The list of the notes waiting is open.
+    listing: bool,
 }
 
 impl Notes {
@@ -95,10 +102,10 @@ impl Notes {
             self.rect = None;
         }
         let inbox = self.inbox.lock().expect("the inbox is never poisoned");
-        if let Some(kept) = &inbox.kept {
-            let waiting = kept.iter().filter(|note| note.note.mock == mock).count();
-            ui.label(format!("waiting: {waiting}"));
-        }
+        let kept = inbox.kept.as_deref().unwrap_or_default();
+        let here = kept.iter().filter(|note| note.note.mock == mock).count();
+        let label = format!("\u{2630} waiting: {here} of {}", kept.len());
+        ui.toggle_value(&mut self.listing, label);
         if let Some(message) = &inbox.message {
             ui.label(message);
         }
@@ -107,6 +114,9 @@ impl Notes {
     /// Draws the notes over `area`, the space of the mockup, and takes the
     /// presses there while the switch is on.
     pub fn show(&mut self, context: &Context, area: Rect, mock: &dyn Mockup) {
+        if self.listing {
+            self.list(context, area, mock.name());
+        }
         if self.phase == Phase::Off {
             return;
         }
@@ -188,6 +198,68 @@ impl Notes {
         }
     }
 
+    /// The list of the notes waiting, at the right under the strip: the
+    /// box of a note is lit while its line is under the pointer, and the
+    /// cross deletes it.
+    fn list(&mut self, context: &Context, area: Rect, mock: &str) {
+        let kept = self
+            .inbox
+            .lock()
+            .expect("the inbox is never poisoned")
+            .kept
+            .clone()
+            .unwrap_or_default();
+        let mut lit = None;
+        egui::Area::new(Id::unique("mockups-note-list"))
+            .order(Order::Tooltip)
+            .fixed_pos(area.right_top() + vec2(-FORM_WIDTH - 8.0, 8.0))
+            .constrain(true)
+            .show(context, |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.set_width(FORM_WIDTH);
+                    if kept.is_empty() {
+                        ui.label("no notes wait");
+                    }
+                    egui::ScrollArea::vertical()
+                        .max_height(area.height() / 2.0)
+                        .show(ui, |ui| {
+                            for note in &kept {
+                                let line = ui.horizontal(|ui| {
+                                    if ui
+                                        .small_button("\u{2716}")
+                                        .on_hover_text("delete")
+                                        .clicked()
+                                    {
+                                        remove(&self.inbox, context, note.id);
+                                    }
+                                    ui.add(
+                                        egui::Label::new(format!(
+                                            "#{} {}: {}",
+                                            note.id,
+                                            note.note.mock,
+                                            note.note.text.trim()
+                                        ))
+                                        .wrap(),
+                                    );
+                                });
+                                if line.response.contains_pointer() && note.note.mock == mock {
+                                    lit = Some(note.note.rect);
+                                }
+                            }
+                        });
+                });
+            });
+        if let Some([left, top, right, bottom]) = lit {
+            let rect = Rect::from_min_max(Pos2::new(left, top), Pos2::new(right, bottom));
+            context
+                .layer_painter(egui::LayerId::new(
+                    Order::Tooltip,
+                    Id::unique("mockups-note-lit"),
+                ))
+                .rect_stroke(rect.expand(2.0), 2.0, DRAWN, egui::StrokeKind::Outside);
+        }
+    }
+
     /// The form under the box: the text, send and cancel.
     fn form(&mut self, context: &Context, area: Rect) {
         let Some(rect) = self.rect else {
@@ -204,6 +276,9 @@ impl Notes {
             .show(context, |ui| {
                 egui::Frame::popup(ui.style()).show(ui, |ui| {
                     ui.set_width(FORM_WIDTH);
+                    let send = ui.input_mut(|input| input.consume_shortcut(&SEND));
+                    let cancel =
+                        ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
                     let edit = ui.add(
                         egui::TextEdit::multiline(&mut self.text)
                             .hint_text("what is wrong here")
@@ -214,11 +289,12 @@ impl Notes {
                         edit.request_focus();
                     }
                     ui.horizontal(|ui| {
-                        if ui.button("send").clicked() && !self.text.trim().is_empty() {
+                        let pressed = ui.button("send").on_hover_text("ctrl+enter").clicked();
+                        if (pressed || send) && !self.text.trim().is_empty() {
                             self.phase = Phase::Capturing;
                             self.ask_picture(context);
                         }
-                        if ui.button("cancel").clicked() {
+                        if ui.button("cancel").on_hover_text("esc").clicked() || cancel {
                             self.phase = Phase::Pointing;
                             self.rect = None;
                         }
@@ -340,6 +416,21 @@ fn send(inbox: &Arc<Mutex<Inbox>>, context: &Context, body: Vec<u8>) {
     });
 }
 
+/// Deletes a note of the receiver, then asks for the notes again.
+#[cfg(target_arch = "wasm32")]
+fn remove(inbox: &Arc<Mutex<Inbox>>, context: &Context, id: u32) {
+    let inbox = Arc::clone(inbox);
+    let repaint = context.clone();
+    let request = ehttp::Request::new(ehttp::Method::DELETE, format!("{URL}/{id}"), &[]);
+    ehttp::fetch(request, move |result| {
+        if !result.is_ok_and(|response| response.ok) {
+            inbox.lock().expect("the inbox is never poisoned").message =
+                Some(format!("note {id} is not deleted"));
+        }
+        fetch(&inbox, &repaint);
+    });
+}
+
 /// Asks the receiver for the notes it keeps.
 #[cfg(target_arch = "wasm32")]
 fn fetch(inbox: &Arc<Mutex<Inbox>>, context: &Context) {
@@ -364,6 +455,10 @@ fn send(inbox: &Arc<Mutex<Inbox>>, _context: &Context, _body: Vec<u8>) {
     inbox.lock().expect("the inbox is never poisoned").message =
         Some("notes are sent from the page only".to_string());
 }
+
+/// A window of the desktop deletes no note.
+#[cfg(not(target_arch = "wasm32"))]
+fn remove(_inbox: &Arc<Mutex<Inbox>>, _context: &Context, _id: u32) {}
 
 /// A window of the desktop asks for no note.
 #[cfg(not(target_arch = "wasm32"))]
