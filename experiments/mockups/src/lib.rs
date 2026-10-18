@@ -4,3 +4,4 @@ pub mod gallery;
 pub mod mock;
 pub mod note;
 mod notes;
+mod seen;

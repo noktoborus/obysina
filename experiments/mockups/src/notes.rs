@@ -3,15 +3,16 @@
 //! (`src/bin/notes`).
 //!
 //! While the switch or the list is on, the mockup is frozen: the first
-//! frame is taken as a picture and the named widgets are kept. Until the
+//! frame is taken as a picture and its widgets are kept. Until the
 //! picture comes the mockup is still drawn, with no input and nothing of
 //! the notes over it: a browser takes the picture a frame or two later.
 //! From then on the mockup is not drawn and gets no event, the picture
 //! stands in its place. A menu or a picker of the mockup stays as it was, and is there
 //! again when the switch goes off.
 //!
-//! A tap takes the whole widget under it: the smallest one the mockup named
-//! (`mock::named`), lit while the pointer is over it. A drag draws a box,
+//! A tap takes the whole widget under it: the smallest one of the tree of
+//! accesskit (`seen`) or named by the mockup (`mock::named`), lit while the
+//! pointer is over it. A drag draws a box,
 //! for a place between widgets or several of them.
 //!
 //! ```text
@@ -87,7 +88,8 @@ struct Inbox {
 
 /// The mockup as it was when the notes froze it.
 struct Frozen {
-    /// The widgets it named.
+    /// Its widgets: those it named, and those of the tree of accesskit of
+    /// the frame its picture shows.
     widgets: Vec<Widget>,
     /// What it showed, from `Mockup::state`.
     state: serde_json::Value,
@@ -98,6 +100,8 @@ struct Frozen {
 /// The notes of the gallery.
 #[derive(Default)]
 pub struct Notes {
+    /// The widgets of the last frame, from the tree of accesskit.
+    seen: crate::seen::Widgets,
     /// The mockup frozen while the notes are on.
     frozen: Option<Frozen>,
     /// The notes were switched on in this frame: the mockup is frozen when
@@ -159,6 +163,12 @@ impl Notes {
         if let Some(message) = &inbox.message {
             ui.label(message);
         }
+    }
+
+    /// The plugin that keeps the widgets of each frame for the notes; it is
+    /// added to the context once.
+    pub fn plugin(&self) -> crate::seen::Seen {
+        crate::seen::Seen(Arc::clone(&self.seen))
     }
 
     /// True while the mockup is frozen: it is not drawn, its picture is.
@@ -260,6 +270,12 @@ impl Notes {
             .frozen
             .take();
         if let Some(image) = image {
+            let seen = self.seen.lock().expect("the widgets are never poisoned");
+            for widget in seen.iter() {
+                if !frozen.widgets.contains(widget) {
+                    frozen.widgets.push(widget.clone());
+                }
+            }
             frozen.picture = Some(context.load_texture(
                 "mockups-frozen",
                 Arc::unwrap_or_clone(image),
@@ -288,7 +304,7 @@ impl Notes {
         context.request_repaint();
     }
 
-    /// The widgets the frozen mockup named.
+    /// The widgets of the frozen mockup.
     fn widgets(&self) -> &[Widget] {
         self.frozen.as_ref().map_or(&[], |frozen| &frozen.widgets)
     }
@@ -704,5 +720,25 @@ mod tests {
             harness.query_by_label("Remove").is_some(),
             "the menu is open again"
         );
+    }
+
+    /// A tap in a note takes an entry of a `PlateMenu` of the mockup: the
+    /// widgets come from the tree of accesskit, not only from the mockup.
+    #[test]
+    fn a_tap_takes_an_entry_of_a_menu() {
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(800.0, 500.0))
+            .build_eframe(|_| Gallery::new("#palette-editor"));
+        harness.run();
+        harness.get_by_label("3").click();
+        harness.run();
+        let entry = harness.get_by_label("Remove").rect();
+        let switch = harness.get_by_label("\u{270f} note").rect().center();
+        press(&mut harness, switch);
+
+        press(&mut harness, entry.center());
+
+        let notes = &harness.state().notes;
+        assert_eq!(notes.rect, Some(entry));
     }
 }

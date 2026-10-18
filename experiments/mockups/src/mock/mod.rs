@@ -40,8 +40,9 @@ fn named_id() -> egui::Id {
     egui::Id::unique("mockups-named")
 }
 
-/// Gives a widget a name a note can carry: a note lists the named widgets
-/// its box touches. egui keeps no name of a widget that can be read back.
+/// Gives a part with no name of its own, such as a window, a name a note
+/// can carry. A widget with a name is seen in the tree of accesskit
+/// already.
 pub fn named(context: &egui::Context, response: egui::Response, name: &str) -> egui::Response {
     let rect = context
         .layer_transform_to_global(response.layer_id)

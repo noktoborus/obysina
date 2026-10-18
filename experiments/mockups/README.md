@@ -31,11 +31,16 @@ off ──switch──► pointing ──tap or drag──► writing ──send
                    └──────────────answer of the receiver──── sending
 ```
 
-- A tap takes the whole widget under it: the smallest one the mockup named
-  with `mock::named`, lit while the pointer is over it. A drag draws a box,
-  for a place between widgets or several of them.
+- A tap takes the whole widget under it, the smallest one, lit while the
+  pointer is over it. A drag draws a box, for a place between widgets or
+  several of them.
+- The widgets are read from the tree of accesskit egui builds each frame,
+  by the plugin `seen::Seen` in its `output_hook`: every widget a screen
+  reader is told of, with its name and its box, an entry of a `PlateMenu`
+  or a part of the picker as well as a button of the mockup. A part with no
+  name, such as a window, is named by the mockup with `mock::named`.
 - Ctrl+Enter in the text sends the note, Esc drops it.
-- The note carries the text, the box, the named widgets it touches, the
+- The note carries the text, the box, the widgets it touches, the
   state of the mockup (`Mockup::state`) and a picture of the page with the
   box on it (`ViewportCommand::Screenshot`).
 - trunk passes `/notes` to the receiver, `src/bin/notes`, on 127.0.0.1:6081.
@@ -55,7 +60,7 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   open. `egui_kittest` calls no hook: a test passes its presses through the
   same filter.
 - While "note" or "waiting" is on, the mockup is frozen. Its first frame is
-  taken as a picture, with its named widgets and its state. A browser
+  taken as a picture, with its widgets and its state. A browser
   takes the picture a frame or two later, so until it comes the mockup is
   still drawn, gets no press and no key, and nothing of the notes is drawn
   over it. From then on the mockup is not drawn and gets no event, and the
@@ -76,8 +81,8 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   mockup of a panel copies its layout, not its code.
 - Nothing depends on it. It is no test of the window (`RULE test.window`);
   its tests check that every mockup draws and that a tap takes a widget.
-- egui keeps no name of a widget that can be read back, so a note knows
-  only the widgets a mockup names itself.
+- The plugin turns accesskit on for the page, which costs a tree of the
+  widgets in every frame.
 - Text is written in the code, in english or russian; it does not go through
   `rust_i18n`.
 

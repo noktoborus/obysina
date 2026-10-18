@@ -24,6 +24,8 @@ pub struct Gallery {
     press: Option<Pos2>,
     /// The release of that press is taken out too.
     pressing: bool,
+    /// The plugin of the notes is added to the context.
+    plugged: bool,
 }
 
 impl Gallery {
@@ -43,6 +45,7 @@ impl Gallery {
             strip: Rect::NOTHING,
             press: None,
             pressing: false,
+            plugged: false,
         }
     }
 
@@ -111,6 +114,10 @@ impl eframe::App for Gallery {
     /// above every window of a mockup: a modal window of egui blocks the
     /// layers under it. A frozen mockup is not drawn: its picture is.
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        if !self.plugged {
+            self.plugged = true;
+            ui.ctx().add_plugin(self.notes.plugin());
+        }
         mock::forget_named(ui.ctx());
         let room = egui::Panel::top("mockups")
             .exact_size(STRIP)
