@@ -16,8 +16,8 @@ The kinds of grid, the endless field and how a pattern is kept on it.
    `rem_euclid(2)`.
    - Why: a shift by an odd number of columns lifts every odd column a whole
      bead against the even ones. The same rows then show another picture,
-     with other neighbours, and a fill finds another region. Nothing tells:
-     the file reads and the counts match.
+     where other beads touch. Nothing tells: the file reads and the counts
+     match.
 5. **The file keeps the place on the field.** `origin` is the cell of the
    field of the first bead of the first row; `rows` are the active area. A
    pattern opens where it was, and a peyote column keeps its parity.
@@ -33,12 +33,14 @@ on the field, columns 1 2 3       the file
       └──┘      └──┘
 ```
 
+6. **There is no fill.** The tool goes, and with it `Pattern::region` and
+   `Grid::neighbours`, which only the fill asked.
+   - Why: the empty space of an endless field has no end to fill to.
+
 ## Open questions
 
 - The menu of grids: a `PlateMenu` of two entries, or one button that
   switches.
-- A fill pressed outside the active area: nothing, or one bead like the
-  pencil.
 - How the cells outside are dimmed, and whether they are hidden when a bead
   is drawn small.
 - The active area: the box itself, or a margin of a cell or two around it.
