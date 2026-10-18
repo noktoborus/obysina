@@ -60,13 +60,13 @@ on the field, columns 1 2 3       the file
 
     ```text
     ┌──────────────── field: the box around both ────────────────┐
-    │ ┌──── start sheet: the cells of the screen ────┐            │
+    │ ┌──── start sheet: the cells of the screen ────┐           │
     │ │                    ┌── twice the area ──────┼──────────┐ │
     │ │                    │      ┌─ active ─┐      │          │ │
     │ │                    │      └──────────┘      │          │ │
     │ └────────────────────┼────────────────────────┘          │ │
     │                      └───────────────────────────────────┘ │
-    └─────────────────────────────────────────────────────────────┘
+    └────────────────────────────────────────────────────────────┘
     ```
 
     - The start sheet is the cells under the screen when the pattern is

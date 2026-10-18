@@ -7,7 +7,7 @@ A bead pattern: its grid, its palette, its beads and its JSON file.
 - `Pattern`: the beads put on a field with no end; every other cell is
   empty. A `Cell` has a signed column and row.
 - `Pattern::bounds`: the active area, the box around the beads; `None` when
-  there are none.
+  there are none. `Bounds` grows, meets, joins and doubles.
 - `Pattern::revision`: changes with every change of the pattern; no other
   pattern has it unless it is a clone. A drawing of the pattern is kept by it.
 - `Grid`: where a bead stands, which bead is under a point, which cells lie

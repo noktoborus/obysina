@@ -48,6 +48,41 @@ impl Bounds {
         }
     }
 
+    /// The box around both boxes.
+    pub fn union(self, other: Bounds) -> Bounds {
+        self.with(other.min).with(other.max)
+    }
+
+    /// The cells both boxes hold; `None` when they do not meet.
+    pub fn intersection(self, other: Bounds) -> Option<Bounds> {
+        let min = Cell {
+            column: self.min.column.max(other.min.column),
+            row: self.min.row.max(other.min.row),
+        };
+        let max = Cell {
+            column: self.max.column.min(other.max.column),
+            row: self.max.row.min(other.max.row),
+        };
+        (min.column <= max.column && min.row <= max.row).then_some(Bounds { min, max })
+    }
+
+    /// The box grown by half its width on each side and half its height
+    /// above and below, a half rounded up: twice as wide and as high.
+    pub fn doubled(self) -> Bounds {
+        let columns = (self.width() as i32 + 1) / 2;
+        let rows = (self.height() as i32 + 1) / 2;
+        Bounds {
+            min: Cell {
+                column: self.min.column.saturating_sub(columns),
+                row: self.min.row.saturating_sub(rows),
+            },
+            max: Cell {
+                column: self.max.column.saturating_add(columns),
+                row: self.max.row.saturating_add(rows),
+            },
+        }
+    }
+
     /// Columns.
     pub fn width(&self) -> usize {
         self.max.column.abs_diff(self.min.column) as usize + 1
@@ -242,6 +277,50 @@ mod tests {
         assert_eq!(
             Grid::Peyote.span(Bounds::of(Cell { column: 1, row: 0 }), 1.0),
             ((1.0, 0.5), (2.0, 1.5))
+        );
+    }
+
+    #[test]
+    fn a_doubled_box_is_twice_as_wide_and_high() {
+        let bounds = Bounds {
+            min: Cell { column: 0, row: 0 },
+            max: Cell { column: 3, row: 1 },
+        };
+        let doubled = bounds.doubled();
+
+        assert_eq!((doubled.width(), doubled.height()), (8, 4));
+        assert_eq!(
+            doubled.min,
+            Cell {
+                column: -2,
+                row: -1
+            }
+        );
+        assert_eq!(Bounds::of(Cell::default()).doubled().width(), 3);
+    }
+
+    #[test]
+    fn boxes_meet_in_their_intersection() {
+        let one = Bounds {
+            min: Cell { column: 0, row: 0 },
+            max: Cell { column: 4, row: 4 },
+        };
+        let other = Bounds {
+            min: Cell { column: 3, row: -2 },
+            max: Cell { column: 9, row: 2 },
+        };
+
+        assert_eq!(
+            one.intersection(other),
+            Some(Bounds {
+                min: Cell { column: 3, row: 0 },
+                max: Cell { column: 4, row: 2 },
+            })
+        );
+        assert_eq!(one.union(other).width(), 10);
+        assert_eq!(
+            one.intersection(Bounds::of(Cell { column: 9, row: 9 })),
+            None
         );
     }
 

@@ -653,6 +653,41 @@ fn a_new_pattern_opens_on_the_middle_of_the_field() {
     );
 }
 
+/// The field drawn is the start sheet, the cells of the screen; a press past
+/// it does nothing.
+#[test]
+fn a_press_past_the_field_does_nothing() {
+    let mut window = window();
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let cell = Cell { column: 40, row: 0 };
+
+    window.press(cell, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(cell), None);
+}
+
+/// Twice the active area is drawn: beads far apart reach past the sheet.
+#[test]
+fn beads_near_the_edge_grow_the_field() {
+    let mut window = window();
+    window.press(
+        Cell {
+            column: -18,
+            row: 0,
+        },
+        PointerButton::Primary,
+    );
+    window.press(Cell { column: 18, row: 0 }, PointerButton::Primary);
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let cell = Cell { column: 36, row: 0 };
+
+    window.press(cell, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(cell), Some(0));
+}
+
 /// A bead put left of and above cell (0, 0) is saved and opens where it
 /// was: the field has no end either way.
 #[test]

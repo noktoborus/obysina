@@ -5,10 +5,13 @@ The field of beads: an egui widget that draws an
 
 ## Scope
 
-- The field has no end; only the cells on the screen are drawn. A bead is
-  drawn at its proportions, with a small gap. An empty place in the active
-  area is an outline; one outside it is a pale outline, and is not drawn
-  below `PALE_MIN_BEAD`.
+- The field drawn is the box around the start sheet, `View::sheet`, the
+  cells under the screen when the pattern is first shown, and twice the
+  active area (`Bounds::doubled`). Past it the ground is bare and a press
+  does nothing. Only its cells on the screen are drawn.
+- A bead is drawn at its proportions, with a small gap. An empty place in
+  the active area is an outline; one outside it is a pale outline, and is
+  not drawn below `PALE_MIN_BEAD`.
 - Puts the middle of the active area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Keeps the beads as one tessellated mesh of the cells on the screen and half

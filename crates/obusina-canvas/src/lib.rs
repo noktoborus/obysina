@@ -78,6 +78,9 @@ impl<'a> Canvas<'a> {
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
+        if self.view.sheet.is_none() && rect.is_positive() {
+            self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
+        }
         self.navigate(ui, &response);
 
         let painter = ui.painter_at(rect);
@@ -87,7 +90,8 @@ impl<'a> Canvas<'a> {
 
         let hovered = response
             .hover_pos()
-            .map(|point| self.cell_at(origin, point));
+            .map(|point| self.cell_at(origin, point))
+            .filter(|cell| self.in_field(*cell));
         let pressed = self.pressed(&response, origin);
         CanvasResponse {
             response,
@@ -151,9 +155,25 @@ impl<'a> Canvas<'a> {
             .cells_in((min.x, min.y), (max.x, max.y), self.pattern.ratio())
     }
 
-    /// A shape for every bead of `window`, the pattern standing at `origin`:
-    /// a bead filled, an empty place in the active area outlined, one outside
-    /// it outlined pale, or left bare when beads are small.
+    /// The field drawn: the box around the start sheet and twice the active
+    /// area. `None` before the field was first shown, with no beads.
+    fn field(&self) -> Option<Bounds> {
+        let doubled = self.pattern.bounds().map(Bounds::doubled);
+        match (self.view.sheet, doubled) {
+            (Some(sheet), Some(doubled)) => Some(sheet.union(doubled)),
+            (sheet, doubled) => sheet.or(doubled),
+        }
+    }
+
+    /// True when `cell` is in the field drawn.
+    fn in_field(&self, cell: Cell) -> bool {
+        self.field().is_some_and(|field| field.contains(cell))
+    }
+
+    /// A shape for every bead of `window` in the field, the pattern standing
+    /// at `origin`: a bead filled, an empty place in the active area
+    /// outlined, one outside it outlined pale, or left bare when beads are
+    /// small.
     ///
     /// The rounding is a part of the height of a bead before the field is
     /// turned, so a turned bead is rounded the same.
@@ -161,10 +181,13 @@ impl<'a> Canvas<'a> {
         let active = self.pattern.bounds();
         let pale = self.view.bead >= PALE_MIN_BEAD;
         let rounding = self.view.bead * (1.0 - GAP) * ROUNDING;
+        let Some(cells) = self.field().and_then(|field| field.intersection(window)) else {
+            return Vec::new();
+        };
         let outline = |bead, colour| {
             egui::Shape::rect_stroke(bead, rounding, Stroke::new(1.0, colour), StrokeKind::Inside)
         };
-        window
+        cells
             .cells()
             .filter_map(|cell| {
                 let inside = active.is_some_and(|active| active.contains(cell));
@@ -240,7 +263,8 @@ impl<'a> Canvas<'a> {
             return None;
         };
         let point = response.interact_pointer_pos()?;
-        Some((self.cell_at(origin, point), press))
+        let cell = self.cell_at(origin, point);
+        self.in_field(cell).then_some((cell, press))
     }
 
     /// The rectangle of one bead on the screen, turned with the field.

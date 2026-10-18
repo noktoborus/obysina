@@ -1,6 +1,7 @@
 //! Where the field is moved to and how large a bead is drawn.
 
 use egui::{Vec2, vec2};
+use obusina_pattern::Bounds;
 
 /// The smallest height of a bead, in points.
 pub const MIN_BEAD: f32 = 4.0;
@@ -33,6 +34,9 @@ pub struct View {
     pub bead: f32,
     /// The pattern has been put in the middle of the field once.
     pub centred: bool,
+    /// The start sheet: the cells under the screen when the pattern was
+    /// first shown. The field drawn holds it for the session.
+    pub sheet: Option<Bounds>,
     /// Quarter turns clockwise, 0 to 3.
     quarters: u8,
     /// The size of the field, as last drawn: a turn keeps its middle.
@@ -45,6 +49,7 @@ impl Default for View {
             offset: Vec2::ZERO,
             bead: 20.0,
             centred: false,
+            sheet: None,
             quarters: 0,
             field: Vec2::ZERO,
         }
