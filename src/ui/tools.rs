@@ -1,33 +1,91 @@
 //! The floating panel of tools.
 
 use obusina_canvas::Turn;
-use obusina_panel::{FloatingPanel, Orientation};
+use obusina_panel::{Edge, FloatingPanel, Orientation, Placement};
 use rust_i18n::t;
 
 use crate::app::{App, Tool};
-use crate::ui::{button, icons};
+use crate::ui::{button, icons, lines};
 
-/// Where the panel stands the first time, from the top left of the window.
-const PLACE: egui::Vec2 = egui::vec2(16.0, 16.0);
+/// The name the place of the panel is kept by.
+const NAME: &str = "tools";
+
+/// A group of buttons, kept on one line.
+#[derive(Debug, Clone, Copy)]
+enum Group {
+    /// Undo and redo.
+    History,
+    /// The quarter turns of the field.
+    Turns,
+    /// The pencil, the fill, the picker.
+    Tools,
+    /// The kind of grid.
+    Grid,
+    /// Save.
+    Save,
+}
+
+/// The groups, in the order they stand.
+const GROUPS: [Group; 5] = [
+    Group::History,
+    Group::Turns,
+    Group::Tools,
+    Group::Grid,
+    Group::Save,
+];
+
+impl Group {
+    /// How many buttons the group has.
+    fn count(self) -> usize {
+        match self {
+            Group::History | Group::Turns => 2,
+            Group::Tools => 3,
+            Group::Grid | Group::Save => 1,
+        }
+    }
+
+    /// Shows the buttons of the group.
+    fn show(self, app: &mut App, ui: &mut egui::Ui) {
+        match self {
+            Group::History => history(app, ui),
+            Group::Turns => turns(app, ui),
+            Group::Tools => tools(app, ui),
+            Group::Grid => grid(app, ui),
+            Group::Save => save(app, ui),
+        }
+    }
+}
 
 /// Shows the panel of tools.
 pub fn show(app: &mut App, context: &egui::Context) {
-    FloatingPanel::new("tools", t!("panel.tools"))
-        .place(egui::Align2::LEFT_TOP, PLACE)
-        .show(context, |ui, orientation| {
-            history(app, ui);
-            gap(ui, orientation);
-            turns(app, ui);
-            gap(ui, orientation);
-            tools(app, ui);
-            gap(ui, orientation);
-            grid(app, ui);
-            gap(ui, orientation);
-            save(app, ui);
+    let placement = app
+        .settings
+        .panel(NAME)
+        .unwrap_or(Placement::docked(Edge::Top, 0.0));
+    let shown = FloatingPanel::new(NAME, t!("panel.tools"))
+        .placement(placement)
+        .show(context, |ui, room| {
+            let spacing = ui.spacing().item_spacing;
+            let split = lines::split(room, &GROUPS.map(Group::count), spacing);
+            ui.with_layout(lines::across(room.orientation), |ui| {
+                for line in split {
+                    ui.with_layout(lines::along_layout(room.orientation), |ui| {
+                        for (index, group) in GROUPS[line].iter().enumerate() {
+                            if index > 0 {
+                                gap(ui, room.orientation);
+                            }
+                            group.show(app, ui);
+                        }
+                    });
+                }
+            });
             if let Some(message) = &app.message {
                 ui.label(message);
             }
         });
+    if shown.changed {
+        app.keep_panel(NAME, shown.placement);
+    }
 }
 
 /// A space between two groups of buttons. A separator is not used: in a

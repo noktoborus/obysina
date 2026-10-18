@@ -349,13 +349,15 @@ EX-  a `SidePanel` holding the palette
 EX-  an `egui::Window` with its title bar
 REF  crates/obusina-panel/README.md
 
-RULE ui.zones : the window has five zones, the four edges split by the
-     diagonals from the corners, and the large centre
-THEN a panel dragged to the left or the right edge is a column, to the top
-     or the bottom a row; in the centre it keeps its shape
-THEN the zones are drawn while a panel is dragged, the one under the pointer
-     filled
-THEN the content of a panel lays itself out by the `Orientation` it is given
+RULE ui.dock : a panel let go with the pointer in an edge strip docks to that
+     edge: a column at the left or the right, a row at the top or the
+     bottom; let go in the middle it stays free and keeps its shape
+THEN the shape changes on release only; while dragged, the strips and a ghost
+     of the panel at its edge are drawn
+THEN the content of a panel lays itself out by the `Room` it is given and
+     breaks itself into lines to fit its length
+THEN the place of each panel is kept in the settings, by the name of the panel
+REF  docs/panels.md
 
 RULE ui.button : a button of a panel is made by `ui::button`, all of one
      size, `button::SIZE`, the size of a swatch; each is an

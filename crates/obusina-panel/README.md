@@ -1,40 +1,53 @@
 # obusina-panel
 
 A floating panel for egui with no title: a grip of dots moves it, a tap on the
-grip folds it, and the zone of the window it is dragged to lays it out.
+grip folds it, and the edge of the window it is let go at docks it.
 
 ## Scope
 
-- `FloatingPanel::new(id, name).place(corner, offset).show(context, |ui, orientation| …)`.
-  `name` is what a screen reader reads for the grip.
+- `FloatingPanel::new(id, name).placement(placement).show(context, |ui, room| …)`.
+  `name` is what a screen reader reads for the grip. `placement` is where the
+  panel stands the first time; later it keeps its own.
 - The grip stands at the start of the panel: on the left of a row, on top of
   a column. Dragging it moves the panel; a tap folds the panel to the grip and
   a second tap opens it.
-- While the grip is dragged, the zone under the pointer lays the panel out:
+- The pointer chooses the edge, by a fixed distance (`edge.rs`):
 
 ```text
 ┌──────────────────────────┐
-│╲          top           ╱│      left, right   a column
-│  ╲ ┌────────────────┐ ╱  │      top, bottom   a row
-│left│     centre     │right      centre        as it was
-│  ╱ └────────────────┘ ╲  │
-│╱         bottom         ╲│
+│           top            │   each strip reaches SNAP into the window,
+│    ┌────────────────┐    │   or SNAP_PART of a small window
+│left│      free      │right
+│    └────────────────┘    │   in a corner the nearer edge wins; the
+│          bottom          │   edge held wins by HYSTERESIS
 └──────────────────────────┘
 ```
 
-  The centre is the window less `EDGE` of its size on every side; the
-  diagonals from the corners split the rest. The pointer decides the zone,
-  not the panel: a panel wider than an edge zone still reaches it.
-- While a panel is dragged, the zones are drawn over the content and under
-  the panels, and the zone under the pointer is filled.
-- The point of the panel taken by the pointer stays under it: the panel is
-  placed from the pointer before it is drawn, so it neither lags a frame nor
-  loses the first points of a drag.
-- The panel is kept inside the window, also when the window shrinks.
+- A drag goes through three states:
+
+```text
+held ──moved──► dragged ──let go at an edge──► docked: against the edge,
+  │                │                            laid out by it
+  │                └─────let go in the middle─► free: where it is, in the
+  │                                             orientation it had
+  └──let go, not moved──► folded or opened
+```
+
+  While dragged, the panel keeps its shape and follows the pointer. The
+  strips are drawn, the one under the pointer filled, with a ghost of the
+  panel where it will stand. The shape changes once, on release.
+- `Placement` holds the place as a part of the room of the window, so a
+  docked panel stays on its edge and a free one keeps its part of the window
+  when the window changes its size. The room is the window less `MARGIN`.
+- `PanelResponse::changed` is set in the frame the panel is let go or
+  folded; `PanelResponse::placement` is then the place to keep for the next
+  start.
+- `Room` gives the content its orientation and the length it may take along
+  it. The content breaks itself into lines to fit it.
 
 | Row | Column | Folded | Dragged to the left |
 | --- | --- | --- | --- |
-| ![A row][picture-horizontal] | ![A column][picture-vertical] | ![Folded][picture-folded] | ![The zones][picture-zones] |
+| ![A row][picture-horizontal] | ![A column][picture-vertical] | ![Folded][picture-folded] | ![The strips and the ghost][picture-zones] |
 
 [picture-horizontal]: img/horizontal.png
 [picture-vertical]: img/vertical.png
@@ -44,9 +57,10 @@ grip folds it, and the zone of the window it is dragged to lays it out.
 ## Boundaries
 
 It knows egui and nothing of the application. It holds no text: the caller
-names the grip. Its place, its fold and its orientation live in the temporary
-memory of egui, so they are lost when the program ends. The content lays
-itself out by the `Orientation` it is given; the panel does not reflow it.
+names the grip. Its state lives in the temporary memory of egui; the caller
+keeps `Placement` if it should outlive the program. The content lays itself
+out by the `Room` it is given; the panel does not reflow it. Two panels do not
+avoid each other.
 
 ## Errors
 

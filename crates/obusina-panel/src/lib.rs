@@ -2,11 +2,13 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
-mod zone;
+mod edge;
+mod placement;
 
-pub use zone::{EDGE, Orientation, Zone};
+pub use edge::{Edge, HYSTERESIS, Orientation, SNAP, SNAP_PART};
+pub use placement::{MARGIN, Placement};
 
-use egui::{Align2, Context, Id, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
+use egui::{Context, Id, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
 
 /// The thin side of the grip: wide enough for a finger.
 const GRIP_THIN: f32 = 18.0;
@@ -16,28 +18,56 @@ const GRIP_LONG: f32 = 36.0;
 const DOT_STEP: f32 = 6.0;
 /// The radius of a dot of the grip.
 const DOT_RADIUS: f32 = 1.5;
-/// The width of the lines between the zones.
+/// The width of the outline of a strip and of the ghost.
 const ZONE_LINE: f32 = 1.5;
-/// How strong the lines between the zones are.
+/// How strong the outline of a strip is.
 const ZONE_LINE_ALPHA: f32 = 0.6;
-/// How strong the fill of the zone under the pointer is.
+/// How strong the fill of the strip under the pointer is.
 const ZONE_FILL_ALPHA: f32 = 0.35;
+/// How strong the fill of the ghost is.
+const GHOST_FILL_ALPHA: f32 = 0.5;
+
+/// The room the content of a panel has.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Room {
+    /// How the content is laid out.
+    pub orientation: Orientation,
+    /// The length the content may take along its orientation before the
+    /// window ends. The content breaks itself into lines to fit it; the
+    /// panel does not reflow it.
+    pub length: f32,
+}
 
 /// What a panel remembers from frame to frame.
 #[derive(Debug, Clone, Copy)]
 struct State {
-    /// The top left corner.
-    position: Pos2,
-    /// Only the grip is shown.
-    folded: bool,
-    /// How the content is laid out.
-    orientation: Orientation,
-    /// While the grip is held: the point of the panel under the pointer,
-    /// from its top left corner.
-    grab: Option<Vec2>,
+    /// Where it stands.
+    placement: Placement,
+    /// The size of the open panel in each orientation, as last drawn:
+    /// horizontal, then vertical.
+    open: [Option<Vec2>; 2],
+    /// The size as drawn in the last frame.
+    size: Vec2,
+    /// While the grip is held.
+    drag: Option<Drag>,
     /// The content changed its shape: the next frame measures the panel
     /// again instead of laying the content out in the size it had.
     measure: bool,
+}
+
+/// A drag of the grip.
+#[derive(Debug, Clone, Copy)]
+struct Drag {
+    /// The point of the panel under the pointer, from its top left corner.
+    grab: Vec2,
+    /// The top left corner of the panel, which follows the pointer.
+    position: Pos2,
+    /// The pointer.
+    pointer: Pos2,
+    /// The edge the panel docks to when it is let go.
+    target: Option<Edge>,
+    /// The pointer went far enough for a drag, not a tap.
+    moved: bool,
 }
 
 /// What the panel did in this frame.
@@ -48,22 +78,24 @@ pub struct PanelResponse<R> {
     pub grip: Response,
     /// The whole panel.
     pub rect: Rect,
-    /// How the content is laid out now.
-    pub orientation: Orientation,
+    /// Where the panel stands now.
+    pub placement: Placement,
+    /// The panel was let go or folded in this frame: `placement` is one the
+    /// caller may keep, to give back at the next start.
+    pub changed: bool,
 }
 
 /// A floating panel with no title: a grip of dots moves it, a tap on the grip
-/// folds it. Its content stands in the middle across the panel: on one
-/// line in a row, on one axis in a column.
+/// folds it. Its content stands in the middle across the panel.
 ///
-/// While it is dragged, the zone of the window under the pointer lays it out
-/// ([`Zone::orientation`]). It is kept inside the window.
+/// While it is dragged it keeps its shape. The edge strip under the pointer
+/// and a ghost of the panel at that edge are drawn; on release the panel
+/// takes the place of the ghost. Let go in the middle, it stays free and
+/// keeps its orientation.
 pub struct FloatingPanel {
     id: Id,
     name: String,
-    corner: Align2,
-    offset: Vec2,
-    orientation: Orientation,
+    placement: Placement,
 }
 
 impl FloatingPanel {
@@ -72,117 +104,138 @@ impl FloatingPanel {
         FloatingPanel {
             id: Id::unique(("floating-panel", id_salt)),
             name: name.into(),
-            corner: Align2::LEFT_TOP,
-            offset: Vec2::ZERO,
-            orientation: Orientation::Horizontal,
+            placement: Placement::docked(Edge::Top, 0.0),
         }
     }
 
-    /// Where the panel stands the first time: its `corner` at the same
-    /// corner of the window, moved by `offset`.
-    pub fn place(mut self, corner: Align2, offset: Vec2) -> Self {
-        self.corner = corner;
-        self.offset = offset;
+    /// Where the panel stands the first time it is shown. Later it keeps the
+    /// place it was moved to.
+    pub fn placement(mut self, placement: Placement) -> Self {
+        self.placement = placement;
         self
     }
 
-    /// How the panel is laid out the first time.
-    pub fn orientation(mut self, orientation: Orientation) -> Self {
-        self.orientation = orientation;
-        self
-    }
-
-    /// Shows the panel; `add_contents` lays out the content in the
-    /// orientation it is given.
+    /// Shows the panel; `add_contents` lays out the content in the room it is
+    /// given.
     pub fn show<R>(
         self,
         context: &Context,
-        add_contents: impl FnOnce(&mut Ui, Orientation) -> R,
+        add_contents: impl FnOnce(&mut Ui, Room) -> R,
     ) -> PanelResponse<R> {
         let window = context.content_rect();
         let stored = context.data(|data| data.get_temp::<State>(self.id));
         let mut state = stored.unwrap_or(State {
-            position: self.corner.pos_in_rect(&window) + self.offset,
-            folded: false,
-            orientation: self.orientation,
-            grab: None,
-            measure: false,
+            placement: self.placement,
+            open: [None; 2],
+            size: Vec2::ZERO,
+            drag: None,
+            measure: true,
         });
         let (pointer, held) =
             context.input(|input| (input.pointer.latest_pos(), input.pointer.primary_down()));
-        if let (Some(grab), Some(pointer), true) = (state.grab, pointer, held) {
-            state.position = pointer - grab;
+        if let (Some(drag), Some(pointer), true) = (&mut state.drag, pointer, held) {
+            drag.position = pointer - drag.grab;
+            drag.pointer = pointer;
+            if drag.moved {
+                drag.target = Edge::under(window, pointer, drag.target);
+            }
         }
         let measure = std::mem::take(&mut state.measure);
-        let pivot = if stored.is_some() {
-            Align2::LEFT_TOP
-        } else {
-            self.corner
+        let position = match state.drag {
+            Some(drag) => drag.position,
+            None => state.placement.position(window, state.size),
         };
+        let orientation = state.placement.orientation();
+        let frame = egui::Frame::window(&context.global_style());
+        let room = room(context, window, orientation, &frame);
 
         let shown = egui::Area::new(self.id)
             .order(egui::Order::Foreground)
             .movable(false)
             .constrain(false)
-            .pivot(pivot)
+            .pivot(egui::Align2::LEFT_TOP)
             .sizing_pass(measure)
-            .current_pos(state.position)
+            .current_pos(position)
             .show(context, |ui| {
-                egui::Frame::window(ui.style()).show(ui, |ui| {
-                    let layout = match state.orientation {
+                frame.show(ui, |ui| {
+                    let layout = match orientation {
                         Orientation::Horizontal => egui::Layout::left_to_right(egui::Align::Center),
                         Orientation::Vertical => egui::Layout::top_down(egui::Align::Center),
                     };
-                    ui.with_layout(layout, |ui| self.body(ui, &state, add_contents))
+                    ui.with_layout(layout, |ui| self.body(ui, &state, room, add_contents))
                         .inner
                 })
             });
         let (grip, inner) = shown.inner.inner;
         let rect = shown.response.rect;
+        let resized = rect.size() != state.size;
+        state.size = rect.size();
+        if !state.placement.folded {
+            state.open[index(orientation)] = Some(rect.size());
+        }
 
-        if stored.is_none() {
-            let anchor = state.position;
-            let pivot = vec2(self.corner.x().to_factor(), self.corner.y().to_factor());
-            state.position = anchor - pivot * rect.size();
-        } else if state.grab.is_none() {
-            state.position = rect.min;
-        }
-        if grip.is_pointer_button_down_on() && state.grab.is_none() {
-            let origin = context.input(|input| input.pointer.press_origin());
-            state.grab = origin.map(|origin| origin - rect.min);
-        }
-        if grip.dragged()
-            && let Some(orientation) = grip
-                .interact_pointer_pos()
-                .and_then(|point| Zone::of(window, point).orientation())
-            && orientation != state.orientation
+        if grip.is_pointer_button_down_on()
+            && state.drag.is_none()
+            && let Some(origin) = context.input(|input| input.pointer.press_origin())
         {
-            state.orientation = orientation;
-            state.measure = true;
-            let start = grip.rect.min - rect.min;
-            state.grab = state
-                .grab
-                .map(|grab| grab.clamp(start, start + grip_size(orientation)));
+            state.drag = Some(Drag {
+                grab: origin - rect.min,
+                position: rect.min,
+                pointer: origin,
+                target: None,
+                moved: false,
+            });
         }
-        if grip.dragged() {
-            let under = grip
-                .interact_pointer_pos()
-                .map(|point| Zone::of(window, point));
-            draw_zones(context, window, under);
+        if let Some(drag) = &mut state.drag
+            && grip.dragged()
+            && !drag.moved
+        {
+            drag.moved = true;
+            drag.target = Edge::under(window, drag.pointer, None);
         }
-        if !held {
-            state.grab = None;
+        let start = frame.total_margin();
+        let ghost = state.drag.filter(|drag| drag.moved).and_then(|drag| {
+            let edge = drag.target?;
+            Some(ghost(
+                window,
+                &state,
+                vec2(start.left, start.top),
+                drag,
+                edge,
+            ))
+        });
+        if let Some(drag) = state.drag.filter(|drag| drag.moved) {
+            draw_zones(context, window, drag.target, ghost);
+        }
+
+        let mut changed = false;
+        if !held
+            && let Some(drag) = state.drag.take()
+            && drag.moved
+        {
+            let folded = state.placement.folded;
+            state.placement = match (drag.target, ghost) {
+                (Some(edge), Some(ghost)) => Placement::against(edge, window, ghost),
+                _ => Placement::free(
+                    Placement::at(window, rect.size(), drag.position),
+                    orientation,
+                ),
+            };
+            state.placement.folded = folded;
+            state.measure = state.placement.orientation() != orientation;
+            changed = true;
         }
         if grip.clicked() {
-            state.folded = !state.folded;
+            state.placement.folded = !state.placement.folded;
             state.measure = true;
+            changed = true;
         }
+
         let measured = window.is_positive();
         if measured {
-            state.position = inside(window, Rect::from_min_size(state.position, rect.size()));
             context.data_mut(|data| data.insert_temp(self.id, state));
         }
-        if !measured || stored.is_none() || state.grab.is_some() || grip.clicked() {
+        if !measured || measure || state.measure || resized || changed || state.drag.is_some() {
             context.request_repaint();
         }
 
@@ -190,7 +243,8 @@ impl FloatingPanel {
             inner,
             grip,
             rect,
-            orientation: state.orientation,
+            placement: state.placement,
+            changed,
         }
     }
 
@@ -199,19 +253,20 @@ impl FloatingPanel {
         &self,
         ui: &mut Ui,
         state: &State,
-        add_contents: impl FnOnce(&mut Ui, Orientation) -> R,
+        room: Room,
+        add_contents: impl FnOnce(&mut Ui, Room) -> R,
     ) -> (Response, Option<R>) {
         let grip = self.grip(ui, state);
-        let inner = (!state.folded).then(|| add_contents(ui, state.orientation));
+        let inner = (!state.placement.folded).then(|| add_contents(ui, room));
         (grip, inner)
     }
 
     /// The grip: a field of dots across the start of the panel.
     fn grip(&self, ui: &mut Ui, state: &State) -> Response {
-        let size = grip_size(state.orientation);
+        let size = grip_size(state.placement.orientation());
         let response = ui.allocate_response(size, Sense::click_and_drag());
         let name = self.name.clone();
-        let folded = state.folded;
+        let folded = state.placement.folded;
         response.widget_info(move || {
             let mut info = egui::WidgetInfo::labeled(egui::accesskit::Role::Button, true, &name);
             info.selected = Some(folded);
@@ -237,9 +292,45 @@ impl FloatingPanel {
     }
 }
 
-/// The zones of the window, drawn over the field and under the panels while
-/// a panel is dragged; the zone under the pointer is filled.
-fn draw_zones(context: &Context, window: Rect, under: Option<Zone>) {
+/// The room of the content of a panel laid out as `orientation`: the length
+/// of the window less the margins, the frame and the grip.
+fn room(context: &Context, window: Rect, orientation: Orientation, frame: &egui::Frame) -> Room {
+    let space = placement::room(window).size();
+    let margin = frame.total_margin().sum();
+    let spacing = context.global_style().spacing.item_spacing;
+    let length = match orientation {
+        Orientation::Horizontal => space.x - margin.x - GRIP_THIN - spacing.x,
+        Orientation::Vertical => space.y - margin.y - GRIP_THIN - spacing.y,
+    };
+    Room {
+        orientation,
+        length: length.max(0.0),
+    }
+}
+
+/// Where the panel stands if it is let go at `edge`: against the edge, its
+/// grip under the pointer along it. `start` is where the grip begins in the
+/// panel. The size in the orientation of the edge is the one last drawn;
+/// before the panel was ever drawn so, its sides swap.
+fn ghost(window: Rect, state: &State, start: Vec2, drag: Drag, edge: Edge) -> Rect {
+    let target = edge.orientation();
+    let swapped = vec2(state.size.y, state.size.x);
+    let size = if target == state.placement.orientation() {
+        state.size
+    } else if state.placement.folded {
+        swapped
+    } else {
+        state.open[index(target)].unwrap_or(swapped)
+    };
+    let grab = drag.grab.clamp(start, start + grip_size(target));
+    let under = Rect::from_min_size(drag.pointer - grab, size);
+    let position = Placement::against(edge, window, under).position(window, size);
+    Rect::from_min_size(position, size)
+}
+
+/// The edge strips and the ghost, drawn over the field and under the panels
+/// while a panel is dragged; the strip under the pointer is filled.
+fn draw_zones(context: &Context, window: Rect, target: Option<Edge>, ghost: Option<Rect>) {
     let layer = egui::LayerId::new(egui::Order::Middle, Id::unique("floating-panel-zones"));
     let painter = context.layer_painter(layer);
     let selection = context.global_style().visuals.selection;
@@ -247,17 +338,28 @@ fn draw_zones(context: &Context, window: Rect, under: Option<Zone>) {
         ZONE_LINE,
         selection.stroke.color.gamma_multiply(ZONE_LINE_ALPHA),
     );
-    for zone in Zone::ALL {
-        let fill = if under == Some(zone) {
+    for edge in Edge::ALL {
+        let fill = if target == Some(edge) {
             selection.bg_fill.gamma_multiply(ZONE_FILL_ALPHA)
         } else {
             egui::Color32::TRANSPARENT
         };
-        painter.add(egui::Shape::convex_polygon(
-            zone.outline(window).to_vec(),
+        painter.rect(
+            edge.strip(window),
+            0.0,
             fill,
             line,
-        ));
+            egui::StrokeKind::Inside,
+        );
+    }
+    if let Some(ghost) = ghost {
+        painter.rect(
+            ghost,
+            context.global_style().visuals.window_corner_radius,
+            selection.bg_fill.gamma_multiply(GHOST_FILL_ALPHA),
+            egui::Stroke::new(ZONE_LINE, selection.stroke.color),
+            egui::StrokeKind::Inside,
+        );
     }
 }
 
@@ -269,39 +371,10 @@ fn grip_size(orientation: Orientation) -> Vec2 {
     }
 }
 
-/// The top left corner that keeps `rect` inside `window`, as far as it fits.
-fn inside(window: Rect, rect: Rect) -> Pos2 {
-    let x = rect
-        .min
-        .x
-        .min(window.max.x - rect.width())
-        .max(window.min.x);
-    let y = rect
-        .min
-        .y
-        .min(window.max.y - rect.height())
-        .max(window.min.y);
-    egui::pos2(x, y)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use egui::pos2;
-
-    #[test]
-    fn a_panel_past_the_edge_comes_back_inside() {
-        let window = Rect::from_min_max(pos2(0.0, 0.0), pos2(400.0, 300.0));
-        let rect = Rect::from_min_size(pos2(380.0, -10.0), vec2(100.0, 50.0));
-
-        assert_eq!(inside(window, rect), pos2(300.0, 0.0));
-    }
-
-    #[test]
-    fn a_panel_wider_than_the_window_keeps_its_start_in_sight() {
-        let window = Rect::from_min_max(pos2(0.0, 0.0), pos2(100.0, 300.0));
-        let rect = Rect::from_min_size(pos2(50.0, 10.0), vec2(200.0, 50.0));
-
-        assert_eq!(inside(window, rect), pos2(0.0, 10.0));
+/// The place of `orientation` in [`State::open`].
+fn index(orientation: Orientation) -> usize {
+    match orientation {
+        Orientation::Horizontal => 0,
+        Orientation::Vertical => 1,
     }
 }

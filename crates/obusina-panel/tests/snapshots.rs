@@ -4,7 +4,7 @@
 
 use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, SnapshotOptions};
-use obusina_panel::{FloatingPanel, Orientation};
+use obusina_panel::{FloatingPanel, Orientation, Placement};
 
 /// Where the pictures are kept: beside the README, which shows them.
 const PICTURES: &str = "img";
@@ -23,8 +23,7 @@ fn harness(orientation: Orientation) -> Harness<'static> {
             ui.painter()
                 .rect_filled(window, 0.0, egui::Color32::from_gray(200));
             FloatingPanel::new("tools", GRIP)
-                .place(egui::Align2::LEFT_TOP, egui::vec2(12.0, 12.0))
-                .orientation(orientation)
+                .placement(Placement::free(egui::Vec2::ZERO, orientation))
                 .show(ui.ctx(), |ui, _| {
                     for label in ["A", "B", "C"] {
                         let _ = ui.button(label);
@@ -57,8 +56,9 @@ fn folded() {
     picture(&mut harness, "folded");
 }
 
-/// The zones drawn while the grip is dragged to the left edge, before it is
-/// let go.
+/// The edge strips and the ghost drawn while the grip of a row is dragged to
+/// the left edge, before it is let go: the row keeps its shape, the ghost is
+/// a column against the edge.
 #[test]
 fn zones() {
     let mut harness = harness(Orientation::Horizontal);

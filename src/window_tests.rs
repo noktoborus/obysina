@@ -25,11 +25,17 @@ struct Window {
 
 /// The window over a new pattern, to be saved in a scratch directory.
 fn window() -> Window {
-    let directory = tempfile::tempdir().expect("a scratch directory");
+    window_in(tempfile::tempdir().expect("a scratch directory"), SIZE)
+}
+
+/// The window of `size` over the pattern and the settings kept in
+/// `directory`.
+fn window_in(directory: tempfile::TempDir, size: egui::Vec2) -> Window {
     let path = directory.path().join("pattern.json");
+    let settings = directory.path().join(crate::settings::FILE);
     let mut harness = Harness::builder()
-        .with_size(SIZE)
-        .build_eframe(move |_| App::open(Some(path)));
+        .with_size(size)
+        .build_eframe(move |_| App::open(Some(path), Some(settings)));
     harness.run();
     Window { harness, directory }
 }
@@ -229,7 +235,7 @@ fn a_saved_pattern_opens_again() {
     window.click(&t!("file.save"));
 
     let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path));
+    let again = App::open(Some(path), None);
     assert_eq!(again.pattern, window.harness.state().pattern);
     assert_eq!(
         window.harness.state().message.as_deref(),
@@ -243,7 +249,7 @@ fn a_newer_file_is_never_written_over() {
     let path = directory.path().join("pattern.json");
     std::fs::write(&path, "{\"format\": 99}").expect("the file is written");
 
-    let app = App::open(Some(path.clone()));
+    let app = App::open(Some(path.clone()), None);
 
     assert_eq!(app.path, None);
     assert_eq!(app.message.as_deref(), Some(&*t!("error.pattern.newer")));
@@ -294,6 +300,85 @@ fn a_panel_at_a_side_stands_in_a_column() {
 
     window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, 8.0));
     assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+}
+
+#[test]
+fn a_panel_keeps_its_shape_until_it_is_let_go() {
+    let mut window = window();
+    let start = window
+        .harness
+        .get_by_label(&t!("panel.tools"))
+        .rect()
+        .center();
+    let target = pos2(8.0, SIZE.y / 2.0);
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+
+    window.harness.event(Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    for step in 1..=10 {
+        let point = start + (target - start) * (step as f32 / 10.0);
+        window.harness.event(Event::PointerMoved(point));
+        window.harness.step();
+    }
+    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+
+    window.harness.event(button(target, false));
+    window.harness.run();
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+}
+
+#[test]
+fn a_docked_panel_stays_on_its_edge_when_the_window_shrinks() {
+    let mut window = window();
+    let narrow = egui::vec2(700.0, 600.0);
+
+    window.harness.set_size(narrow);
+    window.harness.run();
+
+    let swap = window.harness.get_by_label(&t!("palette.swap")).rect();
+    assert!(swap.max.x <= narrow.x, "{swap:?}");
+    assert!(
+        swap.max.x > narrow.x - 3.0 * crate::ui::button::SIZE.x,
+        "{swap:?}"
+    );
+}
+
+#[test]
+fn the_place_of_a_panel_is_kept_for_the_next_start() {
+    let mut window = window();
+    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    let Window { harness, directory } = window;
+    drop(harness);
+
+    let window = window_in(directory, SIZE);
+
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
+    assert!(grip.min.x < SIZE.x / 4.0, "{grip:?}");
+}
+
+#[test]
+fn the_beads_fit_a_short_window() {
+    let short = egui::vec2(1000.0, 260.0);
+    let window = window_in(tempfile::tempdir().expect("a scratch directory"), short);
+    let screen = egui::Rect::from_min_size(Pos2::ZERO, short);
+    let app = window.harness.state();
+
+    let mut names: Vec<String> = (0..app.pattern.palette().len())
+        .map(|index| swatch(app, index))
+        .collect();
+    names.push(t!("palette.empty").to_string());
+    for name in names {
+        let rect = window.harness.get_by_label(&name).rect();
+        assert!(screen.contains_rect(rect), "{name}: {rect:?}");
+    }
 }
 
 #[test]

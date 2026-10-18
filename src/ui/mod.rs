@@ -4,5 +4,6 @@ pub mod access;
 pub mod button;
 pub mod grid_menu;
 pub mod icons;
+pub mod lines;
 pub mod palette;
 pub mod tools;

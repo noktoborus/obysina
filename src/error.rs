@@ -18,6 +18,27 @@ pub enum AppError {
         #[source]
         source: PatternError,
     },
+    /// The settings file could not be read.
+    #[error("settings file unreadable")]
+    SettingsRead {
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
+    /// The settings file is not one this version reads.
+    #[error("settings file invalid")]
+    SettingsInvalid {
+        /// What went wrong.
+        #[source]
+        source: serde_yaml_ng::Error,
+    },
+    /// The settings file could not be written.
+    #[error("settings file not written")]
+    SettingsWrite {
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
 }
 
 impl From<PatternError> for AppError {
@@ -44,6 +65,10 @@ impl AppError {
                 | PatternError::Colour { .. }
                 | PatternError::Size { .. } => "error.pattern.invalid",
             },
+            AppError::SettingsRead { .. } | AppError::SettingsInvalid { .. } => {
+                "error.settings.read"
+            }
+            AppError::SettingsWrite { .. } => "error.settings.write",
         }
     }
 }

@@ -9,6 +9,7 @@ use rust_i18n::t;
 
 use crate::edit::{Edit, History};
 use crate::error::AppError;
+use crate::settings::Settings;
 use crate::ui::access::Named;
 
 /// The size of a new pattern: columns and rows.
@@ -59,13 +60,17 @@ pub struct App {
     pub(crate) message: Option<String>,
     /// The menu of the kinds of grid.
     pub(crate) menu: plate_menu::PlateMenu,
+    /// The settings: the place of each panel.
+    pub(crate) settings: Settings,
 }
 
 impl App {
-    /// The window over the pattern at `path`. A file that is not there is a
-    /// new pattern to be saved there. A file that cannot be read is never
-    /// written over (`RULE pattern.newer`).
-    pub fn open(path: Option<PathBuf>) -> App {
+    /// The window over the pattern at `path`, with the settings of the file
+    /// `settings`. A pattern file that is not there is a new pattern to be
+    /// saved there. A file that cannot be read is never written over
+    /// (`RULE pattern.newer`).
+    pub fn open(path: Option<PathBuf>, settings: Option<PathBuf>) -> App {
+        let (settings, settings_error) = Settings::load(settings);
         let (pattern, path, message) = match path {
             Some(path) if path.exists() => match obusina_pattern::read(&path) {
                 Ok(pattern) => (pattern, Some(path), None),
@@ -73,6 +78,7 @@ impl App {
             },
             other => (new_pattern(), other, None),
         };
+        let message = message.or_else(|| settings_error.map(|error| say(&error)));
         App {
             pattern,
             path,
@@ -82,6 +88,14 @@ impl App {
             history: History::default(),
             message,
             menu: plate_menu::PlateMenu::new(),
+            settings,
+        }
+    }
+
+    /// Keeps the place of the panel `name` for the next start.
+    pub(crate) fn keep_panel(&mut self, name: &str, placement: obusina_panel::Placement) {
+        if let Err(error) = self.settings.keep_panel(name, placement) {
+            self.message = Some(say(&error));
         }
     }
 

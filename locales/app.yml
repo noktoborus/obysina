@@ -94,3 +94,9 @@ error.pattern.newer:
 error.pattern.invalid:
   en: "The pattern file is damaged"
   ru: "Файл схемы повреждён"
+error.settings.read:
+  en: "The settings cannot be read; the program started from the defaults"
+  ru: "Настройки не читаются; программа запущена с настройками по умолчанию"
+error.settings.write:
+  en: "The settings cannot be saved"
+  ru: "Настройки не сохраняются"

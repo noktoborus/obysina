@@ -1,38 +1,39 @@
 # Panels
 
-How a floating panel chooses where it stands and how it is laid out.
+How a floating panel chooses where it stands and how it is laid out. The
+widget itself is `crates/obusina-panel/README.md`.
 
 ## Decisions
 
-Decided, not built yet. Each item replaces the current behaviour of
-`crates/obusina-panel`.
-
 1. **The shape changes on release.** While the grip is dragged, the panel
-   keeps its shape. A ghost outline shows where the panel will stand and in
-   which orientation. On release the panel takes that place.
+   keeps its shape. A ghost shows where the panel will stand and in which
+   orientation.
    - Why: a panel that changes shape under the finger jumps. It also
      vanishes for one frame while it is measured again.
-2. **The pointer decides the edge, by a fixed distance.** An edge zone is
-   `SNAP` points wide, cut to a part of a small window. In a corner the
-   nearer edge wins. The edge already chosen holds until the other one is
-   nearer by `HYSTERESIS`.
+2. **The pointer decides the edge, by a fixed distance.** An edge strip is
+   `SNAP` points wide, cut to `SNAP_PART` of a small window. The edge held
+   wins by `HYSTERESIS`.
    - Why: zones made of a part of the window are huge on a monitor and
      uneven on a phone. A pointer on a border made the panel flip.
    - The pointer, not the panel: a wide panel still reaches an edge.
-   - Only the edge strips are drawn, no diagonals.
-3. **A panel keeps a place, not an orientation.** A place is one of two:
-   - docked: an edge and a position along it, as a part of its length;
-   - free: a position as a part of the window.
+3. **A panel keeps a place, not an orientation.** A docked panel stands
+   against its edge and is laid out by it. A free panel keeps its
+   orientation. Both keep their part of the window when it changes its size.
+4. **The content fits by length.** The content breaks itself into lines:
+   - the tools break between groups of buttons (`src/ui/lines.rs`); a group
+     is never split;
+   - the beads count how many swatches stand in a line, so the swatches and
+     the colours in hand fit.
+   - Why not a wrapping layout of egui: a column of egui that wraps starts
+     its next column after the whole width it was offered, and the panel
+     grows every frame.
+5. **A free panel does not turn.** A drag inside the middle keeps the
+   orientation. No gesture turns a panel in place.
+6. **The place of each panel is remembered.** `src/settings.rs` keeps the
+   `Placement` of each panel by its name in `settings.yaml`, written when a
+   panel is let go or folded.
 
-   A docked panel stands against its edge. Its orientation is the one of
-   the edge. A free panel keeps its orientation. When the window changes its
-   size, a docked panel stays on its edge, a free one keeps its part of the
-   window.
-4. **The content fits by length.** The content is given its orientation and
-   the length it may take along the axis. The palette computes how many
-   swatches stand in a line from that length; a column too tall for the
-   window becomes two columns.
-5. **A free panel does not turn.** A drag inside the centre keeps the
-   orientation. There is no gesture that turns a panel in place.
-6. **The place of each panel is remembered.** It is written to the
-   configuration and read at the next start.
+## Open questions
+
+- Two panels at two edges that meet overlap in the corner on a narrow
+  window. They do not avoid each other.

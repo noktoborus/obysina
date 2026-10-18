@@ -4,35 +4,64 @@
 use egui::{Color32, vec2};
 use rust_i18n::t;
 
-use obusina_panel::{FloatingPanel, Orientation};
+use obusina_panel::{Edge, FloatingPanel, Orientation, Placement, Room};
 
 use crate::app::App;
 use crate::ui::tools::gap;
-use crate::ui::{button, icons};
+use crate::ui::{button, icons, lines};
 
-/// Where the panel stands the first time, from the top right of the window.
-const PLACE: egui::Vec2 = vec2(-16.0, 16.0);
+/// The name the place of the panel is kept by.
+const NAME: &str = "palette";
 /// The space between two swatches.
 const SPACING: egui::Vec2 = vec2(4.0, 4.0);
-/// Swatches in one line of a row.
+/// Swatches in one line of a row, when the window is wide enough.
 const ROW: usize = 8;
-/// Swatches in one line of a column.
+/// Swatches in one line of a column, when the window is tall enough.
 const COLUMN: usize = 2;
+/// The buttons after the swatches: the two colours in hand and the swap.
+const IN_HAND: usize = 3;
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
-    FloatingPanel::new("palette", t!("panel.palette"))
-        .place(egui::Align2::RIGHT_TOP, PLACE)
-        .orientation(Orientation::Vertical)
-        .show(context, |ui, orientation| {
-            let per_line = match orientation {
-                Orientation::Horizontal => ROW,
-                Orientation::Vertical => COLUMN,
-            };
-            swatches(app, ui, per_line);
-            gap(ui, orientation);
+    let placement = app
+        .settings
+        .panel(NAME)
+        .unwrap_or(Placement::docked(Edge::Right, 0.0));
+    let shown = FloatingPanel::new(NAME, t!("panel.palette"))
+        .placement(placement)
+        .show(context, |ui, room| {
+            let count = app.pattern.palette().len() + 1;
+            let spacing = ui.spacing().item_spacing;
+            swatches(app, ui, per_line(room, count, spacing));
+            gap(ui, room.orientation);
             in_hand(app, ui);
         });
+    if shown.changed {
+        app.keep_panel(NAME, shown.placement);
+    }
+}
+
+/// How many of `count` swatches stand in one line, so the block of swatches
+/// and the colours in hand after it fit the length of `room`.
+///
+/// In a row a line runs along the panel: it holds [`ROW`], or fewer when the
+/// window is narrow. In a column the lines are stacked along the panel: a
+/// line holds [`COLUMN`], or more when the window is too short for the lines.
+fn per_line(room: Room, count: usize, spacing: egui::Vec2) -> usize {
+    let in_hand = lines::length(room.orientation, IN_HAND, spacing)
+        + lines::gap_length(room.orientation, spacing);
+    let length = room.length - in_hand;
+    let step = button::SIZE + SPACING;
+    match room.orientation {
+        Orientation::Horizontal => {
+            let fit = ((length + SPACING.x) / step.x).floor() as usize;
+            ROW.min(fit).max(1)
+        }
+        Orientation::Vertical => {
+            let lines = (((length + SPACING.y) / step.y).floor() as usize).max(1);
+            COLUMN.max(count.div_ceil(lines))
+        }
+    }
 }
 
 /// One swatch for each colour, and one for an empty place, `per_line` in a

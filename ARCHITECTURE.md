@@ -1,5 +1,9 @@
 # Architecture
 
+| Chapter | Subject |
+| --- | --- |
+| [docs/panels.md](docs/panels.md) | where a panel stands, how it is laid out, how its place is kept |
+
 ## Crates
 
 ```
@@ -19,8 +23,8 @@ experiments/glyphs     (nothing depends on it)
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
-| `obusina-panel` | a floating panel with a grip, laid out by the zone of the window it is dragged to |
-| `obusina` | the window, the panels, the history of edits, the text of the user |
+| `obusina-panel` | a floating panel with a grip, docked to the edge of the window it is let go at |
+| `obusina` | the window, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 
 `obusina-canvas -> obusina-pattern` is the one dependency between library
@@ -52,6 +56,9 @@ A fill is one step. A change of the kind of grid is one step too.
 | --- | --- | --- |
 | Linux, Windows | `src/main.rs` → `obusina::desktop` | the file named on the command line |
 | Android | `android_main` of `android/` → `obusina::android` | `pattern.json` in the internal data path |
+
+The settings are `settings.yaml` in the configuration directory of `APP_ID`,
+on Android in the internal data path (`src/settings.rs`).
 
 ## Rendering
 
