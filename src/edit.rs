@@ -1,6 +1,6 @@
 //! Every change to a pattern, so that it can be undone (`RULE ui.undo`).
 
-use obusina_pattern::{Cell, Grid, Pattern};
+use obusina_pattern::{Bounds, Cell, Grid, Pattern};
 
 /// One bead changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +25,13 @@ pub enum Edit {
         /// The kind after.
         after: Grid,
     },
+    /// The sheet changed its size.
+    Sheet {
+        /// The sheet before.
+        before: Option<Bounds>,
+        /// The sheet after.
+        after: Option<Bounds>,
+    },
 }
 
 impl Edit {
@@ -37,6 +44,7 @@ impl Edit {
                 }
             }
             Edit::Grid { after, .. } => pattern.set_grid(*after),
+            Edit::Sheet { after, .. } => pattern.set_sheet(*after),
         }
     }
 
@@ -49,6 +57,7 @@ impl Edit {
                 }
             }
             Edit::Grid { before, .. } => pattern.set_grid(*before),
+            Edit::Sheet { before, .. } => pattern.set_sheet(*before),
         }
     }
 }
@@ -83,6 +92,29 @@ impl History {
         if !changes.is_empty() {
             self.apply(pattern, Edit::Beads(changes));
         }
+    }
+
+    /// Gives the sheet a new size as a step. Changes of the size one after
+    /// another are one step: a number dragged changes it in every frame.
+    pub fn resize_sheet(&mut self, pattern: &mut Pattern, after: Bounds) {
+        let before = pattern.sheet();
+        if before == Some(after) {
+            return;
+        }
+        if self.undone.is_empty()
+            && let Some(Edit::Sheet { after: last, .. }) = self.done.last_mut()
+        {
+            *last = Some(after);
+            pattern.set_sheet(Some(after));
+            return;
+        }
+        self.apply(
+            pattern,
+            Edit::Sheet {
+                before,
+                after: Some(after),
+            },
+        );
     }
 
     /// True when there is a step to undo.

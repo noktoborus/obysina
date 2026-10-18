@@ -661,7 +661,7 @@ fn a_new_pattern_opens_on_the_middle_of_the_field() {
 fn the_sheet_starts_as_the_screen() {
     let window = window();
     let app = window.harness.state();
-    let sheet = app.view.sheet.expect("the field was shown");
+    let sheet = app.pattern.sheet().expect("the field was shown");
     let columns = SIZE.x / app.view.bead;
     let rows = SIZE.y / app.view.bead;
 
@@ -675,7 +675,7 @@ fn the_sheet_starts_as_the_screen() {
 #[test]
 fn a_size_typed_in_the_tools_resizes_the_sheet() {
     let mut window = window();
-    let before = window.harness.state().view.sheet.expect("a sheet");
+    let before = window.harness.state().pattern.sheet().expect("a sheet");
 
     window.harness.get_by_label(&t!("sheet.width")).click();
     window.harness.run();
@@ -686,7 +686,7 @@ fn a_size_typed_in_the_tools_resizes_the_sheet() {
     window.harness.key_press(egui::Key::Enter);
     window.harness.run();
 
-    let after = window.harness.state().view.sheet.expect("a sheet");
+    let after = window.harness.state().pattern.sheet().expect("a sheet");
     assert_eq!(after.width(), 12);
     assert_eq!(after.height(), before.height());
     let middle = |sheet: obusina_pattern::Bounds| sheet.min.column + sheet.max.column;
@@ -694,6 +694,23 @@ fn a_size_typed_in_the_tools_resizes_the_sheet() {
         (middle(after) - middle(before)).abs() <= 1,
         "{before:?} {after:?}"
     );
+
+    window.click(&t!("edit.undo"));
+    assert_eq!(window.harness.state().pattern.sheet(), Some(before));
+    assert!(!window.harness.state().history.can_undo(), "one step");
+}
+
+/// The sheet is part of the pattern: it is saved and opens again.
+#[test]
+fn the_sheet_is_saved_with_the_pattern() {
+    let mut window = window();
+    let sheet = window.harness.state().pattern.sheet().expect("a sheet");
+    window.click(&t!("file.save"));
+
+    let path = window.directory.path().join("pattern.json");
+    let again = App::open(Some(path), None);
+
+    assert_eq!(again.pattern.sheet(), Some(sheet));
 }
 
 /// The field drawn is the work area doubled: the sheet of 51 columns,

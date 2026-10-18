@@ -30,6 +30,13 @@ fn format_1_reads_its_beads() {
             max: Cell { column: 2, row: 3 },
         })
     );
+    assert_eq!(
+        pattern.sheet(),
+        Some(Bounds {
+            min: Cell { column: -4, row: 1 },
+            max: Cell { column: 3, row: 4 },
+        })
+    );
     assert_eq!(pattern.palette()[0].code.as_deref(), Some("DB-0010"));
     assert_eq!(pattern.get(Cell { column: -1, row: 2 }), Some(1));
     assert_eq!(pattern.get(Cell { column: 0, row: 2 }), None);
@@ -103,8 +110,8 @@ fn a_row_shorter_than_the_first_is_refused() {
     ));
 }
 
-/// The rows are the active area, and `origin` its place on the field: a
-/// pattern opens where it was, and a peyote column keeps its parity.
+/// The rows are the active area, and `rows_origin` its place on the field:
+/// a pattern opens where it was, and a peyote column keeps its parity.
 #[test]
 fn a_bead_moved_out_moves_the_origin() {
     let mut pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
@@ -113,7 +120,7 @@ fn a_bead_moved_out_moves_the_origin() {
     let text = pattern.to_json().expect("the pattern writes");
 
     assert!(
-        text.contains("\"origin\": [\n    -4,\n    1\n  ]"),
+        text.contains("\"rows_origin\": [\n    -4,\n    1\n  ]"),
         "{text}"
     );
     assert_eq!(Pattern::from_json(&text).expect("it reads back"), pattern);
@@ -131,6 +138,34 @@ fn a_pattern_with_no_beads_has_no_rows() {
     assert!(text.contains("\"rows\": []"), "{text}");
     let again = Pattern::from_json(&text).expect("it reads back");
     assert_eq!(again.bounds(), None);
+}
+
+/// The sheet is the size set by hand; a file may carry none, and a pattern
+/// opened from it has none until the window sets one.
+#[test]
+fn a_file_with_no_sheet_reads_with_none() {
+    let start = file(1).find("  \"sheet\"").expect("the file has a sheet");
+    let end = file(1).find("  \"bead_ratio\"").expect("and a bead ratio");
+    let mut text = file(1);
+    text.replace_range(start..end, "");
+
+    let pattern = Pattern::from_json(&text).expect("it reads");
+
+    assert_eq!(pattern.sheet(), None);
+    assert_eq!(pattern.counts(), [5, 5]);
+}
+
+#[test]
+fn a_sheet_of_no_cells_is_refused() {
+    let text = file(1).replace("      8,\n      4", "      0,\n      4");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::Sheet {
+            width: 0,
+            height: 4
+        })
+    ));
 }
 
 #[test]

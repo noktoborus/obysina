@@ -22,14 +22,15 @@ fn next_revision() -> u64 {
 /// A bead pattern.
 ///
 /// Only the cells that hold a bead are kept; every other cell of the field
-/// is empty. Two patterns are equal when they hold the same beads; the
-/// revision is not compared.
+/// is empty. Two patterns are equal when they hold the same beads and the
+/// same sheet; the revision is not compared.
 #[derive(Debug, Clone)]
 pub struct Pattern {
     grid: Grid,
     ratio: f32,
     palette: Vec<Bead>,
     beads: BTreeMap<Cell, usize>,
+    sheet: Option<Bounds>,
     revision: u64,
 }
 
@@ -39,6 +40,7 @@ impl PartialEq for Pattern {
             && self.ratio == other.ratio
             && self.palette == other.palette
             && self.beads == other.beads
+            && self.sheet == other.sheet
     }
 }
 
@@ -60,6 +62,7 @@ impl Pattern {
             ratio,
             palette,
             beads: BTreeMap::new(),
+            sheet: None,
             revision: next_revision(),
         })
     }
@@ -92,6 +95,30 @@ impl Pattern {
     /// The colours.
     pub fn palette(&self) -> &[Bead] {
         &self.palette
+    }
+
+    /// The sheet: the size of the work area set by hand, where it stands on
+    /// the field. `None` until one is set.
+    pub fn sheet(&self) -> Option<Bounds> {
+        self.sheet
+    }
+
+    /// Sets the sheet.
+    pub fn set_sheet(&mut self, sheet: Option<Bounds>) {
+        if self.sheet != sheet {
+            self.sheet = sheet;
+            self.revision = next_revision();
+        }
+    }
+
+    /// The work area: the box around the sheet and the beads. A bead past
+    /// the sheet grows it; when that bead goes, the work area is the sheet
+    /// again. `None` with no sheet and no beads.
+    pub fn work_area(&self) -> Option<Bounds> {
+        match (self.sheet, self.bounds()) {
+            (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
+            (sheet, beads) => sheet.or(beads),
+        }
     }
 
     /// The active area: the box around the beads. `None` when there are none.
@@ -191,6 +218,26 @@ mod tests {
             pattern.bounds(),
             Some(Bounds::of(Cell { column: 3, row: -2 }))
         );
+    }
+
+    /// The work area is the sheet and the beads, never kept: a bead past
+    /// the sheet grows it, and taken away gives the sheet back.
+    #[test]
+    fn the_work_area_is_the_sheet_and_the_beads() {
+        let mut pattern = pattern();
+        let sheet = Bounds {
+            min: Cell { column: 0, row: 0 },
+            max: Cell { column: 3, row: 2 },
+        };
+        pattern.set_sheet(Some(sheet));
+        assert_eq!(pattern.work_area(), Some(sheet));
+
+        let past = Cell { column: 6, row: 1 };
+        pattern.set(past, Some(0));
+        assert_eq!(pattern.work_area().map(|area| area.width()), Some(7));
+
+        pattern.set(past, None);
+        assert_eq!(pattern.work_area(), Some(sheet));
     }
 
     #[test]

@@ -97,6 +97,15 @@ pub enum PatternError {
         ratio: f32,
     },
 
+    /// The sheet of the file has no cells.
+    #[error("the sheet is {width} by {height}")]
+    Sheet {
+        /// Columns.
+        width: usize,
+        /// Rows.
+        height: usize,
+    },
+
     /// A bead of the file lies outside the field a cell can name.
     #[error("row {row}, column {column} lies outside the field")]
     Outside {

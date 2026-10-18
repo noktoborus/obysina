@@ -63,6 +63,7 @@ impl AppError {
                 | PatternError::DuplicateKey { .. }
                 | PatternError::Colour { .. }
                 | PatternError::Ratio { .. }
+                | PatternError::Sheet { .. }
                 | PatternError::Outside { .. } => "error.pattern.invalid",
             },
             AppError::SettingsRead { .. } | AppError::SettingsInvalid { .. } => {

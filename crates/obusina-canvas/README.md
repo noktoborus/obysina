@@ -5,9 +5,10 @@ The field of beads: an egui widget that draws an
 
 ## Scope
 
-- The work area is the box around the sheet, `View::sheet`, and the beads.
-  The sheet is the size set: the cells under the screen when the pattern is
-  first shown, or what the caller sets. A bead past the sheet grows the
+- The work area is the box around the sheet and the beads. The sheet is the
+  size set, `Pattern::sheet`; a pattern with none uses the cells under the
+  screen when it is first shown, `View::sheet`, which the caller may give
+  it. A bead past the sheet grows the
   work area; when it goes, the work area is the sheet again. The field
   drawn is the work area doubled (`Bounds::doubled`). Past it the ground is
   bare and a press does nothing. Only its cells on the screen are drawn.

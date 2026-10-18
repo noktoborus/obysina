@@ -75,7 +75,7 @@ impl<'a> Canvas<'a> {
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
-        if self.view.sheet.is_none() && rect.is_positive() {
+        if self.pattern.sheet().is_none() && self.view.sheet.is_none() && rect.is_positive() {
             self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
         }
         self.navigate(ui, &response);
@@ -125,7 +125,8 @@ impl<'a> Canvas<'a> {
     /// put past it grows it. `None` before the field was first shown, with
     /// no beads.
     fn work_area(&self) -> Option<Bounds> {
-        match (self.view.sheet, self.pattern.bounds()) {
+        let sheet = self.pattern.sheet().or(self.view.sheet);
+        match (sheet, self.pattern.bounds()) {
             (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
             (sheet, beads) => sheet.or(beads),
         }

@@ -174,8 +174,14 @@ impl App {
     }
 
     /// The field of beads over the whole window.
+    ///
+    /// A pattern with no sheet takes the cells of the first screen as its
+    /// sheet: the start value, no step of undo.
     fn field(&mut self, ui: &mut egui::Ui) {
         let field = Canvas::new(&self.pattern, &mut self.view).show(ui);
+        if self.pattern.sheet().is_none() {
+            self.pattern.set_sheet(self.view.sheet);
+        }
         field.response.named(&t!("field"));
         if let Some((cell, press)) = field.pressed {
             self.press(cell, press);

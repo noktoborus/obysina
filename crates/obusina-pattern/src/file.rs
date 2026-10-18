@@ -21,10 +21,19 @@ pub const FORMAT: u64 = 1;
 struct Document<'a> {
     format: u64,
     grid: Grid,
-    origin: [i32; 2],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sheet: Option<Sheet>,
     bead_ratio: f32,
     palette: Vec<Colour<'a>>,
+    rows_origin: [i32; 2],
     rows: Vec<String>,
+}
+
+/// The sheet as it is written: its top left cell and its size.
+#[derive(Serialize)]
+struct Sheet {
+    origin: [i32; 2],
+    size: [usize; 2],
 }
 
 /// One colour as it is written.
@@ -40,8 +49,9 @@ struct Colour<'a> {
 
 impl Pattern {
     /// The pattern as the text of a file: pretty printed, one row of beads on
-    /// one line. The rows are the active area; `origin` is the cell of the
-    /// field of its top left corner, `[0, 0]` for a pattern with no beads.
+    /// one line. The rows are the active area; `rows_origin` is the cell of
+    /// the field of its top left corner, `[0, 0]` for a pattern with no
+    /// beads. The sheet is written when one is set.
     pub fn to_json(&self) -> Result<String> {
         let origin = self
             .bounds()
@@ -49,7 +59,10 @@ impl Pattern {
         let document = Document {
             format: FORMAT,
             grid: self.grid(),
-            origin: [origin.column, origin.row],
+            sheet: self.sheet().map(|sheet| Sheet {
+                origin: [sheet.min.column, sheet.min.row],
+                size: [sheet.width(), sheet.height()],
+            }),
             bead_ratio: self.ratio(),
             palette: self
                 .palette()
@@ -61,6 +74,7 @@ impl Pattern {
                     code: bead.code.as_deref(),
                 })
                 .collect(),
+            rows_origin: [origin.column, origin.row],
             rows: self.rows(),
         };
         let mut text = serde_json::to_string_pretty(&document)

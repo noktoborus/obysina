@@ -34,8 +34,9 @@ pub struct View {
     pub bead: f32,
     /// The pattern has been put in the middle of the field once.
     pub centred: bool,
-    /// The start sheet: the cells under the screen when the pattern was
-    /// first shown. The field drawn holds it for the session.
+    /// The cells under the screen when a pattern with no sheet of its own
+    /// was first shown: the sheet the field uses for it, and the one the
+    /// caller may give the pattern.
     pub sheet: Option<Bounds>,
     /// Quarter turns clockwise, 0 to 3.
     quarters: u8,

@@ -19,17 +19,18 @@ The kinds of grid, the field drawn and how a pattern is kept on it.
      bead against the even ones. The same rows then show another picture,
      where other beads touch. Nothing tells: the file reads and the counts
      match.
-5. **The file keeps the place on the field.** `origin` is the cell of the
-   field of the first bead of the first row; `rows` are the active area. A
-   pattern opens where it was, and a peyote column keeps its parity.
+5. **The file keeps the place on the field.** `rows_origin` is the cell of
+   the field of the first bead of the first row; `rows` are the active area.
+   A pattern opens where it was, and a peyote column keeps its parity.
    `width` and `height` leave the file: they are the size of `rows`. An
-   empty pattern has no rows and `origin` `[0, 0]`. Format 1 changes itself
-   (`EXC` of `RULE pattern.version`).
+   empty pattern has no rows and `rows_origin` `[0, 0]`. Format 1 changes
+   itself (`EXC` of `RULE pattern.version`). The whole format is
+   `crates/obusina-pattern/README.md`.
 
 ```text
 on the field, columns 1 2 3       the file
            ┌──┐
-      ┌──┐ │B │ ┌──┐             "origin": [1, 0],
+      ┌──┐ │B │ ┌──┐             "rows_origin": [1, 0],
       │A │ └──┘ │C │             "rows": ["ABC"]
       └──┘      └──┘
 ```
@@ -85,10 +86,11 @@ on the field, columns 1 2 3       the file
     rows, start at the size of the first screen and change the sheet around
     its middle (`Bounds::resized`), up to `MAX_SIDE`. They are the start size
     of the work area, not its size: beads past the sheet grow the work area,
-    and the numbers stay. A number is dragged or
-    typed, so a finger reaches it.
-    - The size lives for the session, like the sheet. It is no step of
-      undo: it changes no bead.
+    and the numbers stay. A number is dragged or typed, so a finger reaches
+    it.
+    - The sheet is part of the pattern (decision 17): a change of its size
+      is a step of undo. Changes one after another are one step, since a
+      number dragged changes it in every frame.
 15. **The outlines are one repeating texture, apart from the beads.** A tile
     of outlines is drawn once for the size of a bead; a column of the field
     is one quad of it. The beads are their own mesh.
@@ -102,3 +104,9 @@ on the field, columns 1 2 3       the file
     textures.
     - In the case of decision 15, a press, a step of a zoom and a move now
       take about 0.1 ms each.
+17. **The sheet is written to the file.** It is the size of the work area
+    set by hand, a part of the work, not of the window: `Pattern::sheet`,
+    and `sheet` in the file, its origin and its size. A new pattern takes
+    the cells of its first screen as its start value, no step of undo. A
+    file with no sheet opens the same way. The work area is not written: it
+    is the box around the sheet and the rows.
