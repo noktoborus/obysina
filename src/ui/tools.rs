@@ -19,16 +19,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
     let shown = FloatingPanel::new(NAME, t!("panel.tools"))
         .placement(placement)
         .show(context, |ui, room| {
-            history(app, ui);
-            gap(ui, room.orientation);
-            turns(app, ui);
-            gap(ui, room.orientation);
-            tools(app, ui);
-            gap(ui, room.orientation);
-            grid(app, ui);
-            crate::ui::sheet::show(app, ui);
-            gap(ui, room.orientation);
-            save(app, ui);
+            match room.orientation {
+                Orientation::Horizontal => row(app, ui),
+                Orientation::Vertical => column(app, ui),
+            }
             if let Some(message) = &app.message {
                 ui.label(message);
             }
@@ -36,6 +30,44 @@ pub fn show(app: &mut App, context: &egui::Context) {
     if shown.changed {
         app.keep_panel(NAME, shown.placement);
     }
+}
+
+/// The tools in one row, a group after another.
+fn row(app: &mut App, ui: &mut egui::Ui) {
+    let orientation = Orientation::Horizontal;
+    history(app, ui);
+    gap(ui, orientation);
+    turns(app, ui);
+    gap(ui, orientation);
+    tools(app, ui);
+    gap(ui, orientation);
+    grid(app, ui);
+    crate::ui::sheet::show(app, ui);
+    gap(ui, orientation);
+    save(app, ui);
+}
+
+/// The tools in a column two buttons wide, like the swatches of the beads:
+/// a group of two on a line, the kind of grid and save on the last one.
+///
+/// The lines are one block, so the block stands in the middle across the
+/// panel.
+fn column(app: &mut App, ui: &mut egui::Ui) {
+    let orientation = Orientation::Vertical;
+    ui.vertical(|ui| {
+        ui.horizontal(|ui| history(app, ui));
+        gap(ui, orientation);
+        ui.horizontal(|ui| turns(app, ui));
+        gap(ui, orientation);
+        ui.horizontal(|ui| tools(app, ui));
+        gap(ui, orientation);
+        ui.horizontal(|ui| crate::ui::sheet::show(app, ui));
+        gap(ui, orientation);
+        ui.horizontal(|ui| {
+            grid(app, ui);
+            save(app, ui);
+        });
+    });
 }
 
 /// A space between two groups of buttons. A separator is not used: in a

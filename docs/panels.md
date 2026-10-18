@@ -25,8 +25,9 @@ rules themselves are `crates/obusina-panel/README.md`.
      for the pointer at the middle of a side would turn back into a row.
 5. **A place is a part of the window, nothing more.** 0 or 1 on an axis is
    against an edge. There is no docked state.
-6. **The tools do not break into lines.** A panel that does not fit turns
-   instead. On a phone the tools start as a column.
+6. **The tools have two layouts, like the beads.** In a row, one line of
+   groups. In a column, two buttons on a line, so the column is half as tall.
+   They do not break into lines by length: a panel that does not fit turns.
 7. **The beads fit by length.** They count how many swatches stand in a
    line, so the swatches and the colours in hand fit: a palette is long
    either way.

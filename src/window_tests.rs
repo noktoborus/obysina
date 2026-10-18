@@ -278,13 +278,13 @@ fn a_panel_has_a_grip_and_no_title() {
 #[test]
 fn a_panel_at_a_side_stands_in_a_column() {
     let mut window = window();
-    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
 
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
 
     window.drag(&t!("panel.tools"), pos2(100.0, 8.0));
-    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
 }
 
 #[test]
@@ -311,11 +311,11 @@ fn a_panel_turns_while_it_is_dragged() {
         window.harness.event(Event::PointerMoved(point));
         window.harness.step();
     }
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
 
     window.harness.event(button(target, false));
     window.harness.run();
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
     assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
 }
@@ -326,7 +326,7 @@ fn a_panel_that_runs_out_of_the_window_turns() {
 
     window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 90.0));
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     assert!(grip.contains(pos2(SIZE.x * 0.7, 90.0)), "{grip:?}");
 }
@@ -336,7 +336,7 @@ fn a_window_too_narrow_for_a_row_turns_the_tools() {
     let narrow = egui::vec2(400.0, 700.0);
     let window = window_in(tempfile::tempdir().expect("a scratch directory"), narrow);
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
 }
 
 #[test]
@@ -359,13 +359,13 @@ fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
 fn the_place_of_a_panel_is_kept_for_the_next_start() {
     let mut window = window();
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
     let Window { harness, directory } = window;
     drop(harness);
 
     let window = window_in(directory, SIZE);
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     assert!(grip.min.x < SIZE.x / 4.0, "{grip:?}");
 }
@@ -751,18 +751,24 @@ fn a_bead_left_of_the_middle_opens_where_it_was() {
 }
 
 #[test]
-fn a_column_is_as_narrow_as_its_buttons() {
+fn a_column_of_tools_is_two_buttons_wide() {
     let mut window = window();
 
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
 
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
+    let redo = window.harness.get_by_label(&t!("edit.redo")).rect();
     assert!(
-        (undo.center().x - grip.center().x).abs() < 1.0,
-        "the button {undo:?} stands under the grip {grip:?}"
+        (undo.center().y - redo.center().y).abs() < 1.0,
+        "{undo:?} {redo:?}"
     );
-    assert!(undo.max.x < 100.0, "the column is {} wide", undo.max.x);
+    let pair = (undo.min.x + redo.max.x) / 2.0;
+    assert!(
+        (pair - grip.center().x).abs() < 1.0,
+        "the pair {undo:?} {redo:?} stands under the grip {grip:?}"
+    );
+    assert!(redo.max.x < 150.0, "the column is {} wide", redo.max.x);
 }
 
 #[test]
