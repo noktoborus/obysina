@@ -119,6 +119,8 @@ pub struct Notes {
     pub(crate) rect: Option<Rect>,
     /// The widget a tap took.
     pub(crate) picked: Option<Widget>,
+    /// The widget under the pointer, with its path, while pointing.
+    hovered: Option<Widget>,
     text: String,
     inbox: Arc<Mutex<Inbox>>,
     asked: bool,
@@ -148,7 +150,12 @@ impl Notes {
         }
         self.take_picture(ui.ctx());
         let on = self.phase != Phase::Off;
-        if tapped(&ui.selectable_label(on, "\u{270f} note")) {
+        let label = format!(
+            "\u{270f} {}",
+            self.looked_at().unwrap_or_else(|| "note".to_string())
+        );
+        let switch = ui.selectable_label(on, label);
+        if tapped(&switch) {
             self.phase = if on { Phase::Off } else { Phase::Pointing };
             self.rect = None;
             self.text.clear();
@@ -257,6 +264,7 @@ impl Notes {
                     .and_then(|pointer| self.widget_at(pointer))
                     .cloned();
                 self.point(&response, under.as_ref());
+                self.hovered = under.as_ref().map(|widget| self.with_path(widget));
                 let under = under.as_ref().map(bounds);
                 let painter = ui.painter();
                 if let (Phase::Pointing, None, Some(widget)) = (self.phase, self.start, under) {
@@ -376,6 +384,26 @@ impl Notes {
             })
             .map(|widget| self.with_path(widget))
             .collect()
+    }
+
+    /// What the note is about, as the strip and the form name it: the
+    /// widget under the pointer while pointing, the widget taken, the
+    /// widgets of a box, or a point. `None` while there is nothing.
+    fn looked_at(&self) -> Option<String> {
+        let rect = self.rect;
+        match (self.phase, rect) {
+            (Phase::Off, _) => None,
+            (Phase::Pointing, _) => self.hovered.as_ref().map(identity),
+            (_, Some(rect)) if rect.area() == 0.0 => {
+                Some(format!("({:.0}, {:.0})", rect.min.x, rect.min.y))
+            }
+            (_, Some(rect)) => match self.widgets_of(rect).as_slice() {
+                [widget] => Some(identity(widget)),
+                widgets => Some(format!("{} widgets in the box", widgets.len())),
+            },
+            (_, None) => None,
+        }
+        .map(|text| shorten(&text))
     }
 
     /// The widget with its whole path: the names of the tree of accesskit,
@@ -526,10 +554,12 @@ impl Notes {
             .left()
             .clamp(area.left(), (area.right() - FORM_WIDTH).max(area.left()));
         let at = Pos2::new(x, rect.bottom() + 8.0);
+        let title = self.looked_at();
         match text_form(
             context,
             "mockups-note-form",
             at,
+            title.as_deref(),
             &mut self.text,
             "what is wrong here",
         ) {
@@ -549,7 +579,14 @@ impl Notes {
     fn chat_form(&mut self, context: &Context, area: Rect) {
         let at = area.right_top() + vec2(-FORM_WIDTH - 8.0, 8.0);
         let hint = "a comment for the chat";
-        match text_form(context, "mockups-chat-form", at, &mut self.comment, hint) {
+        match text_form(
+            context,
+            "mockups-chat-form",
+            at,
+            None,
+            &mut self.comment,
+            hint,
+        ) {
             Some(Answer::Send) => {
                 let chat = Chat {
                     comment: std::mem::take(&mut self.comment),
@@ -651,12 +688,13 @@ enum Answer {
     Cancel,
 }
 
-/// A form of text at `at`, above everything: the text, send and cancel. Text
-/// of nothing but spaces is not sent.
+/// A form of text at `at`, above everything: the `title`, the text, send and
+/// cancel. Text of nothing but spaces is not sent.
 fn text_form(
     context: &Context,
     id: &'static str,
     at: Pos2,
+    title: Option<&str>,
     text: &mut String,
     hint: &str,
 ) -> Option<Answer> {
@@ -668,6 +706,9 @@ fn text_form(
         .show(context, |ui| {
             egui::Frame::popup(ui.style()).show(ui, |ui| {
                 ui.set_width(FORM_WIDTH);
+                if let Some(title) = title {
+                    ui.add(egui::Label::new(egui::RichText::new(title).strong()).wrap());
+                }
                 let send = ui.input_mut(|input| input.consume_shortcut(&SEND));
                 let cancel = ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
                 let edit = ui.add(
@@ -691,6 +732,27 @@ fn text_form(
             });
         });
     answer
+}
+
+/// The longest name of a widget the strip shows, in characters.
+const LONGEST: usize = 60;
+
+/// What tells a widget apart: its path and its name.
+fn identity(widget: &Widget) -> String {
+    let mut path = widget.path.clone();
+    path.push(widget.name.clone());
+    path.join(" \u{203a} ")
+}
+
+/// A text cut to [`LONGEST`] characters, its end kept: the end is the
+/// widget itself.
+fn shorten(text: &str) -> String {
+    let count = text.chars().count();
+    if count <= LONGEST {
+        return text.to_string();
+    }
+    let tail: String = text.chars().skip(count - LONGEST + 1).collect();
+    format!("\u{2026}{tail}")
 }
 
 /// The rects of the visible layers of the last frame, back to front, but
@@ -794,7 +856,7 @@ mod tests {
             .build_eframe(|_| Gallery::new("#palette-move"));
         harness.run();
         let swatch = harness.get_by_label("3").rect();
-        harness.get_by_label("\u{270f} note").click();
+        harness.get_by_label_contains("\u{270f}").click();
         harness.run();
 
         let inside = swatch.left_top() + egui::vec2(3.0, 3.0);
@@ -851,7 +913,7 @@ mod tests {
             harness.query_by_label("Удалить").is_some(),
             "the menu is open"
         );
-        let switch = harness.get_by_label("\u{270f} note").rect().center();
+        let switch = harness.get_by_label_contains("\u{270f}").rect().center();
 
         press(&mut harness, switch);
         assert!(harness.state().notes.frozen());
@@ -880,7 +942,7 @@ mod tests {
         harness.get_by_label("3").click();
         harness.run();
         let entry = harness.get_by_label("Удалить").rect();
-        let switch = harness.get_by_label("\u{270f} note").rect().center();
+        let switch = harness.get_by_label_contains("\u{270f}").rect().center();
         press(&mut harness, switch);
 
         press(&mut harness, entry.center());
@@ -909,7 +971,7 @@ mod tests {
                 both.is_positive().then_some(both.center())
             })
             .expect("the menu covers a colour");
-        let switch = harness.get_by_label("\u{270f} note").rect().center();
+        let switch = harness.get_by_label_contains("\u{270f}").rect().center();
         press(&mut harness, switch);
 
         press(&mut harness, covered);
@@ -918,6 +980,15 @@ mod tests {
         let picked = notes.picked.as_ref().expect("a widget is taken");
         assert_eq!(picked.name, "Выбрать цвет");
         assert_eq!(picked.path, ["menu of colour 3"]);
+        let named = "menu of colour 3 \u{203a} Выбрать цвет";
+        assert!(
+            harness
+                .query_by_label(&format!("\u{270f} {named}"))
+                .is_some(),
+            "the strip names it"
+        );
+        assert!(harness.query_by_label(named).is_some(), "the form names it");
+
         assert_eq!(notes.widgets_of(entry), std::slice::from_ref(picked));
     }
 }

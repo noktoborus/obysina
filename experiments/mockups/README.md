@@ -41,6 +41,10 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   reader is told of, with its name and its box, an entry of a `PlateMenu`
   or a part of the picker as well as a button of the mockup. A part with no
   name, such as a window, is named by the mockup with `mock::named`.
+- While the switch is on, it names what the note is about in place of
+  "note", the pencil kept: the widget under the pointer by its path and
+  name, then the widget taken, the count of widgets in a box, or a point.
+  The form of the note names it above the text.
 - Ctrl+Enter in the text sends the note, Esc drops it.
 - A tap names the widget taken alone; a box names the widgets seen whole
   inside it. A widget is seen only where no layer above its own covers it:
