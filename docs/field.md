@@ -70,8 +70,10 @@ on the field, columns 1 2 3       the file
 
     - The sheet is the start size of the work area: the numbers of the
       tools, the cells of the screen when the pattern is first shown.
-    - The work area is the box around the sheet and the beads. A bead put
-      past it, in the shade, grows it, and the field with it.
+    - The work area has two sizes: the one set, the sheet, and the one the
+      beads make. It is the box around both, computed and never kept. A
+      bead put past the sheet, in the shade, grows it, and the field with
+      it; when that bead goes, the work area is the sheet again.
     - The field is the work area grown by half its width on each side and
       half its height above and below. Past the field the ground is bare,
       and a press does nothing.

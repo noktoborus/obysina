@@ -696,39 +696,57 @@ fn a_size_typed_in_the_tools_resizes_the_sheet() {
     );
 }
 
-/// The field drawn is the start sheet, the cells of the screen; a press past
-/// it does nothing.
+/// The field drawn is the work area doubled: the sheet of 51 columns,
+/// -25 to 25, reaches to column 51. A press past it does nothing.
 #[test]
 fn a_press_past_the_field_does_nothing() {
     let mut window = window();
-    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.state_mut().view.offset.x -= 1200.0;
     window.harness.run();
-    let cell = Cell { column: 40, row: 0 };
+    let cell = Cell { column: 70, row: 0 };
 
     window.press(cell, PointerButton::Primary);
 
     assert_eq!(window.harness.state().pattern.get(cell), None);
 }
 
-/// Twice the active area is drawn: beads far apart reach past the sheet.
+/// A bead put in the shade, past the sheet, grows the work area, and the
+/// field with it: a cell past the field before is in it after.
 #[test]
-fn beads_near_the_edge_grow_the_field() {
+fn a_bead_in_the_shade_grows_the_work_area() {
     let mut window = window();
-    window.press(
-        Cell {
-            column: -18,
-            row: 0,
-        },
-        PointerButton::Primary,
-    );
-    window.press(Cell { column: 18, row: 0 }, PointerButton::Primary);
     window.harness.state_mut().view.offset.x -= 600.0;
     window.harness.run();
-    let cell = Cell { column: 36, row: 0 };
+    let shade = Cell { column: 40, row: 0 };
+    window.press(shade, PointerButton::Primary);
+    assert_eq!(window.harness.state().pattern.get(shade), Some(0));
 
-    window.press(cell, PointerButton::Primary);
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let further = Cell { column: 70, row: 0 };
+    window.press(further, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().pattern.get(cell), Some(0));
+    assert_eq!(window.harness.state().pattern.get(further), Some(0));
+}
+
+/// The work area is the sheet set and the beads, never kept: when the bead
+/// past the sheet goes, the field is the one of the sheet again.
+#[test]
+fn a_bead_taken_away_gives_the_work_area_back() {
+    let mut window = window();
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let shade = Cell { column: 40, row: 0 };
+    window.press(shade, PointerButton::Primary);
+    window.press(shade, PointerButton::Primary);
+    assert_eq!(window.harness.state().pattern.get(shade), None);
+
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let further = Cell { column: 70, row: 0 };
+    window.press(further, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(further), None);
 }
 
 /// A bead put left of and above cell (0, 0) is saved and opens where it

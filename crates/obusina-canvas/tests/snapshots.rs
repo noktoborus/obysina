@@ -52,10 +52,12 @@ fn pattern(grid: Grid) -> Pattern {
 }
 
 /// Draws the field of `grid`, turned by `turns`, and compares it with
-/// `img/<name>.png`.
+/// `img/<name>.png`. The sheet is one cell, so the work area is the diamond
+/// and the shade around it is seen.
 fn picture(grid: Grid, turns: &[Turn], name: &str) {
     let pattern = pattern(grid);
     let mut view = View::default();
+    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
     for turn in turns {
         view.turn(*turn);
     }

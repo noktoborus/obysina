@@ -125,14 +125,20 @@ impl<'a> Canvas<'a> {
             .cells_in((min.x, min.y), (max.x, max.y), self.pattern.ratio())
     }
 
-    /// The field drawn: the box around the start sheet and twice the active
-    /// area. `None` before the field was first shown, with no beads.
-    fn field(&self) -> Option<Bounds> {
-        let doubled = self.pattern.bounds().map(Bounds::doubled);
-        match (self.view.sheet, doubled) {
-            (Some(sheet), Some(doubled)) => Some(sheet.union(doubled)),
-            (sheet, doubled) => sheet.or(doubled),
+    /// The work area: the box around the start sheet and the beads. A bead
+    /// put past it grows it. `None` before the field was first shown, with
+    /// no beads.
+    fn work_area(&self) -> Option<Bounds> {
+        match (self.view.sheet, self.pattern.bounds()) {
+            (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
+            (sheet, beads) => sheet.or(beads),
         }
+    }
+
+    /// The field drawn: the work area doubled. The part past the work area
+    /// is in shade.
+    fn field(&self) -> Option<Bounds> {
+        self.work_area().map(Bounds::doubled)
     }
 
     /// True when `cell` is in the field drawn.
@@ -140,14 +146,10 @@ impl<'a> Canvas<'a> {
         self.field().is_some_and(|field| field.contains(cell))
     }
 
-    /// The paper under the active area, over the shade of the rest: one
+    /// The paper under the work area, over the shade of the rest: one
     /// quad for each of its columns on the screen.
     fn draw_paper(&self, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
-        let Some(cells) = self
-            .pattern
-            .bounds()
-            .and_then(|active| active.intersection(visible))
-        else {
+        let Some(cells) = self.work_area().and_then(|area| area.intersection(visible)) else {
             return;
         };
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
