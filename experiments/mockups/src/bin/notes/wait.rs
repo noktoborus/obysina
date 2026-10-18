@@ -48,6 +48,11 @@ pub fn run(directory: &Path) -> Result<()> {
             note.note.text.trim(),
             shot
         );
+        for widget in &note.note.widgets {
+            let mut path = widget.path.clone();
+            path.push(widget.name.clone());
+            println!("    {}", path.join(" \u{203a} "));
+        }
     }
     Ok(())
 }

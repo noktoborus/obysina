@@ -3,6 +3,7 @@
 //! it stands. A widget of another crate, an entry of a `PlateMenu` or a
 //! part of the picker of egui, is seen as well as one of a mockup.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use egui::accesskit;
@@ -28,15 +29,20 @@ impl egui::Plugin for Seen {
         let Some(update) = &output.platform_output.accesskit_update else {
             return;
         };
-        let widgets = update
-            .nodes
+        let nodes = &update.nodes;
+        let parents: HashMap<accesskit::NodeId, accesskit::NodeId> = nodes
             .iter()
-            .filter_map(|(_, node)| {
+            .flat_map(|(id, node)| node.children().iter().map(move |child| (*child, *id)))
+            .collect();
+        let widgets = nodes
+            .iter()
+            .filter_map(|(id, node)| {
                 let bounds = node.bounds()?;
-                let name = name(node, &update.nodes)?;
+                let name = name(node, nodes)?;
                 Some(Widget {
                     name,
                     rect: [bounds.x0, bounds.y0, bounds.x1, bounds.y1].map(|side| side as f32),
+                    path: path(*id, &parents, nodes),
                 })
             })
             .collect();
@@ -62,4 +68,25 @@ fn name(node: &accesskit::Node, nodes: &[(accesskit::NodeId, accesskit::Node)]) 
                 .map(str::to_string)
         })
     })
+}
+
+/// The names of the nodes a node stands in, from the outermost; a node with
+/// no name is left out.
+fn path(
+    id: accesskit::NodeId,
+    parents: &HashMap<accesskit::NodeId, accesskit::NodeId>,
+    nodes: &[(accesskit::NodeId, accesskit::Node)],
+) -> Vec<String> {
+    let mut path = Vec::new();
+    let mut at = id;
+    while let Some(parent) = parents.get(&at) {
+        if let Some((_, node)) = nodes.iter().find(|(other, _)| other == parent)
+            && let Some(name) = name(node, nodes)
+        {
+            path.push(name);
+        }
+        at = *parent;
+    }
+    path.reverse();
+    path
 }

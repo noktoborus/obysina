@@ -92,10 +92,16 @@ struct Frozen {
     /// Its widgets: those it named, and those of the tree of accesskit of
     /// the frame its picture shows.
     widgets: Vec<Widget>,
+    /// The parts it named itself (`mock::named`): the windows and menus a
+    /// path of a widget names.
+    named: Vec<Widget>,
     /// What it showed, from `Mockup::state`.
     state: serde_json::Value,
     /// Its picture; `None` until the picture comes.
     picture: Option<egui::TextureHandle>,
+    /// Where its layers stood, back to front: a widget is seen only where
+    /// no layer above its own covers it.
+    layers: Vec<Rect>,
 }
 
 /// The notes of the gallery.
@@ -111,6 +117,8 @@ pub struct Notes {
     pub(crate) phase: Phase,
     start: Option<Pos2>,
     pub(crate) rect: Option<Rect>,
+    /// The widget a tap took.
+    pub(crate) picked: Option<Widget>,
     text: String,
     inbox: Arc<Mutex<Inbox>>,
     asked: bool,
@@ -246,8 +254,10 @@ impl Notes {
                 let (_, response) = ui.allocate_exact_size(area.size(), Sense::click_and_drag());
                 let under = response
                     .hover_pos()
-                    .and_then(|pointer| self.widget_at(pointer));
-                self.point(&response, under);
+                    .and_then(|pointer| self.widget_at(pointer))
+                    .cloned();
+                self.point(&response, under.as_ref());
+                let under = under.as_ref().map(bounds);
                 let painter = ui.painter();
                 if let (Phase::Pointing, None, Some(widget)) = (self.phase, self.start, under) {
                     painter.rect_stroke(widget, 2.0, LIT, egui::StrokeKind::Outside);
@@ -288,6 +298,7 @@ impl Notes {
                     frozen.widgets.push(widget.clone());
                 }
             }
+            frozen.layers = layers(context);
             frozen.picture = Some(context.load_texture(
                 "mockups-frozen",
                 Arc::unwrap_or_clone(image),
@@ -302,8 +313,10 @@ impl Notes {
         self.freezing = false;
         self.frozen = Some(Frozen {
             widgets: mock::named_widgets(context),
+            named: mock::named_widgets(context),
             state: mock.state(),
             picture: None,
+            layers: Vec::new(),
         });
         let inbox = Arc::clone(&self.inbox);
         let repaint = context.clone();
@@ -321,25 +334,84 @@ impl Notes {
         self.frozen.as_ref().map_or(&[], |frozen| &frozen.widgets)
     }
 
-    /// The smallest named widget under `pointer`: a button rather than the
-    /// window it stands in.
-    fn widget_at(&self, pointer: Pos2) -> Option<Rect> {
+    /// The smallest widget seen under `pointer`: a button rather than the
+    /// window it stands in, and not one a layer above it covers.
+    fn widget_at(&self, pointer: Pos2) -> Option<&Widget> {
         self.widgets()
             .iter()
-            .map(bounds)
-            .filter(|rect| rect.contains(pointer))
-            .min_by(|first, second| first.area().total_cmp(&second.area()))
+            .filter(|widget| bounds(widget).contains(pointer) && self.seen_at(widget, pointer))
+            .min_by(|first, second| bounds(first).area().total_cmp(&bounds(second).area()))
+    }
+
+    /// True when `widget` is not covered at `point`: it lies in the top
+    /// layer there.
+    fn seen_at(&self, widget: &Widget, point: Pos2) -> bool {
+        let layers = self
+            .frozen
+            .as_ref()
+            .map_or(&[][..], |frozen| &frozen.layers);
+        layers
+            .iter()
+            .rev()
+            .find(|layer| layer.contains(point))
+            .is_none_or(|top| top.expand(1.0).contains_rect(bounds(widget)))
+    }
+
+    /// The widgets a note on `rect` names: the one tapped, or those seen
+    /// whole inside the box drawn.
+    fn widgets_of(&self, rect: Rect) -> Vec<Widget> {
+        if rect.area() == 0.0
+            || self
+                .picked
+                .as_ref()
+                .is_some_and(|picked| bounds(picked) == rect)
+        {
+            return self.picked.iter().cloned().collect();
+        }
+        self.widgets()
+            .iter()
+            .filter(|widget| {
+                let bounds = bounds(widget);
+                rect.expand(1.0).contains_rect(bounds) && self.seen_at(widget, bounds.center())
+            })
+            .map(|widget| self.with_path(widget))
+            .collect()
+    }
+
+    /// The widget with its whole path: the names of the tree of accesskit,
+    /// then the parts the mockup named that hold it in the same layer,
+    /// the largest first.
+    fn with_path(&self, widget: &Widget) -> Widget {
+        let inner = bounds(widget);
+        let named = self.frozen.as_ref().map_or(&[][..], |frozen| &frozen.named);
+        let mut holders: Vec<&Widget> = named
+            .iter()
+            .filter(|holder| {
+                let outer = bounds(holder);
+                *holder != widget
+                    && outer.expand(1.0).contains_rect(inner)
+                    && self.seen_at(holder, inner.center())
+            })
+            .collect();
+        holders.sort_by(|first, second| bounds(second).area().total_cmp(&bounds(first).area()));
+        let mut path = widget.path.clone();
+        path.extend(holders.into_iter().map(|holder| holder.name.clone()));
+        Widget {
+            path,
+            ..widget.clone()
+        }
     }
 
     /// A tap takes the widget `under` the pointer, or a point where there is
     /// none; a drag draws the box.
-    fn point(&mut self, response: &egui::Response, under: Option<Rect>) {
+    fn point(&mut self, response: &egui::Response, under: Option<&Widget>) {
         if self.phase != Phase::Pointing {
             return;
         }
         let pointer = response.interact_pointer_pos();
         if response.drag_started() {
             self.start = pointer;
+            self.picked = None;
         }
         if let (Some(start), Some(pointer)) = (self.start, pointer)
             && response.dragged()
@@ -355,7 +427,8 @@ impl Notes {
         if response.clicked()
             && let Some(pointer) = pointer
         {
-            self.rect = Some(under.unwrap_or(Rect::from_min_max(pointer, pointer)));
+            self.rect = Some(under.map_or(Rect::from_min_max(pointer, pointer), bounds));
+            self.picked = under.map(|widget| self.with_path(widget));
             self.phase = Phase::Writing;
         }
     }
@@ -520,15 +593,7 @@ impl Notes {
         let Some(rect) = self.rect else {
             return;
         };
-        let widgets = self
-            .widgets()
-            .iter()
-            .filter(|widget| {
-                let bounds = bounds(widget);
-                bounds.intersects(rect) || bounds.contains(rect.min)
-            })
-            .cloned()
-            .collect();
+        let widgets = self.widgets_of(rect);
         let state = self
             .frozen
             .as_ref()
@@ -626,6 +691,20 @@ fn text_form(
             });
         });
     answer
+}
+
+/// The rects of the visible layers of the last frame, back to front, but
+/// the strip of the gallery, which is no part of a mockup.
+fn layers(context: &Context) -> Vec<Rect> {
+    let strip = Id::unique("mockups-strip");
+    context.memory(|memory| {
+        let visible = memory.areas().visible_layer_ids();
+        memory
+            .layer_ids()
+            .filter(|layer| visible.contains(layer) && layer.id != strip)
+            .filter_map(|layer| memory.area_rect(layer.id))
+            .collect()
+    })
 }
 
 /// Where a named widget stands.
@@ -808,5 +887,37 @@ mod tests {
 
         let notes = &harness.state().notes;
         assert_eq!(notes.rect, Some(entry));
+    }
+
+    /// A tap where an entry of the menu covers a colour takes the entry: a
+    /// widget a layer above covers is not seen. The note names it alone,
+    /// with the path of what it stands in.
+    #[test]
+    fn a_covered_widget_is_not_taken() {
+        let mut harness = Harness::builder()
+            .with_size(egui::vec2(800.0, 500.0))
+            .build_eframe(|_| Gallery::new("#palette-editor"));
+        harness.run();
+        harness.get_by_label("3").click();
+        harness.run();
+        let entry = harness.get_by_label("Change the colour").rect();
+        let covered = ["1", "2", "3", "4", "5"]
+            .iter()
+            .map(|key| harness.get_by_label(key).rect())
+            .find_map(|swatch| {
+                let both = swatch.intersect(entry);
+                both.is_positive().then_some(both.center())
+            })
+            .expect("the menu covers a colour");
+        let switch = harness.get_by_label("\u{270f} note").rect().center();
+        press(&mut harness, switch);
+
+        press(&mut harness, covered);
+
+        let notes = &harness.state().notes;
+        let picked = notes.picked.as_ref().expect("a widget is taken");
+        assert_eq!(picked.name, "Change the colour");
+        assert_eq!(picked.path, ["menu of colour 3"]);
+        assert_eq!(notes.widgets_of(entry), std::slice::from_ref(picked));
     }
 }

@@ -40,7 +40,15 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   or a part of the picker as well as a button of the mockup. A part with no
   name, such as a window, is named by the mockup with `mock::named`.
 - Ctrl+Enter in the text sends the note, Esc drops it.
-- The note carries the text, the box, the widgets it touches, the
+- A tap names the widget taken alone; a box names the widgets seen whole
+  inside it. A widget is seen only where no layer above its own covers it:
+  the layers of the mockup, back to front, are kept with its picture
+  (`Memory::layer_ids`, `area_rect`).
+- A widget carries its path: the names of the widgets of the tree of
+  accesskit it stands in, then the parts the mockup named that hold it in
+  the same layer, such as `menu of colour 3 › Change the colour`. It tells
+  two widgets of one name apart.
+- The note carries the text, the box, the widgets it names, the
   state of the mockup (`Mockup::state`) and a picture of the page with the
   box on it (`ViewportCommand::Screenshot`).
 - trunk passes `/notes` to the receiver, `src/bin/notes`, on 127.0.0.1:6081.

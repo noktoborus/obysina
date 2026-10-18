@@ -12,7 +12,7 @@ use egui::{Color32, Id, Modal, Order, Rect};
 use palette::{FromColor, Oklab, Oklch, Srgb};
 use plate_menu::{MenuItem, PlateMenu};
 
-use super::{Mockup, button, named};
+use super::{Mockup, button, named, named_rect};
 
 /// The most colours a palette holds.
 const MAX_COLOURS: usize = 9;
@@ -153,7 +153,14 @@ impl PaletteEditor {
 
     /// The menu of a colour, while it is open.
     fn menu(&mut self, context: &egui::Context) {
-        let Some(chosen) = self.menu.show(context) else {
+        let chosen = self.menu.show(context);
+        if let (true, Some(index)) = (self.menu.is_open(), self.menu_of) {
+            let layer = self.menu.layer_id().id;
+            if let Some(rect) = context.memory(|memory| memory.area_rect(layer)) {
+                named_rect(context, rect, &format!("menu of colour {}", index + 1));
+            }
+        }
+        let Some(chosen) = chosen else {
             return;
         };
         let Some(index) = self.menu_of.take() else {

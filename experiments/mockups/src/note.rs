@@ -3,14 +3,18 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A widget a mockup names, and where it stands: left, top, right, bottom,
+/// A widget of a mockup, and where it stands: left, top, right, bottom,
 /// in points.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Widget {
-    /// The name the mockup gave it.
+    /// Its name: what a screen reader calls it, or what the mockup named it.
     pub name: String,
     /// Where it stands.
     pub rect: [f32; 4],
+    /// The names of the widgets it stands in, from the outermost: what
+    /// tells two widgets of one name apart.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub path: Vec<String>,
 }
 
 /// A note as the page sends it.
