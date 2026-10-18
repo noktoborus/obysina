@@ -39,8 +39,8 @@ on the field, columns 1 2 3       the file
    - Why: the empty space of an endless field has no end to fill to.
 
 7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
-8. **The ground is in shade outside the active area.** The paper of the
-   active area is lighter. An empty cell is the same faint outline
+8. **The ground is in shade outside the work area** (decision 13). The
+   paper of the work area is lighter. An empty cell is the same faint outline
    everywhere in the field; where the outlines end, the field ends.
    - Replaces the pale outlines outside the active area: one tile, one
      colour, and the active area is seen as a whole.
@@ -54,29 +54,35 @@ on the field, columns 1 2 3       the file
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
     stays there; a pattern has no fixed middle any more.
-13. **The field drawn is the start sheet and twice the active area.**
+13. **The work area is the sheet and the beads; the field is twice it.**
 
     ```text
-    ┌──────────────── field: the box around both ────────────────┐
-    │ ┌──── start sheet: the cells of the screen ────┐           │
-    │ │                    ┌── twice the area ──────┼──────────┐ │
-    │ │                    │      ┌─ active ─┐      │          │ │
-    │ │                    │      └──────────┘      │          │ │
-    │ └────────────────────┼────────────────────────┘          │ │
-    │                      └───────────────────────────────────┘ │
-    └────────────────────────────────────────────────────────────┘
+    ┌──────────── field: the work area, doubled ────────────┐
+    │  shade: the cells past the work area                  │
+    │       ┌──── work area: paper ────────────────┐        │
+    │       │ ┌── sheet: the numbers of the tools ─┤        │
+    │       │ │                                    │        │
+    │       │ └────────────────────────────────────┤        │
+    │       │            ● a bead past the sheet   │        │
+    │       └──────────────────────────────────────┘        │
+    └───────────────────────────────────────────────────────┘
     ```
 
-    - The start sheet is the cells under the screen when the pattern is
-      first shown. It stays for the session.
-    - Twice the active area is the area grown by half its width on each
-      side, and by half its height above and below.
-    - Outside the field the ground is bare, and a press does nothing. A bead
-      put near the edge grows the active area, and the field with it.
-    - Replaces the field with no end of decision 2.
+    - The sheet is the start size of the work area: the numbers of the
+      tools, the cells of the screen when the pattern is first shown.
+    - The work area is the box around the sheet and the beads. A bead put
+      past it, in the shade, grows it, and the field with it.
+    - The field is the work area grown by half its width on each side and
+      half its height above and below. Past the field the ground is bare,
+      and a press does nothing.
+    - The work area is on paper; the rest of the field is in shade.
+    - Replaces the field of the sheet and twice the active area, and the
+      field with no end of decision 2.
 14. **The size of the sheet is set in the tools.** Two fields, columns and
     rows, start at the size of the first screen and change the sheet around
-    its middle (`Bounds::resized`), up to `MAX_SIDE`. A number is dragged or
+    its middle (`Bounds::resized`), up to `MAX_SIDE`. They are the start size
+    of the work area, not its size: beads past the sheet grow the work area,
+    and the numbers stay. A number is dragged or
     typed, so a finger reaches it.
     - The size lives for the session, like the sheet. It is no step of
       undo: it changes no bead.
