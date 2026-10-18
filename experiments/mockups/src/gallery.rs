@@ -96,8 +96,15 @@ impl Gallery {
 }
 
 impl eframe::App for Gallery {
+    /// Takes the presses of the strip out of the input, and every press
+    /// and key while the picture of the mockup is awaited.
     fn raw_input_hook(&mut self, _context: &egui::Context, raw_input: &mut egui::RawInput) {
         self.take_strip_presses(&mut raw_input.events);
+        if self.notes.holding() {
+            raw_input
+                .events
+                .retain(|event| matches!(event, Event::PointerMoved(_) | Event::PointerGone));
+        }
     }
 
     /// The strip takes its room as a panel, and is drawn over it on a layer

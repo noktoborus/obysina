@@ -55,9 +55,11 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   open. `egui_kittest` calls no hook: a test passes its presses through the
   same filter.
 - While "note" or "waiting" is on, the mockup is frozen. Its first frame is
-  taken as a picture, with its named widgets and its state; from then on
-  the mockup is not drawn and gets no event, and the picture stands in its
-  place. Off again, the mockup is drawn as it was: a menu or a picker of it
+  taken as a picture, with its named widgets and its state. A browser
+  takes the picture a frame or two later, so until it comes the mockup is
+  still drawn, gets no press and no key, and nothing of the notes is drawn
+  over it. From then on the mockup is not drawn and gets no event, and the
+  picture stands in its place. Off again, the mockup is drawn as it was: a menu or a picker of it
   is still open.
 
 | Part | What it is |

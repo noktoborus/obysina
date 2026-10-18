@@ -3,9 +3,11 @@
 //! (`src/bin/notes`).
 //!
 //! While the switch or the list is on, the mockup is frozen: the first
-//! frame is taken as a picture and the named widgets are kept; from then on
-//! the mockup is not drawn and gets no event, the picture stands in its
-//! place. A menu or a picker of the mockup stays as it was, and is there
+//! frame is taken as a picture and the named widgets are kept. Until the
+//! picture comes the mockup is still drawn, with no input and nothing of
+//! the notes over it: a browser takes the picture a frame or two later.
+//! From then on the mockup is not drawn and gets no event, the picture
+//! stands in its place. A menu or a picker of the mockup stays as it was, and is there
 //! again when the switch goes off.
 //!
 //! A tap takes the whole widget under it: the smallest one the mockup named
@@ -127,6 +129,7 @@ impl Notes {
             self.asked = true;
             fetch(&self.inbox, ui.ctx());
         }
+        self.take_picture(ui.ctx());
         let on = self.phase != Phase::Off;
         if tapped(&ui.selectable_label(on, "\u{270f} note")) {
             self.phase = if on { Phase::Off } else { Phase::Pointing };
@@ -160,7 +163,19 @@ impl Notes {
 
     /// True while the mockup is frozen: it is not drawn, its picture is.
     pub fn frozen(&self) -> bool {
-        self.frozen.is_some()
+        self.frozen
+            .as_ref()
+            .is_some_and(|frozen| frozen.picture.is_some())
+    }
+
+    /// True while the picture of the mockup is awaited: the mockup is drawn
+    /// as it was, and no input may reach it.
+    pub fn holding(&self) -> bool {
+        self.freezing
+            || self
+                .frozen
+                .as_ref()
+                .is_some_and(|frozen| frozen.picture.is_none())
     }
 
     /// Turns the notes off, as when another mockup is shown.
@@ -174,29 +189,12 @@ impl Notes {
 
     /// Draws the picture of the frozen mockup over the whole window, as it
     /// was taken; `ui` clips it to the space of the mockup.
-    pub fn paint_frozen(&mut self, ui: &egui::Ui) {
-        let Some(frozen) = &mut self.frozen else {
-            return;
-        };
-        if frozen.picture.is_none() {
-            let image = self
-                .inbox
-                .lock()
-                .expect("the inbox is never poisoned")
-                .frozen
-                .take();
-            match image {
-                Some(image) => {
-                    frozen.picture = Some(ui.ctx().load_texture(
-                        "mockups-frozen",
-                        Arc::unwrap_or_clone(image),
-                        egui::TextureOptions::NEAREST,
-                    ));
-                }
-                None => ui.ctx().request_repaint(),
-            }
-        }
-        if let Some(picture) = &frozen.picture {
+    pub fn paint_frozen(&self, ui: &egui::Ui) {
+        if let Some(picture) = self
+            .frozen
+            .as_ref()
+            .and_then(|frozen| frozen.picture.as_ref())
+        {
             let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
             ui.painter()
                 .image(picture.id(), ui.ctx().content_rect(), uv, Color32::WHITE);
@@ -208,6 +206,10 @@ impl Notes {
     pub fn show(&mut self, context: &Context, area: Rect, mock: &dyn Mockup) {
         if self.freezing {
             self.freeze(context, mock);
+        }
+        if self.holding() {
+            context.request_repaint();
+            return;
         }
         if self.listing {
             self.list(context, area, mock.name());
@@ -239,6 +241,30 @@ impl Notes {
             Phase::Writing => self.form(context, area),
             Phase::Capturing => self.capture(context, mock.name()),
             _ => {}
+        }
+    }
+
+    /// Takes the picture of the frozen mockup, when it has come.
+    fn take_picture(&mut self, context: &Context) {
+        let Some(frozen) = self
+            .frozen
+            .as_mut()
+            .filter(|frozen| frozen.picture.is_none())
+        else {
+            return;
+        };
+        let image = self
+            .inbox
+            .lock()
+            .expect("the inbox is never poisoned")
+            .frozen
+            .take();
+        if let Some(image) = image {
+            frozen.picture = Some(context.load_texture(
+                "mockups-frozen",
+                Arc::unwrap_or_clone(image),
+                egui::TextureOptions::NEAREST,
+            ));
         }
     }
 
