@@ -6,11 +6,11 @@
 //! tap a colour ──► PlateMenu ──pick──► the picker, under the line
 //!                     │──move────► the next tap on a colour puts it there
 //!                     └──remove──► gone
-//! drag a colour ──► a mark between two colours ──let go──► it stands there
+//! drag a colour ──► the line shows it in its new place, renumbered ──let go──► it stays
 //! tap "+" ──► the colour farthest from the others and the paper, in the picker
 //! ```
 
-use egui::{Color32, Id, Modal, Order, Pos2, Rect, Sense, Stroke, vec2};
+use egui::{Color32, Id, Modal, Order, Pos2, Rect, Sense, vec2};
 use palette::{FromColor, Oklab, Oklch, Srgb};
 use plate_menu::{MenuItem, Notice, PlateMenu};
 
@@ -70,6 +70,8 @@ pub struct PaletteEditor {
     window: Rect,
     /// The colour being dragged.
     dragging: Option<usize>,
+    /// The place it would stand in, let go now.
+    drop_to: usize,
 }
 
 impl PaletteEditor {
@@ -92,6 +94,7 @@ impl PaletteEditor {
             cells: Vec::new(),
             window: Rect::NOTHING,
             dragging: None,
+            drop_to: 0,
         }
     }
 }
@@ -109,6 +112,7 @@ impl Mockup for PaletteEditor {
             "colours": self.colours.iter().map(|colour| hex(*colour)).collect::<Vec<_>>(),
             "doing": format!("{:?}", self.doing),
             "dragging": self.dragging,
+            "drop_to": self.drop_to,
             "open": self.open,
             "lang": self.lang.code(),
         })
@@ -146,11 +150,13 @@ impl PaletteEditor {
         let mut tapped = None;
         let mut drags = Vec::new();
         self.cells.clear();
+        let order = self.order();
         ui.horizontal_wrapped(|ui| {
-            for (index, colour) in self.colours.iter().enumerate() {
-                let key = (index + 1).to_string();
+            for (place, index) in order.iter().copied().enumerate() {
+                let colour = self.colours[index];
+                let key = (place + 1).to_string();
                 let lifted = self.doing == Doing::Moving(index) || self.dragging == Some(index);
-                let swatch = ui.add(button(&key).fill(*colour).selected(lifted));
+                let swatch = ui.add(button(&key).fill(colour).selected(lifted));
                 self.cells.push(swatch.rect);
                 let held = (self.reorder == Reorder::Drag).then(|| {
                     ui.interact(
@@ -187,12 +193,30 @@ impl PaletteEditor {
         }
     }
 
-    /// A drag of a colour: the colour follows the pointer, a mark stands
-    /// where it would go, and let go it stands there.
+    /// The colours in the order the line shows them: while a colour is
+    /// dragged, already where it would go, the others moved aside.
+    fn order(&self) -> Vec<usize> {
+        let mut order: Vec<usize> = (0..self.colours.len()).collect();
+        if let Some(from) = self.dragging.filter(|from| *from < order.len()) {
+            let dragged = order.remove(from);
+            order.insert(self.drop_to.min(order.len()), dragged);
+        }
+        order
+    }
+
+    /// A drag of a colour: it rises above the pointer, and the line shows
+    /// it already in the place under the pointer, with the number of that
+    /// place, the others moved aside and numbered anew. Let go, it stays
+    /// there.
     fn drag(&mut self, ui: &egui::Ui, drags: &[egui::Response]) {
-        if let Some(index) = drags.iter().position(egui::Response::drag_started) {
-            self.dragging = Some(index);
-            self.menu.close();
+        if let Some(started) = drags.iter().find(|drag| drag.drag_started()) {
+            let order = self.order();
+            let place = drags.iter().position(|drag| drag.id == started.id);
+            if let Some(index) = place.and_then(|place| order.get(place).copied()) {
+                self.dragging = Some(index);
+                self.drop_to = index;
+                self.menu.close();
+            }
         }
         let Some(from) = self.dragging else {
             return;
@@ -200,17 +224,17 @@ impl PaletteEditor {
         let Some(pointer) = ui.ctx().pointer_interact_pos() else {
             return;
         };
-        let place = self.place_at(pointer);
+        if let Some(place) = self
+            .place_at(pointer)
+            .filter(|place| *place != self.drop_to)
+        {
+            self.drop_to = place;
+            ui.ctx().request_repaint();
+        }
         let painter = ui.ctx().layer_painter(egui::LayerId::new(
             Order::Tooltip,
             Id::unique("palette-editor-ghost"),
         ));
-        if let Some(mark) = self.mark(place) {
-            painter.line_segment(
-                [mark.center_top(), mark.center_bottom()],
-                Stroke::new(3.0, ui.visuals().selection.bg_fill),
-            );
-        }
         if let Some(colour) = self.colours.get(from) {
             let ghost = Rect::from_center_size(pointer - vec2(0.0, BUTTON.y), BUTTON);
             painter.add(ui.visuals().popup_shadow.as_shape(ghost, 6.0));
@@ -218,26 +242,25 @@ impl PaletteEditor {
             painter.text(
                 ghost.center(),
                 egui::Align2::CENTER_CENTER,
-                (from + 1).to_string(),
+                (self.drop_to + 1).to_string(),
                 egui::FontId::proportional(super::TEXT),
                 obusina_button::contrast(*colour),
             );
         }
         if drags.iter().any(egui::Response::drag_stopped) {
             self.dragging = None;
-            let to = if place > from { place - 1 } else { place };
-            if to != from && from < self.colours.len() {
+            if from < self.colours.len() {
                 let colour = self.colours.remove(from);
-                self.colours.insert(to.min(self.colours.len()), colour);
+                self.colours
+                    .insert(self.drop_to.min(self.colours.len()), colour);
             }
         }
     }
 
-    /// The place among the colours a pointer points at: before the colour
-    /// nearest to it, or after it when the pointer is right of its middle.
-    fn place_at(&self, pointer: Pos2) -> usize {
-        let nearest = self
-            .cells
+    /// The place of the line under a pointer: the place of the cell
+    /// nearest to it, as the line shows it now.
+    fn place_at(&self, pointer: Pos2) -> Option<usize> {
+        self.cells
             .iter()
             .enumerate()
             .min_by(|(_, first), (_, second)| {
@@ -245,27 +268,8 @@ impl PaletteEditor {
                     .center()
                     .distance(pointer)
                     .total_cmp(&second.center().distance(pointer))
-            });
-        match nearest {
-            Some((index, cell)) if pointer.x > cell.center().x => index + 1,
-            Some((index, _)) => index,
-            None => 0,
-        }
-    }
-
-    /// The mark of a place: a thin box in the gap before its colour, or after
-    /// the last one.
-    fn mark(&self, place: usize) -> Option<Rect> {
-        let gap = 4.0;
-        match self.cells.get(place) {
-            Some(cell) => Some(Rect::from_x_y_ranges(
-                cell.left() - gap..=cell.left() - gap,
-                cell.y_range(),
-            )),
-            None => self.cells.last().map(|cell| {
-                Rect::from_x_y_ranges(cell.right() + gap..=cell.right() + gap, cell.y_range())
-            }),
-        }
+            })
+            .map(|(place, _)| place)
     }
 
     /// A tap on a colour: puts the colour being moved there, or opens the
@@ -602,5 +606,30 @@ mod tests {
                 "{reorder:?}: the menu opens"
             );
         }
+    }
+
+    /// While a colour is dragged, the line shows it in the place under the
+    /// pointer with the number of that place, before it is let go.
+    #[test]
+    fn a_dragged_colour_shows_its_new_number() {
+        use egui_kittest::kittest::Queryable;
+        let mut harness = window_of(Reorder::Drag, Lang::En);
+        let first = harness.state().colours[0];
+        let from = harness.get_by_label("1").rect().center();
+        let to = harness.get_by_label("4").rect().center();
+
+        drag(&mut harness, from, to, false);
+
+        assert_eq!(harness.state().drop_to, 3);
+        let shown = harness.get_by_label("4").rect();
+        assert!(
+            shown.contains(to),
+            "the place under the pointer is numbered 4"
+        );
+        assert_eq!(
+            harness.state().colours[0],
+            first,
+            "nothing moved before it is let go"
+        );
     }
 }

@@ -25,9 +25,12 @@ window does not have it yet.
 4. **How a colour is moved is open between two variants,** each a mockup:
    - `palette-move`: "Move" lifts the colour; the next tap on a colour puts
      it in that place.
-   - `palette-drag`: the colour is dragged; it rises above the pointer, and
-     a mark between two colours shows where it goes. A tap still opens the
-     menu, which has no "Move".
+   - `palette-drag`: the colour is dragged and rises above the pointer.
+     The line already shows it in the place under the pointer, with the
+     number of that place, the others moved aside and numbered anew; let
+     go, it stays there. A tap still opens the menu, which has no "Move".
+     - Was: a mark between two colours, which showed the place but not the
+       number the colour would take.
 5. **"+" adds the colour farthest from the others.** Of the steps of
    lightness, chroma and hue of OKLCh a screen can show, it takes the one
    whose nearest neighbour, among the colours and the paper of the field,
