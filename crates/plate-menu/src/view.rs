@@ -91,6 +91,9 @@ pub struct PlateMenu {
     beside: Beside,
     max_plates: Option<usize>,
     rect: Rect,
+    /// Where the notice stood in the last frame: a widget of the caller
+    /// there keeps its drags and, while it holds the focus, its keys.
+    notice_rect: Rect,
     frames: u32,
     first: usize,
     shown: usize,
@@ -150,6 +153,7 @@ impl PlateMenu {
             beside: Beside::default(),
             max_plates: None,
             rect: Rect::NOTHING,
+            notice_rect: Rect::NOTHING,
             frames: 0,
             first: 0,
             shown: 0,
@@ -230,6 +234,7 @@ impl PlateMenu {
         self.beside = Beside::default();
         self.state = Some(MenuState::new(items));
         self.rect = Rect::NOTHING;
+        self.notice_rect = Rect::NOTHING;
         self.frames = 0;
         self.first = 0;
         self.shown = 0;
@@ -358,6 +363,9 @@ impl PlateMenu {
     /// the same arrows — would otherwise walk along with the menu standing over
     /// it.
     fn keys(&mut self, context: &Context) -> Option<String> {
+        if self.notice_has_focus(context) {
+            return None;
+        }
         let state = self.state.as_mut()?;
         let page = self.shown.max(1) as isize;
         let mut chosen = None;
@@ -473,7 +481,11 @@ impl PlateMenu {
                 pointer.total_drag_delta().map_or(0.0, |delta| delta.y),
             )
         });
-        let ours = dragging && down && origin.is_some_and(|origin| self.rect.contains(origin));
+        let ours = dragging
+            && down
+            && origin.is_some_and(|origin| {
+                self.rect.contains(origin) && !self.notice_rect.contains(origin)
+            });
         if !ours {
             self.dragged = 0.0;
             return;
@@ -533,12 +545,13 @@ impl PlateMenu {
             None => area.anchor(Align2::CENTER_CENTER, Vec2::new(-room, stack.lower)),
         };
 
+        let mut notice_rect = Rect::NOTHING;
         let response = area.show(context, |ui| {
             Frame::popup(ui.style())
                 .show(ui, |ui| {
                     ui.set_width(width);
                     if let Some(notice) = &self.notice {
-                        notice.show(ui);
+                        notice_rect = ui.scope(|ui| notice.show(ui)).response.rect;
                     }
                     header(ui, &query, caret);
                     let start = ui.cursor().top();
@@ -567,6 +580,7 @@ impl PlateMenu {
 
         let (plates, strips) = response.inner;
         self.rect = response.response.rect;
+        self.notice_rect = notice_rect;
         self.shown = last - first;
         self.chrome = Some(Chrome::of(self.rect.height(), plates, strips, self.chrome));
         self.whole(context, whole, width, beside);
@@ -630,6 +644,15 @@ impl PlateMenu {
         }
         self.first = self.first.min(highest);
         self.first
+    }
+
+    /// True when a widget of the notice holds the focus: what is typed is
+    /// its own, not a query of the menu.
+    fn notice_has_focus(&self, context: &Context) -> bool {
+        context
+            .memory(|memory| memory.focused())
+            .and_then(|id| context.read_response(id))
+            .is_some_and(|focused| self.notice_rect.contains_rect(focused.rect))
     }
 
     /// Closes the menu when a click lands beside it.
@@ -1675,6 +1698,55 @@ mod tests {
         assert!(menu.is_open());
         assert_eq!(menu.first, 0);
         assert_eq!(menu.selected(), Some(0));
+    }
+
+    /// A drag that starts on a widget of the notice is the widget's: the
+    /// plates do not move.
+    #[test]
+    fn a_drag_on_the_notice_moves_no_plate() {
+        let context = context(600.0);
+        let mut menu = PlateMenu::new().max_plates(5);
+        menu.open(items(20)).expect("the menu opens");
+        menu.notice(Notice::widget(|ui| {
+            ui.add_space(80.0);
+        }));
+        frame(&context, &mut menu, Vec::new());
+        frame(&context, &mut menu, Vec::new());
+        let start = menu.notice_rect.center();
+        assert!(menu.notice_rect.is_positive(), "the notice has a place");
+
+        drag(&context, &mut menu, start, Vec2::new(0.0, -200.0), 4);
+
+        assert_eq!(menu.first, 0);
+    }
+
+    /// What is typed while a widget of the notice holds the focus is the
+    /// widget's, not a query of the menu.
+    #[test]
+    fn a_notice_with_the_focus_keeps_what_is_typed() {
+        let typed = std::sync::Arc::new(std::sync::Mutex::new(String::new()));
+        let context = context(600.0);
+        let mut menu = PlateMenu::new();
+        menu.open(items(3)).expect("the menu opens");
+        let text = std::sync::Arc::clone(&typed);
+        menu.notice(Notice::widget(move |ui| {
+            let mut text = text.lock().expect("the text is never poisoned");
+            let edit = ui.text_edit_singleline(&mut *text);
+            if !edit.has_focus() {
+                edit.request_focus();
+            }
+        }));
+        frame(&context, &mut menu, Vec::new());
+        frame(&context, &mut menu, Vec::new());
+
+        frame(
+            &context,
+            &mut menu,
+            vec![egui::Event::Text("ab".to_string())],
+        );
+
+        assert_eq!(menu.state.as_ref().map(MenuState::query), Some(""));
+        assert_eq!(*typed.lock().expect("the text"), "ab");
     }
 
     #[test]
