@@ -1,13 +1,14 @@
 # The field
 
-The kinds of grid, the endless field and how a pattern is kept on it.
+The kinds of grid, the field drawn and how a pattern is kept on it.
 
 ## Decisions
 
 1. **Two kinds of grid: loom and peyote.** Brick stitch goes. A file that
    names `brick` is not read (`EXC` of `RULE pattern.version`).
-2. **The field has no end.** A cell has signed coordinates; (0, 0) is the
-   cell a new pattern is centred on. Only the filled cells are kept.
+2. **A cell has signed coordinates.** (0, 0) is the cell a new pattern is
+   centred on. Only the filled cells are kept. The model has no edge; the
+   field drawn has one (decision 13).
 3. **The active area is the box around the filled cells.** It is computed,
    never set. An empty pattern has none. An empty cell outside it is drawn
    dimmed.
@@ -55,3 +56,23 @@ on the field, columns 1 2 3       the file
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
     stays there; a pattern has no fixed middle any more.
+13. **The field drawn is the start sheet and twice the active area.**
+
+    ```text
+    ┌──────────────── field: the box around both ────────────────┐
+    │ ┌──── start sheet: the cells of the screen ────┐            │
+    │ │                    ┌── twice the area ──────┼──────────┐ │
+    │ │                    │      ┌─ active ─┐      │          │ │
+    │ │                    │      └──────────┘      │          │ │
+    │ └────────────────────┼────────────────────────┘          │ │
+    │                      └───────────────────────────────────┘ │
+    └─────────────────────────────────────────────────────────────┘
+    ```
+
+    - The start sheet is the cells under the screen when the pattern is
+      first shown. It stays for the session.
+    - Twice the active area is the area grown by half its width on each
+      side, and by half its height above and below.
+    - Outside the field the ground is bare, and a press does nothing. A bead
+      put near the edge grows the active area, and the field with it.
+    - Replaces the field with no end of decision 2.
