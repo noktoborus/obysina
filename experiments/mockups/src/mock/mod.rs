@@ -42,16 +42,15 @@ fn named_id() -> egui::Id {
 
 /// Gives a widget a name a note can carry: a note lists the named widgets
 /// its box touches. egui keeps no name of a widget that can be read back.
-pub fn named(ui: &egui::Ui, response: egui::Response, name: &str) -> egui::Response {
-    let rect = ui
-        .ctx()
+pub fn named(context: &egui::Context, response: egui::Response, name: &str) -> egui::Response {
+    let rect = context
         .layer_transform_to_global(response.layer_id)
         .map_or(response.rect, |transform| transform * response.rect);
     let widget = Widget {
         name: name.to_string(),
         rect: [rect.min.x, rect.min.y, rect.max.x, rect.max.y],
     };
-    ui.ctx().data_mut(|data| {
+    context.data_mut(|data| {
         data.get_temp_mut_or_default::<Vec<Widget>>(named_id())
             .push(widget)
     });

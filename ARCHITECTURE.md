@@ -4,6 +4,7 @@
 | --- | --- |
 | [docs/field.md](docs/field.md) | the kinds of grid, the endless field, the place of a pattern on it |
 | [docs/panels.md](docs/panels.md) | where a panel stands, how it is laid out, how its place is kept |
+| [docs/palette.md](docs/palette.md) | how the colours of a pattern are filled in |
 
 ## Crates
 
