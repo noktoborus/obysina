@@ -18,7 +18,8 @@ An editor of bead patterns, for Linux, Windows and Android.
   against it. The place of each panel is kept for the next start. The
   panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
-    the picker, the kind of grid, save;
+    the picker, the kind of grid, the columns and the rows of the sheet,
+    save;
   - **Beads**: the colours of the pattern with their counts, an empty place,
     and the two colours in hand.
 - A press on a bead switches it: to the colour in hand, or to empty when it

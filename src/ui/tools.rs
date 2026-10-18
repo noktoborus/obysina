@@ -26,6 +26,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
             tools(app, ui);
             gap(ui, room.orientation);
             grid(app, ui);
+            crate::ui::sheet::show(app, ui);
             gap(ui, room.orientation);
             save(app, ui);
             if let Some(message) = &app.message {

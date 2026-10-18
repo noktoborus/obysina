@@ -324,11 +324,11 @@ fn a_panel_turns_while_it_is_dragged() {
 fn a_panel_that_runs_out_of_the_window_turns() {
     let mut window = window();
 
-    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 150.0));
+    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 90.0));
 
     assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
-    assert!(grip.contains(pos2(SIZE.x * 0.7, 150.0)), "{grip:?}");
+    assert!(grip.contains(pos2(SIZE.x * 0.7, 90.0)), "{grip:?}");
 }
 
 #[test]
@@ -625,6 +625,8 @@ fn every_button_of_the_panels_has_one_size() {
         t!("tool.pencil"),
         t!("tool.pick"),
         t!("grid.kind"),
+        t!("sheet.width"),
+        t!("sheet.height"),
         t!("file.save"),
         t!("palette.empty"),
         t!("palette.first"),
@@ -650,6 +652,47 @@ fn a_new_pattern_opens_on_the_middle_of_the_field() {
         (middle - field.center()).length() < 1.0,
         "{middle:?} != {:?}",
         field.center()
+    );
+}
+
+/// The sheet starts as the cells of the screen, and the two fields of the
+/// tools show its size.
+#[test]
+fn the_sheet_starts_as_the_screen() {
+    let window = window();
+    let app = window.harness.state();
+    let sheet = app.view.sheet.expect("the field was shown");
+    let columns = SIZE.x / app.view.bead;
+    let rows = SIZE.y / app.view.bead;
+
+    assert!((sheet.width() as f32 - columns).abs() <= 2.0, "{sheet:?}");
+    assert!((sheet.height() as f32 - rows).abs() <= 2.0, "{sheet:?}");
+    window.harness.get_by_label(&t!("sheet.width"));
+    window.harness.get_by_label(&t!("sheet.height"));
+}
+
+/// A number typed in a field gives the sheet that size, around its middle.
+#[test]
+fn a_size_typed_in_the_tools_resizes_the_sheet() {
+    let mut window = window();
+    let before = window.harness.state().view.sheet.expect("a sheet");
+
+    window.harness.get_by_label(&t!("sheet.width")).click();
+    window.harness.run();
+    window
+        .harness
+        .get_by_label(&t!("sheet.width"))
+        .type_text("12");
+    window.harness.key_press(egui::Key::Enter);
+    window.harness.run();
+
+    let after = window.harness.state().view.sheet.expect("a sheet");
+    assert_eq!(after.width(), 12);
+    assert_eq!(after.height(), before.height());
+    let middle = |sheet: obusina_pattern::Bounds| sheet.min.column + sheet.max.column;
+    assert!(
+        (middle(after) - middle(before)).abs() <= 1,
+        "{before:?} {after:?}"
     );
 }
 

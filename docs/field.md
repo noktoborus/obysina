@@ -76,3 +76,9 @@ on the field, columns 1 2 3       the file
     - Outside the field the ground is bare, and a press does nothing. A bead
       put near the edge grows the active area, and the field with it.
     - Replaces the field with no end of decision 2.
+14. **The size of the sheet is set in the tools.** Two fields, columns and
+    rows, start at the size of the first screen and change the sheet around
+    its middle (`Bounds::resized`), up to `MAX_SIDE`. A number is dragged or
+    typed, so a finger reaches it.
+    - The size lives for the session, like the sheet. It is no step of
+      undo: it changes no bead.

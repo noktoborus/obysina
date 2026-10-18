@@ -83,6 +83,30 @@ impl Bounds {
         }
     }
 
+    /// A box of `width` columns and `height` rows, at least one each, with the
+    /// middle of this one. An odd change grows or shrinks the right and the
+    /// bottom side by one more.
+    pub fn resized(self, width: usize, height: usize) -> Bounds {
+        let side = |min: i32, old: usize, new: usize| {
+            let new = i32::try_from(new.max(1)).unwrap_or(i32::MAX);
+            let old = i32::try_from(old).unwrap_or(i32::MAX);
+            let min = min.saturating_add(old.saturating_sub(new) / 2);
+            (min, min.saturating_add(new - 1))
+        };
+        let (left, right) = side(self.min.column, self.width(), width);
+        let (top, bottom) = side(self.min.row, self.height(), height);
+        Bounds {
+            min: Cell {
+                column: left,
+                row: top,
+            },
+            max: Cell {
+                column: right,
+                row: bottom,
+            },
+        }
+    }
+
     /// Columns.
     pub fn width(&self) -> usize {
         self.max.column.abs_diff(self.min.column) as usize + 1
@@ -297,6 +321,31 @@ mod tests {
             }
         );
         assert_eq!(Bounds::of(Cell::default()).doubled().width(), 3);
+    }
+
+    #[test]
+    fn a_resized_box_keeps_its_middle() {
+        let bounds = Bounds {
+            min: Cell {
+                column: -5,
+                row: -3,
+            },
+            max: Cell { column: 5, row: 3 },
+        };
+
+        let wider = bounds.resized(21, 3);
+        assert_eq!((wider.width(), wider.height()), (21, 3));
+        assert_eq!(
+            wider.min,
+            Cell {
+                column: -10,
+                row: -1
+            }
+        );
+
+        let none = bounds.resized(0, 0);
+        assert_eq!((none.width(), none.height()), (1, 1));
+        assert_eq!(none.min, Cell { column: 0, row: 0 });
     }
 
     #[test]

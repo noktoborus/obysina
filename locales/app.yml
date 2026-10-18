@@ -43,6 +43,13 @@ menu.nothing_found:
 grid.kind:
   en: "Grid"
   ru: "Сетка"
+sheet.width:
+  en: "Columns of the sheet"
+  ru: "Колонки полотна"
+sheet.height:
+  en: "Rows of the sheet"
+  ru: "Ряды полотна"
+
 grid.loom:
   en: "Loom"
   ru: "Станок"
