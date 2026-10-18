@@ -766,6 +766,48 @@ fn a_bead_taken_away_gives_the_work_area_back() {
     assert_eq!(window.harness.state().pattern.get(further), None);
 }
 
+/// A new size of the window keeps the middle of the field where it is: the
+/// bead in the middle stays in the middle.
+#[test]
+fn a_new_size_of_the_window_keeps_the_middle() {
+    let mut window = window();
+    let middle = Cell { column: 0, row: 0 };
+    let smaller = egui::vec2(600.0, 450.0);
+
+    window.harness.set_size(smaller);
+    window.harness.run();
+
+    let app = window.harness.state();
+    let field = window.harness.get_by_label(&t!("field")).rect();
+    let centre = obusina_canvas::bead_centre(&app.pattern, &app.view, field, middle);
+    assert!(
+        (centre - field.center()).length() < 1.0,
+        "{centre:?} != {:?}",
+        field.center()
+    );
+}
+
+/// When the work area is off the screen after a new size of the window, the
+/// field is centred on it.
+#[test]
+fn a_new_size_that_hides_the_work_area_centres_it() {
+    let mut window = window();
+    window.harness.state_mut().view.offset.x += 3000.0;
+    window.harness.run();
+
+    window.harness.set_size(egui::vec2(600.0, 450.0));
+    window.harness.run();
+
+    let app = window.harness.state();
+    let field = window.harness.get_by_label(&t!("field")).rect();
+    let centre = obusina_canvas::bead_centre(&app.pattern, &app.view, field, Cell::default());
+    assert!(
+        (centre - field.center()).length() < app.view.bead,
+        "{centre:?} != {:?}",
+        field.center()
+    );
+}
+
 /// A bead put left of and above cell (0, 0) is saved and opens where it
 /// was: the field has no end either way.
 #[test]

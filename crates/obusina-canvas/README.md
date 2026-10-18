@@ -15,8 +15,12 @@ The field of beads: an egui widget that draws an
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is paper; the rest of the field is in shade. An empty place is
   a faint outline, the same on both, at every size of a bead.
-- Puts the middle of the active area, or cell (0, 0) when there is none, in
+- Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
+- Keeps the middle of the field where it is when the field changes its
+  size, at the same size of a bead. When then no cell of the work area is
+  on the screen, it centres the work area again. A frame where the field
+  has no size is skipped.
 - Nothing is tessellated. Two textures are drawn by the distance to a
   rounded box, again only when the size of a bead or the grid changes:
   - a tile of outlines that repeats (`tile.rs`): loom every cell, peyote

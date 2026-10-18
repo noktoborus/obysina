@@ -71,12 +71,15 @@ impl<'a> Canvas<'a> {
     /// Draws the field over all the space left in `ui`.
     pub fn show(mut self, ui: &mut Ui) -> CanvasResponse {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
-        self.view.field = rect.size();
+        let resized = self.resize(rect);
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
         if self.pattern.sheet().is_none() && self.view.sheet.is_none() && rect.is_positive() {
             self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
+        }
+        if resized && self.work_area_hidden(rect) {
+            self.view.centre(rect.size(), self.middle());
         }
         self.navigate(ui, &response);
 
@@ -204,13 +207,35 @@ impl<'a> Canvas<'a> {
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The point of the pattern shown in the middle of the field the first
-    /// time: the middle of the active area, or of cell (0, 0) when there is
-    /// none.
+    /// Keeps the middle of the field where it is when the field changes its
+    /// size. A field of no size, as when the window is folded away, is
+    /// skipped. True when the size changed.
+    fn resize(&mut self, rect: Rect) -> bool {
+        if !rect.is_positive() {
+            return false;
+        }
+        let before = self.view.field;
+        self.view.field = rect.size();
+        let resized = before.x > 0.0 && before.y > 0.0 && before != rect.size();
+        if resized {
+            self.view.offset += (rect.size() - before) / 2.0;
+        }
+        resized
+    }
+
+    /// True when no cell of the work area is on the screen.
+    fn work_area_hidden(&self, screen: Rect) -> bool {
+        let visible = self.cells_under(screen.min + self.view.offset, screen);
+        self.work_area()
+            .is_some_and(|area| area.intersection(visible).is_none())
+    }
+
+    /// The point of the pattern shown in the middle of the field: the middle
+    /// of the work area, or of cell (0, 0) when there is none.
     fn middle(&self) -> Vec2 {
         let pattern = self.pattern;
-        let area = pattern
-            .bounds()
+        let area = self
+            .work_area()
             .unwrap_or(Bounds::of(Cell { column: 0, row: 0 }));
         let ((left, top), (right, bottom)) = pattern.grid().span(area, pattern.ratio());
         vec2(left + right, top + bottom) / 2.0 * self.view.bead
