@@ -50,6 +50,11 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   goes to the plan or to the documentation; the note is not kept. The strip
   counts the notes waiting, of the mockup shown and of all, and the page
   draws their boxes.
+- "to chat" opens a form of a comment for the agent. Sent, the receiver
+  adds it to `notes/chat.jsonl`. `notes wait <directory>`, which the agent
+  keeps running in the background, waits for that file, prints the
+  comments and the notes waiting, deletes the file and ends; its end wakes
+  the agent in the chat.
 - "waiting" opens the list of the notes waiting. The box of a note is lit
   while its line is under the pointer; the cross deletes it.
 - The strip is drawn above the windows of a mockup: a modal window of egui
@@ -59,7 +64,7 @@ off ──switch──► pointing ──tap or drag──► writing ──send
   sees it, so a menu of the mockup that closes on a press beside it stays
   open. `egui_kittest` calls no hook: a test passes its presses through the
   same filter.
-- While "note" or "waiting" is on, the mockup is frozen. Its first frame is
+- While "note", "waiting" or "to chat" is on, the mockup is frozen. Its first frame is
   taken as a picture, with its widgets and its state. A browser
   takes the picture a frame or two later, so until it comes the mockup is
   still drawn, gets no press and no key, and nothing of the notes is drawn

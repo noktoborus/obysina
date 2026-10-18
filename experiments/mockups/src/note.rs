@@ -65,3 +65,21 @@ pub struct Kept {
     /// The file of the picture, beside the note.
     pub shot: Option<String>,
 }
+
+/// A comment for the chat: the page asks the agent to read the notes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Chat {
+    /// What the user wrote.
+    pub comment: String,
+}
+
+/// A comment for the chat as the receiver keeps it, one line of
+/// `chat.jsonl` each, until `notes wait` reads them.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Said {
+    /// When it came, in seconds since 1970.
+    pub at: u64,
+    /// The comment.
+    #[serde(flatten)]
+    pub chat: Chat,
+}

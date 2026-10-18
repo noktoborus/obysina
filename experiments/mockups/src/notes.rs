@@ -31,11 +31,12 @@ use egui::{
 };
 
 use crate::mock::{self, Mockup};
-use crate::note::{Kept, Note, Posted, Shot, Widget};
+use crate::note::{Chat, Kept, Note, Posted, Shot, Widget};
 
 /// Where the receiver is: the proxy of trunk passes it on.
-#[cfg(target_arch = "wasm32")]
 const URL: &str = "/notes";
+/// Where a comment for the chat goes.
+const CHAT: &str = "/notes/chat";
 
 /// The box being drawn.
 const DRAWN: Stroke = Stroke {
@@ -115,6 +116,10 @@ pub struct Notes {
     asked: bool,
     /// The list of the notes waiting is open.
     listing: bool,
+    /// The form of a comment for the chat is open.
+    chatting: bool,
+    /// The comment for the chat being written.
+    comment: String,
 }
 
 impl Notes {
@@ -150,7 +155,10 @@ impl Notes {
         if tapped(&ui.selectable_label(self.listing, label)) {
             self.listing = !self.listing;
         }
-        let active = self.phase != Phase::Off || self.listing;
+        if tapped(&ui.selectable_label(self.chatting, "\u{2709} to chat")) {
+            self.chatting = !self.chatting;
+        }
+        let active = self.phase != Phase::Off || self.listing || self.chatting;
         match (active, self.frozen.is_some() || self.freezing) {
             (true, false) => self.freezing = true,
             (false, true) => {
@@ -192,6 +200,7 @@ impl Notes {
     pub fn off(&mut self) {
         self.phase = Phase::Off;
         self.listing = false;
+        self.chatting = false;
         self.rect = None;
         self.frozen = None;
         self.freezing = false;
@@ -223,6 +232,9 @@ impl Notes {
         }
         if self.listing {
             self.list(context, area, mock.name());
+        }
+        if self.chatting {
+            self.chat_form(context, area);
         }
         if self.phase == Phase::Off {
             return;
@@ -441,38 +453,43 @@ impl Notes {
             .left()
             .clamp(area.left(), (area.right() - FORM_WIDTH).max(area.left()));
         let at = Pos2::new(x, rect.bottom() + 8.0);
-        egui::Area::new(Id::unique("mockups-note-form"))
-            .order(Order::Debug)
-            .fixed_pos(at)
-            .constrain(true)
-            .show(context, |ui| {
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                    ui.set_width(FORM_WIDTH);
-                    let send = ui.input_mut(|input| input.consume_shortcut(&SEND));
-                    let cancel =
-                        ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
-                    let edit = ui.add(
-                        egui::TextEdit::multiline(&mut self.text)
-                            .hint_text("what is wrong here")
-                            .desired_rows(3)
-                            .desired_width(f32::INFINITY),
-                    );
-                    if !edit.has_focus() && self.text.is_empty() {
-                        edit.request_focus();
-                    }
-                    ui.horizontal(|ui| {
-                        let pressed = ui.button("send").on_hover_text("ctrl+enter").clicked();
-                        if (pressed || send) && !self.text.trim().is_empty() {
-                            self.phase = Phase::Capturing;
-                            self.ask_picture(context);
-                        }
-                        if ui.button("cancel").on_hover_text("esc").clicked() || cancel {
-                            self.phase = Phase::Pointing;
-                            self.rect = None;
-                        }
-                    });
-                });
-            });
+        match text_form(
+            context,
+            "mockups-note-form",
+            at,
+            &mut self.text,
+            "what is wrong here",
+        ) {
+            Some(Answer::Send) => {
+                self.phase = Phase::Capturing;
+                self.ask_picture(context);
+            }
+            Some(Answer::Cancel) => {
+                self.phase = Phase::Pointing;
+                self.rect = None;
+            }
+            None => {}
+        }
+    }
+
+    /// The form of a comment for the chat, under the strip at the right.
+    fn chat_form(&mut self, context: &Context, area: Rect) {
+        let at = area.right_top() + vec2(-FORM_WIDTH - 8.0, 8.0);
+        let hint = "a comment for the chat";
+        match text_form(context, "mockups-chat-form", at, &mut self.comment, hint) {
+            Some(Answer::Send) => {
+                let chat = Chat {
+                    comment: std::mem::take(&mut self.comment),
+                };
+                match serde_json::to_vec(&chat) {
+                    Ok(body) => send(&self.inbox, context, CHAT, body, "sent to the chat"),
+                    Err(error) => self.say(&format!("the comment does not encode: {error}")),
+                }
+                self.chatting = false;
+            }
+            Some(Answer::Cancel) => self.chatting = false,
+            None => {}
+        }
     }
 
     /// Asks for a picture of the next frame, which has the box and no form.
@@ -547,7 +564,7 @@ impl Notes {
                 return;
             }
         };
-        send(&self.inbox, context, body);
+        send(&self.inbox, context, URL, body, "sent");
         self.rect = None;
         self.phase = Phase::Pointing;
     }
@@ -561,6 +578,56 @@ impl Notes {
     }
 }
 
+/// What was done in a form of text.
+enum Answer {
+    /// Sent, by the button or ctrl+enter.
+    Send,
+    /// Dropped, by the button or Esc.
+    Cancel,
+}
+
+/// A form of text at `at`, above everything: the text, send and cancel. Text
+/// of nothing but spaces is not sent.
+fn text_form(
+    context: &Context,
+    id: &'static str,
+    at: Pos2,
+    text: &mut String,
+    hint: &str,
+) -> Option<Answer> {
+    let mut answer = None;
+    egui::Area::new(Id::unique(id))
+        .order(Order::Debug)
+        .fixed_pos(at)
+        .constrain(true)
+        .show(context, |ui| {
+            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                ui.set_width(FORM_WIDTH);
+                let send = ui.input_mut(|input| input.consume_shortcut(&SEND));
+                let cancel = ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape));
+                let edit = ui.add(
+                    egui::TextEdit::multiline(text)
+                        .hint_text(hint)
+                        .desired_rows(3)
+                        .desired_width(f32::INFINITY),
+                );
+                if !edit.has_focus() && text.is_empty() {
+                    edit.request_focus();
+                }
+                ui.horizontal(|ui| {
+                    let pressed = ui.button("send").on_hover_text("ctrl+enter").clicked();
+                    if (pressed || send) && !text.trim().is_empty() {
+                        answer = Some(Answer::Send);
+                    }
+                    if ui.button("cancel").on_hover_text("esc").clicked() || cancel {
+                        answer = Some(Answer::Cancel);
+                    }
+                });
+            });
+        });
+    answer
+}
+
 /// Where a named widget stands.
 fn bounds(widget: &Widget) -> Rect {
     let [left, top, right, bottom] = widget.rect;
@@ -570,12 +637,13 @@ fn bounds(widget: &Widget) -> Rect {
 /// Posts the body of a note; the answer sets the message and asks for the
 /// notes again.
 #[cfg(target_arch = "wasm32")]
-fn send(inbox: &Arc<Mutex<Inbox>>, context: &Context, body: Vec<u8>) {
+fn send(inbox: &Arc<Mutex<Inbox>>, context: &Context, url: &str, body: Vec<u8>, done: &str) {
     let inbox = Arc::clone(inbox);
     let repaint = context.clone();
-    ehttp::fetch(ehttp::Request::post(URL, body), move |result| {
+    let done = done.to_string();
+    ehttp::fetch(ehttp::Request::post(url, body), move |result| {
         let message = match result {
-            Ok(response) if response.ok => "sent".to_string(),
+            Ok(response) if response.ok => done,
             Ok(response) => format!("the receiver said {}", response.status),
             Err(error) => format!("no receiver: {error}"),
         };
@@ -619,7 +687,7 @@ fn fetch(inbox: &Arc<Mutex<Inbox>>, context: &Context) {
 /// A window of the desktop sends no note: the notes go from the page,
 /// whose server passes them to the receiver.
 #[cfg(not(target_arch = "wasm32"))]
-fn send(inbox: &Arc<Mutex<Inbox>>, _context: &Context, _body: Vec<u8>) {
+fn send(inbox: &Arc<Mutex<Inbox>>, _context: &Context, _url: &str, _body: Vec<u8>, _done: &str) {
     inbox.lock().expect("the inbox is never poisoned").message =
         Some("notes are sent from the page only".to_string());
 }

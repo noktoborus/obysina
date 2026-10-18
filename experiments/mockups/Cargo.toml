@@ -38,4 +38,5 @@ png.workspace = true
 tiny_http.workspace = true
 
 [dev-dependencies]
+tempfile.workspace = true
 egui_kittest = { workspace = true, features = ["eframe"] }

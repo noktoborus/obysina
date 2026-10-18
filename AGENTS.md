@@ -331,6 +331,9 @@ RULE ui.mockup.notes : a note left on a mockup is read from
      `experiments/mockups/notes/`, acted on, then deleted with its picture
 THEN what it decided goes to the plan or to the documentation; a note is not
      kept
+THEN while the user works on mockups, `target/debug/notes wait
+     experiments/mockups/notes` runs in the background; when it ends, the
+     notes are read and it is started again
 REF  experiments/mockups/README.md
 
 RULE log.lang = english, through the `log` crate
