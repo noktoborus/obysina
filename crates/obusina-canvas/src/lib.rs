@@ -2,7 +2,8 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
-mod mesh;
+mod sprite;
+mod texture;
 mod tile;
 mod view;
 
@@ -17,18 +18,18 @@ const GAP: f32 = 0.08;
 const ROUNDING: f32 = 0.3;
 /// The width of the outline of an empty place, in points.
 const OUTLINE: f32 = 1.0;
-/// The ground under the beads: a neutral grey, the same in every theme, so
+/// The ground of the active area: a neutral grey, the same in every theme, so
 /// that a colour looks the same and a black bead is seen.
 const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
-/// The outline of an empty place in the active area.
-const EMPTY: Color32 = Color32::from_rgb(0xa8, 0xa6, 0xa0);
-/// The outline of an empty place outside the active area: halfway from
-/// [`EMPTY`] to [`PAPER`].
-const PALE: Color32 = Color32::from_rgb(0xbf, 0xbd, 0xb7);
-/// The smallest height of a bead, in points, at which the empty places
-/// outside the active area are drawn. Below it the ground stays bare there:
-/// a screen of small beads holds tens of thousands of outlines.
-pub const PALE_MIN_BEAD: f32 = 10.0;
+/// The ground outside the active area: the paper in shade.
+const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
+/// The outline of an empty place: a faint dark line, seen on the paper and
+/// in the shade alike.
+const OUTLINE_COLOUR: Color32 = Color32::from_black_alpha(40);
+/// The smallest height of a bead, in points, at which the outlines of the
+/// empty places are drawn. Below it the ground stays bare: a screen of small
+/// beads would be a dense net of lines.
+pub const OUTLINE_MIN_BEAD: f32 = 10.0;
 
 /// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,9 +48,6 @@ pub struct CanvasResponse {
     pub hovered: Option<Cell>,
     /// The bead pressed on and let go without a drag, and by which button.
     pub pressed: Option<(Cell, Press)>,
-    /// The beads were tessellated anew in this frame; otherwise the mesh of
-    /// an earlier frame was drawn, moved where the field is.
-    pub tessellated: bool,
 }
 
 /// The field of beads: draws a pattern over all the space it is given.
@@ -87,10 +85,12 @@ impl<'a> Canvas<'a> {
         self.navigate(ui, &response);
 
         let painter = ui.painter_at(rect);
-        painter.rect_filled(rect, 0.0, PAPER);
         let origin = rect.min + self.view.offset;
-        self.draw_outlines(ui, &painter, origin, rect);
-        let tessellated = self.draw_beads(ui, &painter, response.id, origin, rect);
+        let visible = self.cells_under(origin, rect);
+        painter.rect_filled(rect, 0.0, SHADE);
+        self.draw_paper(&painter, origin, visible);
+        self.draw_outlines(ui, &painter, origin, visible);
+        self.draw_beads(ui, &painter, origin, visible);
 
         let hovered = response
             .hover_pos()
@@ -101,41 +101,7 @@ impl<'a> Canvas<'a> {
             response,
             hovered,
             pressed,
-            tessellated,
         }
-    }
-
-    /// Draws the beads from the mesh kept for the field, tessellated anew
-    /// only when what they look like changed or the screen left the cells
-    /// it holds. True when it was tessellated.
-    fn draw_beads(
-        &self,
-        ui: &Ui,
-        painter: &egui::Painter,
-        field: egui::Id,
-        origin: Pos2,
-        screen: Rect,
-    ) -> bool {
-        let id = field.with("beads");
-        let key = mesh::Key {
-            revision: self.pattern.revision(),
-            bead: self.view.bead,
-            degrees: self.view.degrees(),
-            pixels_per_point: ui.ctx().pixels_per_point(),
-        };
-        let visible = self.cells_under(origin, screen);
-        let kept = ui
-            .data_mut(|data| data.remove_temp::<mesh::Kept>(id))
-            .filter(|kept| kept.key == key && kept.window.holds(visible));
-        let tessellated = kept.is_none();
-        let mut kept = kept.unwrap_or_else(|| {
-            let window = self.cells_under(origin, screen.expand2(screen.size() / 2.0));
-            mesh::tessellate(ui, key, window, origin, self.bead_shapes(origin, window))
-        });
-        kept.move_to(origin);
-        painter.add(egui::Shape::Mesh(kept.mesh.clone()));
-        ui.data_mut(|data| data.insert_temp(id, kept));
-        tessellated
     }
 
     /// The cells whose beads lie, even in part, under `area` of the screen,
@@ -174,18 +140,38 @@ impl<'a> Canvas<'a> {
         self.field().is_some_and(|field| field.contains(cell))
     }
 
-    /// The outlines of the empty places of the field on the screen, as
-    /// quads of the repeating tile: pale over the field, plain over the
-    /// active area. The pale ones are left out below [`PALE_MIN_BEAD`].
-    ///
-    /// A bead is drawn over its outline, which lies inside it.
-    fn draw_outlines(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, screen: Rect) {
-        let Some(field) = self.field() else {
+    /// The paper under the active area, over the shade of the rest: one
+    /// quad for each of its columns on the screen.
+    fn draw_paper(&self, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
+        let Some(cells) = self
+            .pattern
+            .bounds()
+            .and_then(|active| active.intersection(visible))
+        else {
             return;
         };
-        let visible = self.cells_under(origin, screen);
-        let pattern = self.pattern;
-        let (grid, ratio) = (pattern.grid(), pattern.ratio());
+        let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
+        let mut mesh = egui::Mesh::default();
+        for column in texture::columns(grid, ratio, cells) {
+            texture::add_quad(&mut mesh, self.view, origin, column, PAPER, |_| {
+                egui::epaint::WHITE_UV
+            });
+        }
+        painter.add(egui::Shape::mesh(mesh));
+    }
+
+    /// The outlines of the empty places of the field on the screen, as
+    /// quads of the repeating tile, one look on the paper and in the shade.
+    /// They are left out below [`OUTLINE_MIN_BEAD`]. A bead is drawn over
+    /// its outline, which lies inside it.
+    fn draw_outlines(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
+        let Some(cells) = self.field().and_then(|field| field.intersection(visible)) else {
+            return;
+        };
+        if self.view.bead < OUTLINE_MIN_BEAD {
+            return;
+        }
+        let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let texture = tile::texture(
             ui.ctx(),
             grid,
@@ -196,39 +182,30 @@ impl<'a> Canvas<'a> {
             OUTLINE,
         );
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        let view: &View = self.view;
-        if view.bead >= PALE_MIN_BEAD
-            && let Some(cells) = field.intersection(visible)
-        {
-            tile::add_columns(&mut mesh, grid, ratio, view, origin, cells, PALE);
-        }
-        if let Some(cells) = pattern
-            .bounds()
-            .and_then(|active| active.intersection(visible))
-        {
-            tile::add_columns(&mut mesh, grid, ratio, view, origin, cells, EMPTY);
-        }
+        tile::add_columns(
+            &mut mesh,
+            grid,
+            ratio,
+            self.view,
+            origin,
+            cells,
+            OUTLINE_COLOUR,
+        );
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// A shape for every bead of `window`, the pattern standing at `origin`.
-    ///
-    /// The rounding is a part of the height of a bead before the field is
-    /// turned, so a turned bead is rounded the same.
-    fn bead_shapes(&self, origin: Pos2, window: Bounds) -> Vec<egui::Shape> {
-        let rounding = self.view.bead * (1.0 - GAP) * ROUNDING;
-        self.pattern
-            .beads()
-            .filter(|(cell, _)| window.contains(*cell))
-            .map(|(cell, index)| {
-                let [red, green, blue] = self.pattern.palette()[index].rgb.0;
-                egui::Shape::rect_filled(
-                    self.bead_rect(origin, cell),
-                    rounding,
-                    Color32::from_rgb(red, green, blue),
-                )
-            })
-            .collect()
+    /// The beads on the screen, each a sprite tinted its colour.
+    fn draw_beads(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
+        let pattern = self.pattern;
+        let (grid, ratio) = (pattern.grid(), pattern.ratio());
+        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        for (cell, index) in pattern.beads().filter(|(cell, _)| visible.contains(*cell)) {
+            let [red, green, blue] = pattern.palette()[index].rgb.0;
+            let colour = Color32::from_rgb(red, green, blue);
+            sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
+        }
+        painter.add(egui::Shape::mesh(mesh));
     }
 
     /// The point of the pattern shown in the middle of the field the first
@@ -287,11 +264,6 @@ impl<'a> Canvas<'a> {
         let point = response.interact_pointer_pos()?;
         let cell = self.cell_at(origin, point);
         self.in_field(cell).then_some((cell, press))
-    }
-
-    /// The rectangle of one bead on the screen, turned with the field.
-    fn bead_rect(&self, origin: Pos2, cell: Cell) -> Rect {
-        bead_rect(self.pattern, self.view, origin, cell)
     }
 
     /// The bead under a point of the screen.

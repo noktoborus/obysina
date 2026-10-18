@@ -8,8 +8,9 @@ An editor of bead patterns, for Linux, Windows and Android.
   proportions.
 - The active area is the box around the beads put. The field drawn holds
   the sheet of the first screen and twice the active area, so it grows with
-  the beads. An empty place outside the active area is drawn pale, and not
-  at all when the beads are drawn small. A new pattern is an empty sheet.
+  the beads. The ground outside the active area is in shade. An empty place
+  is a faint outline, and is not drawn when the beads are drawn small. A new
+  pattern is an empty sheet.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a

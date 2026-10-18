@@ -39,12 +39,15 @@ on the field, columns 1 2 3       the file
    - Why: the empty space of an endless field has no end to fill to.
 
 7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
-8. **A cell outside the active area is a pale outline:** the outline of an
-   empty cell, fainter.
+8. **The ground is in shade outside the active area.** The paper of the
+   active area is lighter. An empty cell is the same faint outline
+   everywhere in the field; where the outlines end, the field ends.
+   - Replaces the pale outlines outside the active area: one tile, one
+     colour, and the active area is seen as a whole.
 9. **The active area is the box itself,** with no margin around it. A bead
    can be drawn outside it all the same.
-10. **The pale outlines are hidden when a bead is drawn small.** Below
-    `PALE_MIN_BEAD` the ground stays bare outside the active area.
+10. **The outlines are hidden when a bead is drawn small.** Below
+    `OUTLINE_MIN_BEAD` only the ground is drawn: the paper and the shade.
     - Why: a screen of small beads is a dense net of lines, of no use to the
       eye.
 11. **A new pattern is an empty field,** shown on cell (0, 0). A pattern
@@ -81,6 +84,12 @@ on the field, columns 1 2 3       the file
     of outlines is drawn once for the size of a bead; a column of the field
     is one quad of it. The beads are their own mesh.
     - Why: the outlines were most of one mesh and were built again on every
-      press. At `PALE_MIN_BEAD` in a window of 1000 by 700 points, a press
-      took about 40 ms of a release build; now a press, a step of a zoom
-      and a move each take a few ms.
+      press. At the smallest bead with outlines in a window of 1000 by 700
+      points, a press took about 40 ms of a release build; now a press, a
+      step of a zoom and a move each take a few ms.
+16. **A bead is a sprite.** One white bead is drawn into a texture for the
+    size of a bead; every bead is a quad of it, tinted its colour. Nothing is
+    tessellated, so nothing is kept from frame to frame but the two
+    textures.
+    - In the case of decision 15, a press, a step of a zoom and a move now
+      take about 0.1 ms each.
