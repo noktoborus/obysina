@@ -500,10 +500,10 @@ EX-  a picture updated so a failing test passes, without opening it
 
 RULE checks : all six are clean before the work is committed
 THEN cargo fmt --all
-     tools/reap -- cargo clippy --workspace --all-targets
-     tools/reap -- cargo build --workspace
-     tools/reap -- cargo test --workspace
-     . /opt/env.sh && tools/reap -- make build-windows
+     cargo clippy --workspace --all-targets
+     cargo build --workspace
+     cargo test --workspace
+     . /opt/env.sh && make build-windows
      cargo audit
 WHY  code gated by `cfg` for windows is compiled only for windows; the tests
      run on the linux build
@@ -512,7 +512,7 @@ WHY  `/opt/env.sh` puts mingw on the path; `windres` of it compiles the icon
 RULE checks.android : the android package is built when a change touches
      `android/`, the code gated for android or what it calls, or when the
      user asks
-THEN tools/reap -- make apk, after `. /opt/env.sh`
+THEN make apk, after `. /opt/env.sh`
 
 ## Commits
 
@@ -534,18 +534,6 @@ EX-  a session or request identifier, a password, a token, the name of a
 RULE api.inspect : inspect a crate API instead of guessing it
 THEN cargo brief, ruskel
 
-RULE run.reap = `tools/reap`: a command that starts processes runs under it —
-     a build, the tests, the window, a background service
-WHY  PID 1 of the container is not an init and never waits for the orphans it
-     is handed. `reap` makes itself a subreaper and waits for the whole tree.
-THEN `tools/reap -- <command>`: what the command leaves running gets SIGTERM,
-     then SIGKILL after `--grace` seconds, and is waited for; the exit code is
-     the command's
-THEN a service a later step stops by name — Xvfb, cage, the window — starts in
-     the background under `tools/reap --wait -- sh -c '…'`
-EX+  tools/reap -- cargo test --workspace
-REF  tools/reap
-
 RULE gui.display : optional — the window run on a display with none attached:
      Xvfb for X11, cage in headless mode for Wayland
 WHY  it is the one way to see what `RULE test.window.limits` names
@@ -556,7 +544,7 @@ THEN build, run the window, act on it, take a picture after each step and
      look at every picture before saying what it shows; the configuration is a
      scratch directory, never one of a person
 THEN X11, with no window manager, so the window is given the focus:
-       tools/reap --wait -- sh -c 'Xvfb :99 -screen 0 1280x800x24 -nolisten tcp & sleep 1
+       sh -c 'Xvfb :99 -screen 0 1280x800x24 -nolisten tcp & sleep 1
          env -u WAYLAND_DISPLAY DISPLAY=:99 HOME=<scratch> XDG_CONFIG_HOME=<scratch>/cfg target/debug/obusina &' &
        W=$(DISPLAY=:99 xdotool search --name . | head -1)
        DISPLAY=:99 xdotool windowfocus --sync $W
@@ -564,7 +552,7 @@ THEN X11, with no window manager, so the window is given the focus:
 THEN Wayland, as the user `headless`: cage refuses to run as root. Its runtime
      directory is that user's, mode 0700, and the program renders on the
      processor:
-       tools/reap --wait -- runuser -u headless -- env -u DISPLAY XDG_RUNTIME_DIR=<run> HOME=<home> \
+       runuser -u headless -- env -u DISPLAY XDG_RUNTIME_DIR=<run> HOME=<home> \
          WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_RENDERER=pixman \
          cage -- /workspace/obusina/target/debug/obusina &
        runuser -u headless -- env XDG_RUNTIME_DIR=<run> WAYLAND_DISPLAY=wayland-0 grim shot.png
