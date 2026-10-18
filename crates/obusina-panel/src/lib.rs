@@ -18,14 +18,6 @@ const GRIP_LONG: f32 = 36.0;
 const DOT_STEP: f32 = 6.0;
 /// The radius of a dot of the grip.
 const DOT_RADIUS: f32 = 1.5;
-/// The width of the outline of a strip and of the ghost.
-const ZONE_LINE: f32 = 1.5;
-/// How strong the outline of a strip is.
-const ZONE_LINE_ALPHA: f32 = 0.6;
-/// How strong the fill of the strip under the pointer is.
-const ZONE_FILL_ALPHA: f32 = 0.35;
-/// How strong the fill of the ghost is.
-const GHOST_FILL_ALPHA: f32 = 0.5;
 
 /// The room the content of a panel has.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -33,7 +25,7 @@ pub struct Room {
     /// How the content is laid out.
     pub orientation: Orientation,
     /// The length the content may take along its orientation before the
-    /// window ends. The content breaks itself into lines to fit it; the
+    /// window ends. A content of a length of its own fits itself to it; the
     /// panel does not reflow it.
     pub length: f32,
 }
@@ -62,10 +54,8 @@ struct Drag {
     grab: Vec2,
     /// The top left corner of the panel, which follows the pointer.
     position: Pos2,
-    /// The pointer.
-    pointer: Pos2,
-    /// The edge the panel docks to when it is let go.
-    target: Option<Edge>,
+    /// The edge strip the pointer is in.
+    edge: Option<Edge>,
     /// The pointer went far enough for a drag, not a tap.
     moved: bool,
 }
@@ -88,10 +78,9 @@ pub struct PanelResponse<R> {
 /// A floating panel with no title: a grip of dots moves it, a tap on the grip
 /// folds it. Its content stands in the middle across the panel.
 ///
-/// While it is dragged it keeps its shape. The edge strip under the pointer
-/// and a ghost of the panel at that edge are drawn; on release the panel
-/// takes the place of the ghost. Let go in the middle, it stays free and
-/// keeps its orientation.
+/// While it is dragged it follows the pointer and turns at once: to the
+/// orientation of the edge strip under the pointer, or to the other one when
+/// it does not fit. Let go in an edge strip, it stands against that edge.
 pub struct FloatingPanel {
     id: Id,
     name: String,
@@ -104,7 +93,7 @@ impl FloatingPanel {
         FloatingPanel {
             id: Id::unique(("floating-panel", id_salt)),
             name: name.into(),
-            placement: Placement::docked(Edge::Top, 0.0),
+            placement: Placement::new(Vec2::ZERO, Orientation::Horizontal),
         }
     }
 
@@ -135,18 +124,20 @@ impl FloatingPanel {
             context.input(|input| (input.pointer.latest_pos(), input.pointer.primary_down()));
         if let (Some(drag), Some(pointer), true) = (&mut state.drag, pointer, held) {
             drag.position = pointer - drag.grab;
-            drag.pointer = pointer;
             if drag.moved {
-                drag.target = Edge::under(window, pointer, drag.target);
+                drag.edge = Edge::under(window, pointer, drag.edge);
             }
         }
+        let frame = egui::Frame::window(&context.global_style());
+        let margin = frame.total_margin();
+        let start = vec2(margin.left, margin.top);
+        turn(window, &mut state, start);
         let measure = std::mem::take(&mut state.measure);
         let position = match state.drag {
             Some(drag) => drag.position,
             None => state.placement.position(window, state.size),
         };
-        let orientation = state.placement.orientation();
-        let frame = egui::Frame::window(&context.global_style());
+        let orientation = state.placement.orientation;
         let room = room(context, window, orientation, &frame);
 
         let shown = egui::Area::new(self.id)
@@ -174,6 +165,12 @@ impl FloatingPanel {
             state.open[index(orientation)] = Some(rect.size());
         }
 
+        if let Some(drag) = &mut state.drag {
+            let on_grip = grip.rect.translate(-rect.min.to_vec2());
+            drag.grab = drag
+                .grab
+                .clamp(on_grip.min.to_vec2(), on_grip.max.to_vec2());
+        }
         if grip.is_pointer_button_down_on()
             && state.drag.is_none()
             && let Some(origin) = context.input(|input| input.pointer.press_origin())
@@ -181,31 +178,14 @@ impl FloatingPanel {
             state.drag = Some(Drag {
                 grab: origin - rect.min,
                 position: rect.min,
-                pointer: origin,
-                target: None,
+                edge: None,
                 moved: false,
             });
         }
         if let Some(drag) = &mut state.drag
             && grip.dragged()
-            && !drag.moved
         {
             drag.moved = true;
-            drag.target = Edge::under(window, drag.pointer, None);
-        }
-        let start = frame.total_margin();
-        let ghost = state.drag.filter(|drag| drag.moved).and_then(|drag| {
-            let edge = drag.target?;
-            Some(ghost(
-                window,
-                &state,
-                vec2(start.left, start.top),
-                drag,
-                edge,
-            ))
-        });
-        if let Some(drag) = state.drag.filter(|drag| drag.moved) {
-            draw_zones(context, window, drag.target, ghost);
         }
 
         let mut changed = false;
@@ -213,16 +193,8 @@ impl FloatingPanel {
             && let Some(drag) = state.drag.take()
             && drag.moved
         {
-            let folded = state.placement.folded;
-            state.placement = match (drag.target, ghost) {
-                (Some(edge), Some(ghost)) => Placement::against(edge, window, ghost),
-                _ => Placement::free(
-                    Placement::at(window, rect.size(), drag.position),
-                    orientation,
-                ),
-            };
-            state.placement.folded = folded;
-            state.measure = state.placement.orientation() != orientation;
+            let at = Placement::at(window, rect.size(), drag.position);
+            state.placement.at = drag.edge.map_or(at, |edge| edge.pin(at));
             changed = true;
         }
         if grip.clicked() {
@@ -263,7 +235,7 @@ impl FloatingPanel {
 
     /// The grip: a field of dots across the start of the panel.
     fn grip(&self, ui: &mut Ui, state: &State) -> Response {
-        let size = grip_size(state.placement.orientation());
+        let size = grip_size(state.placement.orientation);
         let response = ui.allocate_response(size, Sense::click_and_drag());
         let name = self.name.clone();
         let folded = state.placement.folded;
@@ -308,58 +280,69 @@ fn room(context: &Context, window: Rect, orientation: Orientation, frame: &egui:
     }
 }
 
-/// Where the panel stands if it is let go at `edge`: against the edge, its
-/// grip under the pointer along it. `start` is where the grip begins in the
-/// panel. The size in the orientation of the edge is the one last drawn;
-/// before the panel was ever drawn so, its sides swap.
-fn ghost(window: Rect, state: &State, start: Vec2, drag: Drag, edge: Edge) -> Rect {
-    let target = edge.orientation();
+/// Turns the panel by the rule of `docs/panels.md`: it wants the
+/// orientation of the edge strip under the pointer, or the one it has; when
+/// that does not fit and the other does, it takes the other. `start` is where
+/// the grip begins in the panel.
+fn turn(window: Rect, state: &mut State, start: Vec2) {
+    let current = state.placement.orientation;
+    let wanted = state
+        .drag
+        .and_then(|drag| drag.edge)
+        .map_or(current, Edge::orientation);
+    let other = wanted.other();
+    let chosen = if !fits(window, state, start, wanted) && fits(window, state, start, other) {
+        other
+    } else {
+        wanted
+    };
+    if chosen == current {
+        return;
+    }
+    state.placement.orientation = chosen;
+    state.measure = true;
+    if let Some(drag) = &mut state.drag {
+        let pointer = drag.position + drag.grab;
+        drag.grab = grab_in(drag.grab, start, chosen);
+        drag.position = pointer - drag.grab;
+    }
+}
+
+/// The rect of the panel laid out as `orientation`: under the pointer while
+/// it is dragged, at its place otherwise. The size is the one last drawn in
+/// that orientation; before the panel was ever drawn so, its sides swap.
+fn span(window: Rect, state: &State, start: Vec2, orientation: Orientation) -> Rect {
     let swapped = vec2(state.size.y, state.size.x);
-    let size = if target == state.placement.orientation() {
+    let size = if orientation == state.placement.orientation {
         state.size
     } else if state.placement.folded {
         swapped
     } else {
-        state.open[index(target)].unwrap_or(swapped)
+        state.open[index(orientation)].unwrap_or(swapped)
     };
-    let grab = drag.grab.clamp(start, start + grip_size(target));
-    let under = Rect::from_min_size(drag.pointer - grab, size);
-    let position = Placement::against(edge, window, under).position(window, size);
+    let position = match state.drag {
+        Some(drag) => drag.position + drag.grab - grab_in(drag.grab, start, orientation),
+        None => state.placement.position(window, size),
+    };
     Rect::from_min_size(position, size)
 }
 
-/// The edge strips and the ghost, drawn over the field and under the panels
-/// while a panel is dragged; the strip under the pointer is filled.
-fn draw_zones(context: &Context, window: Rect, target: Option<Edge>, ghost: Option<Rect>) {
-    let layer = egui::LayerId::new(egui::Order::Middle, Id::unique("floating-panel-zones"));
-    let painter = context.layer_painter(layer);
-    let selection = context.global_style().visuals.selection;
-    let line = egui::Stroke::new(
-        ZONE_LINE,
-        selection.stroke.color.gamma_multiply(ZONE_LINE_ALPHA),
-    );
-    for edge in Edge::ALL {
-        let fill = if target == Some(edge) {
-            selection.bg_fill.gamma_multiply(ZONE_FILL_ALPHA)
-        } else {
-            egui::Color32::TRANSPARENT
-        };
-        painter.rect(
-            edge.strip(window),
-            0.0,
-            fill,
-            line,
-            egui::StrokeKind::Inside,
-        );
-    }
-    if let Some(ghost) = ghost {
-        painter.rect(
-            ghost,
-            context.global_style().visuals.window_corner_radius,
-            selection.bg_fill.gamma_multiply(GHOST_FILL_ALPHA),
-            egui::Stroke::new(ZONE_LINE, selection.stroke.color),
-            egui::StrokeKind::Inside,
-        );
+/// `grab` moved onto the grip of a panel laid out as `orientation`, which
+/// begins at `start`.
+fn grab_in(grab: Vec2, start: Vec2, orientation: Orientation) -> Vec2 {
+    grab.clamp(start, start + grip_size(orientation))
+}
+
+/// True when the panel laid out as `orientation` fits the room of `window`.
+/// Dragged in the middle, its far end lies inside, the near end being the
+/// grip under the pointer. Otherwise it is not larger than the room: at an
+/// edge it slides along the edge when it is let go.
+fn fits(window: Rect, state: &State, start: Vec2, orientation: Orientation) -> bool {
+    let room = placement::room(window);
+    let rect = span(window, state, start, orientation);
+    match state.drag {
+        Some(drag) if drag.edge.is_none() => rect.max.x <= room.max.x && rect.max.y <= room.max.y,
+        _ => rect.width() <= room.width() && rect.height() <= room.height(),
     }
 }
 

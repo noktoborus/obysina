@@ -1,4 +1,4 @@
-//! The edges of a window a panel docks to.
+//! The edges of a window a panel stands against.
 //!
 //! ```text
 //! ┌──────────────────────────┐
@@ -13,7 +13,7 @@
 //! The pointer decides the edge, not the panel: a wide panel still reaches
 //! an edge.
 
-use egui::{Pos2, Rect};
+use egui::{Pos2, Rect, Vec2};
 
 /// How far an edge reaches into the window, in points.
 pub const SNAP: f32 = 64.0;
@@ -46,8 +46,18 @@ pub enum Orientation {
     Vertical,
 }
 
+impl Orientation {
+    /// The other orientation.
+    pub fn other(self) -> Orientation {
+        match self {
+            Orientation::Horizontal => Orientation::Vertical,
+            Orientation::Vertical => Orientation::Horizontal,
+        }
+    }
+}
+
 impl Edge {
-    /// Every edge, in the order they are drawn.
+    /// Every edge.
     pub const ALL: [Edge; 4] = [Edge::Top, Edge::Right, Edge::Bottom, Edge::Left];
 
     /// How a panel stands at this edge: a row along the top and the bottom, a
@@ -74,17 +84,15 @@ impl Edge {
             .map(|(edge, _)| edge)
     }
 
-    /// The strip along this edge in which a pointer docks a panel to it.
-    pub fn strip(self, window: Rect) -> Rect {
-        let reach = self.reach(window);
-        let mut strip = window;
+    /// `at` of a [`crate::Placement`] moved against this edge.
+    pub fn pin(self, mut at: Vec2) -> Vec2 {
         match self {
-            Edge::Top => strip.max.y = window.min.y + reach,
-            Edge::Right => strip.min.x = window.max.x - reach,
-            Edge::Bottom => strip.min.y = window.max.y - reach,
-            Edge::Left => strip.max.x = window.min.x + reach,
+            Edge::Top => at.y = 0.0,
+            Edge::Right => at.x = 1.0,
+            Edge::Bottom => at.y = 1.0,
+            Edge::Left => at.x = 0.0,
         }
-        strip
+        at
     }
 
     /// How far this edge reaches into `window`.
@@ -144,15 +152,29 @@ mod tests {
     #[test]
     fn a_strip_does_not_grow_with_the_window() {
         let large = Rect::from_min_max(pos2(0.0, 0.0), pos2(4000.0, 2000.0));
-        assert_eq!(Edge::Left.strip(large).width(), SNAP);
-        assert_eq!(Edge::under(large, pos2(SNAP * 2.0, 1000.0), None), None);
+        assert_eq!(
+            Edge::under(large, pos2(SNAP, 1000.0), None),
+            Some(Edge::Left)
+        );
+        assert_eq!(Edge::under(large, pos2(SNAP + 1.0, 1000.0), None), None);
     }
 
     #[test]
     fn a_small_window_keeps_a_free_middle() {
         let small = Rect::from_min_max(pos2(0.0, 0.0), pos2(160.0, 600.0));
-        assert_eq!(Edge::Left.strip(small).width(), 160.0 * SNAP_PART);
-        assert_eq!(Edge::under(small, pos2(80.0, 300.0), None), None);
+        let reach = 160.0 * SNAP_PART;
+        assert_eq!(
+            Edge::under(small, pos2(reach, 300.0), None),
+            Some(Edge::Left)
+        );
+        assert_eq!(Edge::under(small, pos2(reach + 1.0, 300.0), None), None);
+    }
+
+    #[test]
+    fn a_pin_moves_only_the_axis_of_the_edge() {
+        let at = egui::vec2(0.3, 0.6);
+        assert_eq!(Edge::Right.pin(at), egui::vec2(1.0, 0.6));
+        assert_eq!(Edge::Top.pin(at), egui::vec2(0.3, 0.0));
     }
 
     #[test]

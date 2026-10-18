@@ -298,12 +298,12 @@ fn a_panel_at_a_side_stands_in_a_column() {
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
     assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
 
-    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, 8.0));
+    window.drag(&t!("panel.tools"), pos2(100.0, 8.0));
     assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
 }
 
 #[test]
-fn a_panel_keeps_its_shape_until_it_is_let_go() {
+fn a_panel_turns_while_it_is_dragged() {
     let mut window = window();
     let start = window
         .harness
@@ -326,15 +326,36 @@ fn a_panel_keeps_its_shape_until_it_is_let_go() {
         window.harness.event(Event::PointerMoved(point));
         window.harness.step();
     }
-    assert!(!window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
 
     window.harness.event(button(target, false));
     window.harness.run();
     assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
+    assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
 }
 
 #[test]
-fn a_docked_panel_stays_on_its_edge_when_the_window_shrinks() {
+fn a_panel_that_runs_out_of_the_window_turns() {
+    let mut window = window();
+
+    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 150.0));
+
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
+    assert!(grip.contains(pos2(SIZE.x * 0.7, 150.0)), "{grip:?}");
+}
+
+#[test]
+fn a_window_too_narrow_for_a_row_turns_the_tools() {
+    let narrow = egui::vec2(400.0, 700.0);
+    let window = window_in(tempfile::tempdir().expect("a scratch directory"), narrow);
+
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+}
+
+#[test]
+fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
     let mut window = window();
     let narrow = egui::vec2(700.0, 600.0);
 

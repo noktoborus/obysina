@@ -7,7 +7,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use obusina_panel::{Edge, Orientation, Placement};
+use obusina_panel::{Orientation, Placement};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{AppError, Result};
@@ -34,24 +34,12 @@ pub struct Settings {
 /// The place of a panel, as the file holds it.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct Panel {
-    /// The edge it stands against; none for a free panel.
-    dock: Option<Side>,
     /// The place in the room of the window, from 0 to 1 on each axis.
     at: [f32; 2],
     /// How its content is laid out.
     layout: Layout,
     /// Only its grip is shown.
     folded: bool,
-}
-
-/// An edge of the window, as the file names it.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum Side {
-    Top,
-    Right,
-    Bottom,
-    Left,
 }
 
 /// An orientation, as the file names it.
@@ -118,9 +106,8 @@ fn read(path: &Path) -> Result<Settings> {
 impl From<Placement> for Panel {
     fn from(placement: Placement) -> Panel {
         Panel {
-            dock: placement.dock.map(Side::from),
             at: [placement.at.x, placement.at.y],
-            layout: placement.orientation().into(),
+            layout: placement.orientation.into(),
             folded: placement.folded,
         }
     }
@@ -129,32 +116,9 @@ impl From<Placement> for Panel {
 impl From<Panel> for Placement {
     fn from(panel: Panel) -> Placement {
         Placement {
-            dock: panel.dock.map(Edge::from),
             at: egui::vec2(panel.at[0], panel.at[1]),
             orientation: panel.layout.into(),
             folded: panel.folded,
-        }
-    }
-}
-
-impl From<Edge> for Side {
-    fn from(edge: Edge) -> Side {
-        match edge {
-            Edge::Top => Side::Top,
-            Edge::Right => Side::Right,
-            Edge::Bottom => Side::Bottom,
-            Edge::Left => Side::Left,
-        }
-    }
-}
-
-impl From<Side> for Edge {
-    fn from(side: Side) -> Edge {
-        match side {
-            Side::Top => Edge::Top,
-            Side::Right => Edge::Right,
-            Side::Bottom => Edge::Bottom,
-            Side::Left => Edge::Left,
         }
     }
 }
@@ -187,7 +151,7 @@ mod tests {
         let path = directory.path().join("config").join(FILE);
         let placement = Placement {
             folded: true,
-            ..Placement::docked(Edge::Bottom, 0.25)
+            ..Placement::new(egui::vec2(0.25, 1.0), Orientation::Horizontal)
         };
         let (mut settings, error) = Settings::load(Some(path.clone()));
         assert!(error.is_none());

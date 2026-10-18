@@ -1,6 +1,6 @@
 [package]
 name = "obusina-panel"
-description = "egui widget: a floating panel moved by a grip, docked to the edge of the window it is let go at"
+description = "egui widget: a floating panel moved by a grip, turned by the edge it is dragged to and by the room it has"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

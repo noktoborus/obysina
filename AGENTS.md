@@ -349,13 +349,10 @@ EX-  a `SidePanel` holding the palette
 EX-  an `egui::Window` with its title bar
 REF  crates/obusina-panel/README.md
 
-RULE ui.dock : a panel let go with the pointer in an edge strip docks to that
-     edge: a column at the left or the right, a row at the top or the
-     bottom; let go in the middle it stays free and keeps its shape
-THEN the shape changes on release only; while dragged, the strips and a ghost
-     of the panel at its edge are drawn
-THEN the content of a panel lays itself out by the `Room` it is given and
-     breaks itself into lines to fit its length
+RULE ui.dock : a panel turns at once by the edge strip under the pointer and
+     by the room it has; let go in a strip it stands against that edge
+THEN nothing is drawn while a panel is dragged
+THEN the content of a panel lays itself out by the `Room` it is given
 THEN the place of each panel is kept in the settings, by the name of the panel
 REF  docs/panels.md
 

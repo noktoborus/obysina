@@ -4,11 +4,11 @@
 use egui::{Color32, vec2};
 use rust_i18n::t;
 
-use obusina_panel::{Edge, FloatingPanel, Orientation, Placement, Room};
+use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
 
 use crate::app::App;
 use crate::ui::tools::gap;
-use crate::ui::{button, icons, lines};
+use crate::ui::{button, icons};
 
 /// The name the place of the panel is kept by.
 const NAME: &str = "palette";
@@ -20,13 +20,16 @@ const ROW: usize = 8;
 const COLUMN: usize = 2;
 /// The buttons after the swatches: the two colours in hand and the swap.
 const IN_HAND: usize = 3;
+/// The item spacings between the swatches and the buttons in hand: the one
+/// after the swatches and the two of the gap.
+const GAP_SPACES: f32 = 3.0;
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
     let placement = app
         .settings
         .panel(NAME)
-        .unwrap_or(Placement::docked(Edge::Right, 0.0));
+        .unwrap_or(Placement::new(vec2(1.0, 0.0), Orientation::Vertical));
     let shown = FloatingPanel::new(NAME, t!("panel.palette"))
         .placement(placement)
         .show(context, |ui, room| {
@@ -48,10 +51,13 @@ pub fn show(app: &mut App, context: &egui::Context) {
 /// window is narrow. In a column the lines are stacked along the panel: a
 /// line holds [`COLUMN`], or more when the window is too short for the lines.
 fn per_line(room: Room, count: usize, spacing: egui::Vec2) -> usize {
-    let in_hand = lines::length(room.orientation, IN_HAND, spacing)
-        + lines::gap_length(room.orientation, spacing);
-    let length = room.length - in_hand;
     let step = button::SIZE + SPACING;
+    let (button, space) = match room.orientation {
+        Orientation::Horizontal => (button::SIZE.x, spacing.x),
+        Orientation::Vertical => (button::SIZE.y, spacing.y),
+    };
+    let in_hand = IN_HAND as f32 * (button + space) + GAP_SPACES * space;
+    let length = room.length - in_hand;
     match room.orientation {
         Orientation::Horizontal => {
             let fit = ((length + SPACING.x) / step.x).floor() as usize;

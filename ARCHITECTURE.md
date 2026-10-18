@@ -23,7 +23,7 @@ experiments/glyphs     (nothing depends on it)
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
-| `obusina-panel` | a floating panel with a grip, docked to the edge of the window it is let go at |
+| `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
 | `obusina` | the window, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 

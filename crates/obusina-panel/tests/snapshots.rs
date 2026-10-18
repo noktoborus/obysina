@@ -23,7 +23,7 @@ fn harness(orientation: Orientation) -> Harness<'static> {
             ui.painter()
                 .rect_filled(window, 0.0, egui::Color32::from_gray(200));
             FloatingPanel::new("tools", GRIP)
-                .placement(Placement::free(egui::Vec2::ZERO, orientation))
+                .placement(Placement::new(egui::Vec2::ZERO, orientation))
                 .show(ui.ctx(), |ui, _| {
                     for label in ["A", "B", "C"] {
                         let _ = ui.button(label);
@@ -54,30 +54,4 @@ fn folded() {
     harness.run();
     harness.get_by_label(GRIP).click();
     picture(&mut harness, "folded");
-}
-
-/// The edge strips and the ghost drawn while the grip of a row is dragged to
-/// the left edge, before it is let go: the row keeps its shape, the ghost is
-/// a column against the edge.
-#[test]
-fn zones() {
-    let mut harness = harness(Orientation::Horizontal);
-    harness.run();
-    let start = harness.get_by_label(GRIP).rect().center();
-    harness.event(egui::Event::PointerMoved(start));
-    harness.event(egui::Event::PointerButton {
-        pos: start,
-        button: egui::PointerButton::Primary,
-        pressed: true,
-        modifiers: egui::Modifiers::NONE,
-    });
-    harness.step();
-    let target = egui::pos2(12.0, SIZE.y / 2.0);
-    for step in 1..=5 {
-        let point = start + (target - start) * (step as f32 / 5.0);
-        harness.event(egui::Event::PointerMoved(point));
-        harness.step();
-    }
-    harness.step();
-    harness.snapshot_options("zones", &SnapshotOptions::new().output_path(PICTURES));
 }

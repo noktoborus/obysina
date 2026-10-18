@@ -8,11 +8,11 @@ An editor of bead patterns, for Linux, Windows and Android.
   proportions.
 - Three kinds of grid: loom (and square stitch), peyote and brick stitch.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
-  it folds the panel. Let go at the left or the right edge of the window, a
-  panel stands against it in a column; at the top or the bottom, in a row.
-  While it is dragged, a ghost shows where it will stand. A panel breaks its
-  buttons into lines to fit the window. The place of each panel is kept for
-  the next start. The panels:
+  it folds the panel. Dragged to the left or the right edge of the window, a
+  panel turns into a column; to the top or the bottom, into a row. A panel
+  that does not fit the window turns too. Let go at an edge, it stands
+  against it. The place of each panel is kept for the next start. The
+  panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
     the fill, the picker, the kind of grid, save;
   - **Beads**: the colours of the pattern with their counts, an empty place,
