@@ -14,12 +14,18 @@ The field of beads: an egui widget that draws an
   not drawn below `PALE_MIN_BEAD`.
 - Puts the middle of the active area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
-- Keeps the beads as one tessellated mesh of the cells on the screen and half
-  a screen more on every side. It is tessellated anew only when the pattern
-  (its revision), the size of a bead, the turn or the pixels of the screen
-  change, or the screen leaves those cells; otherwise a move of the field
-  moves the mesh. `tessellated` in `CanvasResponse` says which frame built
-  it.
+- Draws the outlines of the empty places as one tile that repeats
+  (`tile.rs`): loom repeats every cell, peyote every two columns. The tile
+  is drawn by the distance to a rounded box, again only when the size of a
+  bead or the grid changes; a column of the field on the screen is one quad
+  of it, tinted pale or plain. The outlines cost the same at any size of the
+  field.
+- Keeps the beads as one tessellated mesh of the beads on the screen and
+  half a screen more on every side. It is tessellated anew only when the
+  pattern (its revision), the size of a bead, the turn or the pixels of the
+  screen change, or the screen leaves those cells; otherwise a move of the
+  field moves the mesh. `tessellated` in `CanvasResponse` says which frame
+  built it.
 - Turns the field by quarters, `View::turn`: 90, 180, 270, and 360, which is
   where it started. What is in the middle of the field stays there. Only the
   showing turns; the pattern is the same.

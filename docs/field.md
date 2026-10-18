@@ -45,13 +45,8 @@ on the field, columns 1 2 3       the file
    can be drawn outside it all the same.
 10. **The pale outlines are hidden when a bead is drawn small.** Below
     `PALE_MIN_BEAD` the ground stays bare outside the active area.
-    - Why: a screen of small beads holds tens of thousands of outlines,
-      costly to draw and of no use to the eye.
-    - The cost: the mesh holds the cells of the screen and half a screen
-      more on every side, and is built again when the screen leaves them.
-      At `PALE_MIN_BEAD` in a window of 1000 by 700 points a build took
-      about 40 ms of a release build; a frame that only moves the mesh
-      takes well under one.
+    - Why: a screen of small beads is a dense net of lines, of no use to the
+      eye.
 11. **A new pattern is an empty field,** shown on cell (0, 0). A pattern
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
@@ -82,3 +77,10 @@ on the field, columns 1 2 3       the file
     typed, so a finger reaches it.
     - The size lives for the session, like the sheet. It is no step of
       undo: it changes no bead.
+15. **The outlines are one repeating texture, apart from the beads.** A tile
+    of outlines is drawn once for the size of a bead; a column of the field
+    is one quad of it. The beads are their own mesh.
+    - Why: the outlines were most of one mesh and were built again on every
+      press. At `PALE_MIN_BEAD` in a window of 1000 by 700 points, a press
+      took about 40 ms of a release build; now a press, a step of a zoom
+      and a move each take a few ms.

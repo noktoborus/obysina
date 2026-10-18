@@ -3,17 +3,20 @@
 #![deny(missing_docs)]
 
 mod mesh;
+mod tile;
 mod view;
 
 pub use view::{MAX_BEAD, MIN_BEAD, Turn, View};
 
-use egui::{Color32, Pos2, Rect, Response, Sense, Stroke, StrokeKind, Ui, Vec2, vec2};
+use egui::{Color32, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
 use obusina_pattern::{Bounds, Cell, Pattern};
 
 /// The part of a bead left as a gap to its neighbours.
 const GAP: f32 = 0.08;
 /// The rounding of a bead, as a part of its height.
 const ROUNDING: f32 = 0.3;
+/// The width of the outline of an empty place, in points.
+const OUTLINE: f32 = 1.0;
 /// The ground under the beads: a neutral grey, the same in every theme, so
 /// that a colour looks the same and a black bead is seen.
 const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
@@ -86,6 +89,7 @@ impl<'a> Canvas<'a> {
         let painter = ui.painter_at(rect);
         painter.rect_filled(rect, 0.0, PAPER);
         let origin = rect.min + self.view.offset;
+        self.draw_outlines(ui, &painter, origin, rect);
         let tessellated = self.draw_beads(ui, &painter, response.id, origin, rect);
 
         let hovered = response
@@ -170,41 +174,59 @@ impl<'a> Canvas<'a> {
         self.field().is_some_and(|field| field.contains(cell))
     }
 
-    /// A shape for every bead of `window` in the field, the pattern standing
-    /// at `origin`: a bead filled, an empty place in the active area
-    /// outlined, one outside it outlined pale, or left bare when beads are
-    /// small.
+    /// The outlines of the empty places of the field on the screen, as
+    /// quads of the repeating tile: pale over the field, plain over the
+    /// active area. The pale ones are left out below [`PALE_MIN_BEAD`].
+    ///
+    /// A bead is drawn over its outline, which lies inside it.
+    fn draw_outlines(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, screen: Rect) {
+        let Some(field) = self.field() else {
+            return;
+        };
+        let visible = self.cells_under(origin, screen);
+        let pattern = self.pattern;
+        let (grid, ratio) = (pattern.grid(), pattern.ratio());
+        let texture = tile::texture(
+            ui.ctx(),
+            grid,
+            ratio,
+            self.view.bead,
+            GAP,
+            ROUNDING,
+            OUTLINE,
+        );
+        let mut mesh = egui::Mesh::with_texture(texture.id());
+        let view: &View = self.view;
+        if view.bead >= PALE_MIN_BEAD
+            && let Some(cells) = field.intersection(visible)
+        {
+            tile::add_columns(&mut mesh, grid, ratio, view, origin, cells, PALE);
+        }
+        if let Some(cells) = pattern
+            .bounds()
+            .and_then(|active| active.intersection(visible))
+        {
+            tile::add_columns(&mut mesh, grid, ratio, view, origin, cells, EMPTY);
+        }
+        painter.add(egui::Shape::mesh(mesh));
+    }
+
+    /// A shape for every bead of `window`, the pattern standing at `origin`.
     ///
     /// The rounding is a part of the height of a bead before the field is
     /// turned, so a turned bead is rounded the same.
     fn bead_shapes(&self, origin: Pos2, window: Bounds) -> Vec<egui::Shape> {
-        let active = self.pattern.bounds();
-        let pale = self.view.bead >= PALE_MIN_BEAD;
         let rounding = self.view.bead * (1.0 - GAP) * ROUNDING;
-        let Some(cells) = self.field().and_then(|field| field.intersection(window)) else {
-            return Vec::new();
-        };
-        let outline = |bead, colour| {
-            egui::Shape::rect_stroke(bead, rounding, Stroke::new(1.0, colour), StrokeKind::Inside)
-        };
-        cells
-            .cells()
-            .filter_map(|cell| {
-                let inside = active.is_some_and(|active| active.contains(cell));
-                let shape = match self.pattern.get(cell) {
-                    Some(index) => {
-                        let [red, green, blue] = self.pattern.palette()[index].rgb.0;
-                        egui::Shape::rect_filled(
-                            self.bead_rect(origin, cell),
-                            rounding,
-                            Color32::from_rgb(red, green, blue),
-                        )
-                    }
-                    None if inside => outline(self.bead_rect(origin, cell), EMPTY),
-                    None if pale => outline(self.bead_rect(origin, cell), PALE),
-                    None => return None,
-                };
-                Some(shape)
+        self.pattern
+            .beads()
+            .filter(|(cell, _)| window.contains(*cell))
+            .map(|(cell, index)| {
+                let [red, green, blue] = self.pattern.palette()[index].rgb.0;
+                egui::Shape::rect_filled(
+                    self.bead_rect(origin, cell),
+                    rounding,
+                    Color32::from_rgb(red, green, blue),
+                )
             })
             .collect()
     }
