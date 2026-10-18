@@ -33,6 +33,21 @@ widget itself is `crates/obusina-panel/README.md`.
    `Placement` of each panel by its name in `settings.yaml`, written when a
    panel is let go or folded.
 
+## Decided, not built yet
+
+These replace decisions 1 and 5 once they are built.
+
+7. **A panel that does not fit turns.** While dragged in the middle, a
+   panel that runs out of the window turns, if the turned panel fits with
+   its grip under the pointer. It turns back when its first shape fits
+   again. Both ways need `HYSTERESIS` more than the border, so it does not
+   flip on it. The same holds when the window changes its size.
+   - Why: a panel pushed back inside loses the pointer from its grip.
+8. **The shape changes at once.** At an edge and when it does not fit, the
+   panel turns while it is dragged, its grip under the pointer. No ghost,
+   no strips, no lines are drawn.
+   - Replaces decision 1: the turn is the hint.
+
 ## Open questions
 
 - Two panels at two edges that meet overlap in the corner on a narrow
