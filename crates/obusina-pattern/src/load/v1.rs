@@ -15,6 +15,8 @@ struct Document {
     _format: u64,
     grid: Grid,
     #[serde(default)]
+    turn: u16,
+    #[serde(default)]
     sheet: Option<Sheet>,
     bead_ratio: f32,
     palette: Vec<Colour>,
@@ -57,6 +59,7 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
         })
         .collect::<Result<Vec<_>>>()?;
     let mut pattern = Pattern::new(document.grid, document.bead_ratio, palette)?;
+    pattern.set_turn(document.turn)?;
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
     if let Some(sheet) = document.sheet {

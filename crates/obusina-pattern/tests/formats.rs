@@ -23,6 +23,7 @@ fn format_1_reads_its_beads() {
     let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
 
     assert_eq!(pattern.grid(), Grid::Peyote);
+    assert_eq!(pattern.turn(), 90);
     assert_eq!(
         pattern.bounds(),
         Some(Bounds {
@@ -153,6 +154,23 @@ fn a_file_with_no_sheet_reads_with_none() {
 
     assert_eq!(pattern.sheet(), None);
     assert_eq!(pattern.counts(), [5, 5]);
+}
+
+#[test]
+fn a_turn_that_is_not_a_quarter_is_refused() {
+    let text = file(1).replace("\"turn\": 90", "\"turn\": 45");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::Turn { degrees: 45 })
+    ));
+}
+
+#[test]
+fn a_file_with_no_turn_is_shown_unturned() {
+    let text = file(1).replace("  \"turn\": 90,\n", "");
+
+    assert_eq!(Pattern::from_json(&text).expect("it reads").turn(), 0);
 }
 
 #[test]

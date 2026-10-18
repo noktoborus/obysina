@@ -110,3 +110,10 @@ on the field, columns 1 2 3       the file
     the cells of its first screen as its start value, no step of undo. A
     file with no sheet opens the same way. The work area is not written: it
     is the box around the sheet and the rows.
+18. **The turn is written to the file.** `turn` holds how far the pattern is
+    shown turned, 0, 90, 180 or 270; a pattern opens turned as it was. The
+    beads do not move, and the turn stays no step of undo: an `EXC` of
+    `RULE ui.undo`, by the user's word.
+    - Turning the beads themselves was weighed and left: a quarter turn of
+      peyote is brick stitch, which is no grid any more, and a bead not
+      square would lie the other way.

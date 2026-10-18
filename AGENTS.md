@@ -383,6 +383,9 @@ REF  src/render.rs
 RULE ui.undo : every change to a pattern can be undone
 THEN a change goes through one edit type of the binary; nothing writes the
      model past it
+EXC  the turn the pattern is shown at, by the user's word: it is kept in the
+     pattern for its file and moves no bead, so it is written past the
+     history and is no step of undo
 
 ## Configuration
 

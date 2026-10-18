@@ -828,7 +828,7 @@ fn the_buttons_of_a_row_stand_on_one_line() {
 }
 
 #[test]
-fn the_field_turns_both_ways_and_the_pattern_stays() {
+fn the_field_turns_both_ways_and_the_beads_stay() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
     let pattern = window.harness.state().pattern.clone();
@@ -841,9 +841,27 @@ fn the_field_turns_both_ways_and_the_pattern_stays() {
     assert_eq!(window.harness.state().view, start);
 
     window.click(&t!("view.turn_left"));
-    assert_eq!(window.harness.state().view.degrees(), 270);
-    assert_eq!(window.harness.state().pattern, pattern);
-    assert!(!window.harness.state().history.can_redo());
+    let app = window.harness.state();
+    assert_eq!(app.view.degrees(), 270);
+    assert_eq!(app.pattern.turn(), 270);
+    let beads = |pattern: &obusina_pattern::Pattern| pattern.beads().collect::<Vec<_>>();
+    assert_eq!(beads(&app.pattern), beads(&pattern));
+    assert!(app.history.can_undo(), "the press, and no turn");
+    assert!(!app.history.can_redo());
+}
+
+/// The turn is written to the file, and the pattern opens turned as it was.
+#[test]
+fn a_turned_pattern_opens_turned() {
+    let mut window = window();
+    window.click(&t!("view.turn_right"));
+    window.click(&t!("file.save"));
+
+    let path = window.directory.path().join("pattern.json");
+    let again = App::open(Some(path), None);
+
+    assert_eq!(again.pattern.turn(), 90);
+    assert_eq!(again.view.degrees(), 90);
 }
 
 #[test]

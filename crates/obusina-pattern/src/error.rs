@@ -97,6 +97,13 @@ pub enum PatternError {
         ratio: f32,
     },
 
+    /// A turn is not a quarter of a whole one.
+    #[error("the turn {degrees} is not 0, 90, 180 or 270")]
+    Turn {
+        /// The turn, in degrees.
+        degrees: u16,
+    },
+
     /// The sheet of the file has no cells.
     #[error("the sheet is {width} by {height}")]
     Sheet {

@@ -21,6 +21,7 @@ pub const FORMAT: u64 = 1;
 struct Document<'a> {
     format: u64,
     grid: Grid,
+    turn: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     sheet: Option<Sheet>,
     bead_ratio: f32,
@@ -59,6 +60,7 @@ impl Pattern {
         let document = Document {
             format: FORMAT,
             grid: self.grid(),
+            turn: self.turn(),
             sheet: self.sheet().map(|sheet| Sheet {
                 origin: [sheet.min.column, sheet.min.row],
                 size: [sheet.width(), sheet.height()],

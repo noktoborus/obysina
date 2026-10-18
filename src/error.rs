@@ -64,6 +64,7 @@ impl AppError {
                 | PatternError::Colour { .. }
                 | PatternError::Ratio { .. }
                 | PatternError::Sheet { .. }
+                | PatternError::Turn { .. }
                 | PatternError::Outside { .. } => "error.pattern.invalid",
             },
             AppError::SettingsRead { .. } | AppError::SettingsInvalid { .. } => {

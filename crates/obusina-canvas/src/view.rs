@@ -71,6 +71,12 @@ impl View {
         u16::from(self.quarters) * 90
     }
 
+    /// Shows the field turned `degrees` clockwise, a whole number of quarters;
+    /// another number is taken down to the quarter below it.
+    pub fn set_degrees(&mut self, degrees: u16) {
+        self.quarters = ((degrees / 90) % u16::from(QUARTERS)) as u8;
+    }
+
     /// Turns the field by a quarter, keeping what is in the middle of the
     /// field where it stands.
     pub fn turn(&mut self, turn: Turn) {

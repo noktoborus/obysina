@@ -10,6 +10,9 @@ use crate::palette::{Bead, EMPTY_KEY};
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
 
+/// The turns a pattern is shown at, in degrees.
+pub const TURNS: [u16; 4] = [0, 90, 180, 270];
+
 /// The next revision any pattern takes: one counter for all of them, so that
 /// two patterns that are not clones never share a revision.
 static NEXT_REVISION: AtomicU64 = AtomicU64::new(1);
@@ -31,6 +34,7 @@ pub struct Pattern {
     palette: Vec<Bead>,
     beads: BTreeMap<Cell, usize>,
     sheet: Option<Bounds>,
+    turn: u16,
     revision: u64,
 }
 
@@ -41,6 +45,7 @@ impl PartialEq for Pattern {
             && self.palette == other.palette
             && self.beads == other.beads
             && self.sheet == other.sheet
+            && self.turn == other.turn
     }
 }
 
@@ -63,6 +68,7 @@ impl Pattern {
             palette,
             beads: BTreeMap::new(),
             sheet: None,
+            turn: 0,
             revision: next_revision(),
         })
     }
@@ -109,6 +115,26 @@ impl Pattern {
             self.sheet = sheet;
             self.revision = next_revision();
         }
+    }
+
+    /// How far the pattern is shown turned clockwise: 0, 90, 180 or 270
+    /// degrees. The beads do not move; it is kept so the pattern opens as it
+    /// was shown.
+    pub fn turn(&self) -> u16 {
+        self.turn
+    }
+
+    /// Sets the turn it is shown at, in degrees; a turn that is not a
+    /// quarter is refused.
+    pub fn set_turn(&mut self, degrees: u16) -> Result<()> {
+        if !TURNS.contains(&degrees) {
+            return Err(PatternError::Turn { degrees });
+        }
+        if self.turn != degrees {
+            self.turn = degrees;
+            self.revision = next_revision();
+        }
+        Ok(())
     }
 
     /// The work area: the box around the sheet and the beads. A bead past

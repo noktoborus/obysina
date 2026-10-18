@@ -32,6 +32,7 @@ an empty place.
 {
   "format": 1,
   "grid": "peyote",
+  "turn": 90,
   "sheet": {
     "origin": [-4, 1],
     "size": [8, 4]
@@ -53,6 +54,7 @@ keeps them on one.
 | --- | --- |
 | `format` | the format of the file, `FORMAT` when written |
 | `grid` | `loom` or `peyote` |
+| `turn` | how far the pattern is shown turned clockwise: 0, 90, 180 or 270; the beads do not move; 0 when left out |
 | `sheet` | the size of the work area set by hand; left out when none is set |
 | `sheet.origin` | column and row of the field of its top left cell |
 | `sheet.size` | columns and rows, at least one each |

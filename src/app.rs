@@ -74,10 +74,12 @@ impl App {
             other => (new_pattern(), other, None),
         };
         let message = message.or_else(|| settings_error.map(|error| say(&error)));
+        let mut view = View::default();
+        view.set_degrees(pattern.turn());
         App {
             pattern,
             path,
-            view: View::default(),
+            view,
             tool: Tool::Pencil,
             colours: [Some(0), None],
             history: History::default(),
@@ -108,9 +110,15 @@ impl App {
         }
     }
 
-    /// Turns the field a quarter; the pattern stays as it is.
+    /// Turns the field a quarter; the beads stay where they are.
+    ///
+    /// The turn is kept in the pattern for its file, past the history: it
+    /// moves no bead (the `EXC` of `RULE ui.undo`).
     pub(crate) fn turn(&mut self, turn: obusina_canvas::Turn) {
         self.view.turn(turn);
+        if let Err(error) = self.pattern.set_turn(self.view.degrees()) {
+            log::error!("the view gave a turn that is not a quarter: {error}");
+        }
     }
 
     /// Undoes the last step.
