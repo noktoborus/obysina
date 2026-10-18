@@ -37,10 +37,13 @@ on the field, columns 1 2 3       the file
    `Grid::neighbours`, which only the fill asked.
    - Why: the empty space of an endless field has no end to fill to.
 
+7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
+8. **A cell outside the active area is a pale outline:** the outline of an
+   empty cell, fainter.
+9. **The active area is the box itself,** with no margin around it. A bead
+   can be drawn outside it all the same.
+
 ## Open questions
 
-- The menu of grids: a `PlateMenu` of two entries, or one button that
-  switches.
-- How the cells outside are dimmed, and whether they are hidden when a bead
-  is drawn small.
-- The active area: the box itself, or a margin of a cell or two around it.
+- Whether the pale outlines are hidden when a bead is drawn small, where a
+  screen holds tens of thousands of them.
