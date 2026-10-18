@@ -152,17 +152,19 @@ impl PaletteEditor {
                 let lifted = self.doing == Doing::Moving(index) || self.dragging == Some(index);
                 let swatch = ui.add(button(&key).fill(*colour).selected(lifted));
                 self.cells.push(swatch.rect);
-                if self.reorder == Reorder::Drag {
-                    drags.push(ui.interact(
+                let held = (self.reorder == Reorder::Drag).then(|| {
+                    ui.interact(
                         swatch.rect,
                         Id::unique(("palette-editor-drag", index)),
-                        Sense::drag(),
-                    ));
-                }
+                        Sense::click_and_drag(),
+                    )
+                });
                 let name = format!("{} {key}", lang.tr("colour", "цвет"));
-                if named(ui.ctx(), swatch, &name).clicked() {
+                let swatch = named(ui.ctx(), swatch, &name);
+                if swatch.clicked() || held.as_ref().is_some_and(egui::Response::clicked) {
                     tapped = Some(index);
                 }
+                drags.extend(held);
             }
             let full = self.colours.len() >= MAX_COLOURS;
             let add = ui.add_enabled(!full, button("+"));
@@ -572,5 +574,33 @@ mod tests {
 
         assert_eq!(harness.state().colours[2], first);
         assert!(harness.state().dragging.is_none());
+    }
+
+    /// A press of the pointer on a colour, let go in place, opens its menu
+    /// in both variants. The area a drag variant lays over a colour is on
+    /// top, so it takes the tap as well as the drag.
+    #[test]
+    fn a_tap_of_the_pointer_opens_the_menu() {
+        use egui_kittest::kittest::Queryable;
+        for reorder in [Reorder::Menu, Reorder::Drag] {
+            let mut harness = window_of(reorder, Lang::En);
+            let at = harness.get_by_label("3").rect().center();
+            harness.event(egui::Event::PointerMoved(at));
+            for pressed in [true, false] {
+                harness.event(egui::Event::PointerButton {
+                    pos: at,
+                    button: egui::PointerButton::Primary,
+                    pressed,
+                    modifiers: egui::Modifiers::NONE,
+                });
+                harness.step();
+            }
+            harness.run();
+
+            assert!(
+                harness.state().menu.is_open(),
+                "{reorder:?}: the menu opens"
+            );
+        }
     }
 }
