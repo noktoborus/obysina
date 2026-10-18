@@ -94,9 +94,10 @@ RULE plate_menu.copy : `crates/plate-menu` is a copy of the crate of zyterm,
      moved to egui 0.37
 WHY  zyterm is on egui 0.36, and a path to its crate brings a second egui
      whose types do not meet those of this one
-THEN a fix made here is made in zyterm too, and the other way; the copy goes
-     once both share one crate on one egui
+THEN the copy goes once both share one crate on one egui
 EXC  the copy, by the user's word, until then
+EXC  work on obusina touches no other project, by the user's word: a change
+     of this copy is not carried to zyterm, and the two drift apart
 
 RULE crate.readme : every crate has a README.md naming its scope, boundaries
      and errors

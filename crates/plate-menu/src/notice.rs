@@ -6,8 +6,8 @@ use std::sync::Arc;
 ///
 /// A text is drawn strongly and wraps. A widget is the caller's: it is drawn
 /// in the width of the menu, as high as it makes itself, on every frame the
-/// menu is shown. A text converts into a notice, so `notice("text")` reads as
-/// it always did.
+/// menu is shown. Every text that converted into a `String` before converts
+/// into a notice, so `notice("text")` reads as it always did.
 #[derive(Clone)]
 pub enum Notice {
     /// A text.
@@ -57,6 +57,12 @@ impl From<String> for Notice {
 impl From<&str> for Notice {
     fn from(text: &str) -> Notice {
         Notice::Text(text.to_string())
+    }
+}
+
+impl From<std::borrow::Cow<'_, str>> for Notice {
+    fn from(text: std::borrow::Cow<'_, str>) -> Notice {
+        Notice::Text(text.into_owned())
     }
 }
 
