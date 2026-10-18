@@ -117,3 +117,13 @@ on the field, columns 1 2 3       the file
     - Turning the beads themselves was weighed and left: a quarter turn of
       peyote is brick stitch, which is no grid any more, and a bead not
       square would lie the other way.
+19. **A change of the size of the window keeps the middle of the field.**
+    What is in the middle of the field stays there, at the same size of a
+    bead. When after the change no cell of the work area is on the screen,
+    the field is centred on the work area, as when a pattern opens. A frame
+    where the field has no size is skipped.
+    - Why: the place of the pattern was counted from the top left corner of
+      the field, so a narrower window, a phone turned or the keyboard of
+      android carried the pattern off the screen.
+    - The place and the zoom of the view are not written to the file: they
+      belong to the window, not to the work.
