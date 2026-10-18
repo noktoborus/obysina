@@ -16,8 +16,6 @@ pub const TURN_LEFT: &str = "\u{21ba}";
 pub const TURN_RIGHT: &str = "\u{21bb}";
 /// The pencil, which paints one bead at a time.
 pub const PENCIL: &str = "\u{270f}";
-/// The fill, which paints a region of one colour.
-pub const FILL: &str = "\u{1f3a8}";
 /// The picker, which takes the colour of a bead.
 pub const PICK: &str = "\u{1f4a7}";
 /// Swap the two colours, the arrows going round.
@@ -32,7 +30,7 @@ pub const GRID: &str = "\u{229e}";
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, FILL, PICK, SWAP, SAVE, EMPTY, GRID,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWAP, SAVE, EMPTY, GRID,
 ];
 
 #[cfg(test)]

@@ -4,9 +4,12 @@ An editor of bead patterns, for Linux, Windows and Android.
 
 ## What it does
 
-- Draws a pattern on a field that fills the window. A bead is drawn at its
-  proportions.
-- Three kinds of grid: loom (and square stitch), peyote and brick stitch.
+- Draws a pattern on a field that fills the window and has no end. A bead is
+  drawn at its proportions.
+- The active area is the box around the beads put. An empty place outside
+  it is drawn pale, and not at all when the beads are drawn small. A new
+  pattern is an empty field.
+- Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a
   panel turns into a column; to the top or the bottom, into a row. A panel
@@ -14,7 +17,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   against it. The place of each panel is kept for the next start. The
   panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
-    the fill, the picker, the kind of grid, save;
+    the picker, the kind of grid, save;
   - **Beads**: the colours of the pattern with their counts, an empty place,
     and the two colours in hand.
 - A press on a bead switches it: to the colour in hand, or to empty when it

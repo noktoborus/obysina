@@ -3,7 +3,7 @@
 //! `tests/patterns/<format>.json` is a file of that format. It is never
 //! changed once the format is replaced.
 
-use obusina_pattern::{Cell, FORMAT, Grid, Pattern, PatternError};
+use obusina_pattern::{Bounds, Cell, FORMAT, Grid, Pattern, PatternError};
 
 /// The file of a format, as text.
 fn file(format: u64) -> String {
@@ -23,11 +23,17 @@ fn format_1_reads_its_beads() {
     let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
 
     assert_eq!(pattern.grid(), Grid::Peyote);
-    assert_eq!((pattern.width(), pattern.height()), (6, 3));
+    assert_eq!(
+        pattern.bounds(),
+        Some(Bounds {
+            min: Cell { column: -3, row: 2 },
+            max: Cell { column: 2, row: 3 },
+        })
+    );
     assert_eq!(pattern.palette()[0].code.as_deref(), Some("DB-0010"));
-    assert_eq!(pattern.get(Cell { column: 2, row: 0 }), Some(1));
-    assert_eq!(pattern.get(Cell { column: 3, row: 0 }), None);
-    assert_eq!(pattern.counts(), [5, 6]);
+    assert_eq!(pattern.get(Cell { column: -1, row: 2 }), Some(1));
+    assert_eq!(pattern.get(Cell { column: 0, row: 2 }), None);
+    assert_eq!(pattern.counts(), [5, 5]);
 }
 
 #[test]
@@ -71,7 +77,7 @@ fn a_file_with_no_format_is_refused() {
 
 #[test]
 fn a_bead_of_no_colour_is_refused() {
-    let text = file(1).replace("\"ABABAB\"", "\"ABABAC\"");
+    let text = file(1).replace("\"ABABA.\"", "\"ABABAC\"");
 
     assert!(matches!(
         Pattern::from_json(&text),
@@ -81,6 +87,50 @@ fn a_bead_of_no_colour_is_refused() {
             key: 'C'
         })
     ));
+}
+
+#[test]
+fn a_row_shorter_than_the_first_is_refused() {
+    let text = file(1).replace("\"ABABA.\"", "\"ABABA\"");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::RowWidth {
+            row: 1,
+            expected: 6,
+            found: 5
+        })
+    ));
+}
+
+/// The rows are the active area, and `origin` its place on the field: a
+/// pattern opens where it was, and a peyote column keeps its parity.
+#[test]
+fn a_bead_moved_out_moves_the_origin() {
+    let mut pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
+    pattern.set(Cell { column: -4, row: 1 }, Some(0));
+
+    let text = pattern.to_json().expect("the pattern writes");
+
+    assert!(
+        text.contains("\"origin\": [\n    -4,\n    1\n  ]"),
+        "{text}"
+    );
+    assert_eq!(Pattern::from_json(&text).expect("it reads back"), pattern);
+}
+
+#[test]
+fn a_pattern_with_no_beads_has_no_rows() {
+    let mut pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
+    for (cell, _) in pattern.beads().collect::<Vec<_>>() {
+        pattern.set(cell, None);
+    }
+
+    let text = pattern.to_json().expect("the pattern writes");
+
+    assert!(text.contains("\"rows\": []"), "{text}");
+    let again = Pattern::from_json(&text).expect("it reads back");
+    assert_eq!(again.bounds(), None);
 }
 
 #[test]

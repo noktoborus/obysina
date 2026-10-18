@@ -58,12 +58,12 @@ impl AppError {
                 PatternError::Json { .. }
                 | PatternError::NoFormat
                 | PatternError::UnknownFormat { .. }
-                | PatternError::RowCount { .. }
                 | PatternError::RowWidth { .. }
                 | PatternError::UnknownKey { .. }
                 | PatternError::DuplicateKey { .. }
                 | PatternError::Colour { .. }
-                | PatternError::Size { .. } => "error.pattern.invalid",
+                | PatternError::Ratio { .. }
+                | PatternError::Outside { .. } => "error.pattern.invalid",
             },
             AppError::SettingsRead { .. } | AppError::SettingsInvalid { .. } => {
                 "error.settings.read"

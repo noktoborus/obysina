@@ -12,10 +12,7 @@ use crate::app::App;
 /// The size of the window in every test.
 const SIZE: egui::Vec2 = egui::vec2(1000.0, 700.0);
 /// A bead far from the panels.
-const FREE: Cell = Cell {
-    column: 10,
-    row: 20,
-};
+const FREE: Cell = Cell { column: 5, row: 5 };
 
 /// The window and the scratch directory its pattern is saved in.
 struct Window {
@@ -195,17 +192,6 @@ fn a_press_is_undone_and_redone() {
 }
 
 #[test]
-fn the_fill_paints_the_whole_region() {
-    let mut window = window();
-    window.click(&t!("tool.fill"));
-
-    window.press(FREE, PointerButton::Primary);
-
-    let pattern = &window.harness.state().pattern;
-    assert_eq!(pattern.counts()[0], pattern.width() * pattern.height());
-}
-
-#[test]
 fn the_second_colour_is_reached_by_a_button() {
     let mut window = window();
     assert_eq!(window.harness.state().colours, [Some(0), None]);
@@ -265,7 +251,6 @@ fn every_widget_has_a_name() {
         t!("edit.undo"),
         t!("edit.redo"),
         t!("tool.pencil"),
-        t!("tool.fill"),
         t!("tool.pick"),
         t!("grid.kind"),
         t!("file.save"),
@@ -638,7 +623,6 @@ fn every_button_of_the_panels_has_one_size() {
         t!("edit.undo"),
         t!("edit.redo"),
         t!("tool.pencil"),
-        t!("tool.fill"),
         t!("tool.pick"),
         t!("grid.kind"),
         t!("file.save"),
@@ -654,22 +638,38 @@ fn every_button_of_the_panels_has_one_size() {
 }
 
 #[test]
-fn the_pattern_opens_in_the_middle_of_the_window() {
+fn a_new_pattern_opens_on_the_middle_of_the_field() {
     let window = window();
     let app = window.harness.state();
     let field = window.harness.get_by_label(&t!("field")).rect();
-    let (width, height) = app.pattern.grid().extent(
-        app.pattern.width(),
-        app.pattern.height(),
-        app.pattern.ratio(),
-    );
-    let middle = field.min + app.view.offset + egui::vec2(width, height) * app.view.bead / 2.0;
+    let origin = Cell { column: 0, row: 0 };
+
+    let middle = obusina_canvas::bead_centre(&app.pattern, &app.view, field, origin);
 
     assert!(
         (middle - field.center()).length() < 1.0,
         "{middle:?} != {:?}",
         field.center()
     );
+}
+
+/// A bead put left of and above cell (0, 0) is saved and opens where it
+/// was: the field has no end either way.
+#[test]
+fn a_bead_left_of_the_middle_opens_where_it_was() {
+    let mut window = window();
+    let cell = Cell {
+        column: -3,
+        row: -2,
+    };
+    window.press(cell, PointerButton::Primary);
+    window.click(&t!("file.save"));
+
+    let path = window.directory.path().join("pattern.json");
+    let again = App::open(Some(path), None);
+
+    assert_eq!(again.pattern.get(cell), Some(0));
+    assert_eq!(again.pattern.counts()[0], 1);
 }
 
 #[test]
@@ -731,7 +731,7 @@ fn the_field_turns_both_ways_and_the_pattern_stays() {
 fn a_press_on_a_turned_field_reaches_its_bead() {
     let mut window = window();
     window.click(&t!("view.turn_right"));
-    let cell = Cell { column: 3, row: 25 };
+    let cell = Cell { column: 3, row: 8 };
 
     window.press(cell, PointerButton::Primary);
 

@@ -445,7 +445,7 @@ THEN the test is a module under `src/`, so it reads the private state of
      `App`; a pattern is saved to a scratch directory, never one of a person
 THEN `egui_kittest` with `eframe`, `wgpu` and `snapshot` is a dev-dependency
      of the root package
-EX+  the fill tool picked by its name, a click on the canvas, the count of the
+EX+  the picker picked by its name, a click on the canvas, the count of the
      colour read from the panel and the cells read from the pattern
 EX-  a step that waits by `sleep`: `harness.run()` until the window settles,
      or steps until a condition, with a bound

@@ -20,8 +20,11 @@ fn harness() -> Harness<'static, Field> {
         catalog: None,
         code: None,
     };
+    let mut pattern = Pattern::new(Grid::Peyote, 1.0, vec![bead]).expect("a pattern");
+    pattern.set(Cell { column: 0, row: 0 }, Some(0));
+    pattern.set(Cell { column: 5, row: 4 }, Some(0));
     let field = Field {
-        pattern: Pattern::new(Grid::Peyote, 6, 5, 1.0, vec![bead]).expect("a pattern"),
+        pattern,
         view: View::default(),
         tessellated: Vec::new(),
     };
@@ -66,6 +69,18 @@ fn a_move_of_the_field_moves_the_mesh() {
     assert!(!frame(&mut harness));
 }
 
+/// The mesh holds half a screen more on every side: a move of a whole
+/// screen leaves it.
+#[test]
+fn a_move_past_the_cells_kept_tessellates() {
+    let mut harness = harness();
+
+    harness.state_mut().view.offset.x += 240.0;
+
+    assert!(frame(&mut harness));
+    assert!(!frame(&mut harness));
+}
+
 #[test]
 fn a_change_of_the_pattern_tessellates_once() {
     let mut harness = harness();
@@ -86,9 +101,7 @@ fn a_zoom_and_a_turn_tessellate() {
     harness.state_mut().view.bead *= 1.5;
     assert!(frame(&mut harness));
 
-    let field = harness.state_mut();
-    let extent = obusina_canvas::extent(&field.pattern, field.view.bead);
-    field.view.turn(Turn::Clockwise, extent);
+    harness.state_mut().view.turn(Turn::Clockwise);
     assert!(frame(&mut harness));
     assert!(!frame(&mut harness));
 }

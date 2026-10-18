@@ -4,11 +4,11 @@
 
 use egui_kittest::{Harness, SnapshotOptions};
 use obusina_canvas::{Canvas, Turn, View};
-use obusina_pattern::{Bead, Cell, Grid, Pattern, Rgb};
+use obusina_pattern::{Bead, Bounds, Cell, Grid, Pattern, Rgb};
 
 /// Where the pictures are kept: beside the README, which shows them.
 const PICTURES: &str = "img";
-/// A window that holds the whole pattern.
+/// A window that holds the whole pattern and some of the field around it.
 const SIZE: egui::Vec2 = egui::vec2(260.0, 200.0);
 
 /// Three colours.
@@ -28,10 +28,15 @@ fn palette() -> Vec<Bead> {
     .collect()
 }
 
-/// A diamond of three colours on a grid of `grid`, with empty places left.
+/// A diamond of three colours on a grid of `grid`, with empty places left
+/// in its active area, columns 0 to 8 and rows 0 to 6.
 fn pattern(grid: Grid) -> Pattern {
-    let mut pattern = Pattern::new(grid, 9, 7, 0.8, palette()).expect("a pattern");
-    for cell in pattern.cells().collect::<Vec<_>>() {
+    let mut pattern = Pattern::new(grid, 0.8, palette()).expect("a pattern");
+    let area = Bounds {
+        min: Cell { column: 0, row: 0 },
+        max: Cell { column: 8, row: 6 },
+    };
+    for cell in area.cells() {
         let distance = cell.column.abs_diff(4) + cell.row.abs_diff(3);
         let colour = match distance {
             0 => Some(2),
@@ -51,9 +56,8 @@ fn pattern(grid: Grid) -> Pattern {
 fn picture(grid: Grid, turns: &[Turn], name: &str) {
     let pattern = pattern(grid);
     let mut view = View::default();
-    let extent = obusina_canvas::extent(&pattern, view.bead);
     for turn in turns {
-        view.turn(*turn, extent);
+        view.turn(*turn);
     }
     let mut harness = Harness::builder()
         .with_size(SIZE)
@@ -76,11 +80,6 @@ fn loom() {
 #[test]
 fn peyote() {
     picture(Grid::Peyote, &[], "peyote");
-}
-
-#[test]
-fn brick() {
-    picture(Grid::Brick, &[], "brick");
 }
 
 /// Peyote turned a quarter clockwise: its columns stand as rows.

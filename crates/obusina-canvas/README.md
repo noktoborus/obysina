@@ -5,16 +5,20 @@ The field of beads: an egui widget that draws an
 
 ## Scope
 
-- Draws every bead at its proportions, with a small gap. An empty place is an
-  outline.
-- Puts the pattern in the middle of the field the first time the field has a
-  size.
-- Keeps the beads as one tessellated mesh. It is tessellated anew only when
-  the pattern (its revision), the size of a bead, the turn or the pixels of
-  the screen change; a move of the field moves the mesh. `tessellated` in
-  `CanvasResponse` says which frame built it.
+- The field has no end; only the cells on the screen are drawn. A bead is
+  drawn at its proportions, with a small gap. An empty place in the active
+  area is an outline; one outside it is a pale outline, and is not drawn
+  below `PALE_MIN_BEAD`.
+- Puts the middle of the active area, or cell (0, 0) when there is none, in
+  the middle of the field the first time the field has a size.
+- Keeps the beads as one tessellated mesh of the cells on the screen and half
+  a screen more on every side. It is tessellated anew only when the pattern
+  (its revision), the size of a bead, the turn or the pixels of the screen
+  change, or the screen leaves those cells; otherwise a move of the field
+  moves the mesh. `tessellated` in `CanvasResponse` says which frame built
+  it.
 - Turns the field by quarters, `View::turn`: 90, 180, 270, and 360, which is
-  where it started. The middle of the pattern stays where it is. Only the
+  where it started. What is in the middle of the field stays there. Only the
   showing turns; the pattern is the same.
 - Moves and zooms the field by its [`View`]:
 
@@ -32,12 +36,10 @@ The field of beads: an egui widget that draws an
 | --- | --- |
 | Loom | ![Loom][picture-loom] |
 | Peyote | ![Peyote][picture-peyote] |
-| Brick | ![Brick][picture-brick] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 
 [picture-loom]: img/loom.png
 [picture-peyote]: img/peyote.png
-[picture-brick]: img/brick.png
 [picture-peyote-turned]: img/peyote-turned.png
 
 ## Boundaries

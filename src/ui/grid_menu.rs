@@ -34,7 +34,6 @@ fn id(grid: Grid) -> &'static str {
     match grid {
         Grid::Loom => "loom",
         Grid::Peyote => "peyote",
-        Grid::Brick => "brick",
     }
 }
 
@@ -43,7 +42,6 @@ fn name(grid: Grid) -> String {
     match grid {
         Grid::Loom => t!("grid.loom"),
         Grid::Peyote => t!("grid.peyote"),
-        Grid::Brick => t!("grid.brick"),
     }
     .to_string()
 }

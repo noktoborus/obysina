@@ -9,7 +9,7 @@ use std::path::Path;
 use serde::Serialize;
 
 use crate::error::{PatternError, Result};
-use crate::grid::Grid;
+use crate::grid::{Cell, Grid};
 use crate::palette::EMPTY_KEY;
 use crate::pattern::Pattern;
 
@@ -21,8 +21,7 @@ pub const FORMAT: u64 = 1;
 struct Document<'a> {
     format: u64,
     grid: Grid,
-    width: usize,
-    height: usize,
+    origin: [i32; 2],
     bead_ratio: f32,
     palette: Vec<Colour<'a>>,
     rows: Vec<String>,
@@ -41,13 +40,16 @@ struct Colour<'a> {
 
 impl Pattern {
     /// The pattern as the text of a file: pretty printed, one row of beads on
-    /// one line.
+    /// one line. The rows are the active area; `origin` is the cell of the
+    /// field of its top left corner, `[0, 0]` for a pattern with no beads.
     pub fn to_json(&self) -> Result<String> {
+        let origin = self
+            .bounds()
+            .map_or(Cell { column: 0, row: 0 }, |bounds| bounds.min);
         let document = Document {
             format: FORMAT,
             grid: self.grid(),
-            width: self.width(),
-            height: self.height(),
+            origin: [origin.column, origin.row],
             bead_ratio: self.ratio(),
             palette: self
                 .palette()
@@ -72,13 +74,16 @@ impl Pattern {
         crate::load::load(text)
     }
 
-    /// Each row as the keys of its beads.
+    /// Each row of the active area as the keys of its beads.
     fn rows(&self) -> Vec<String> {
-        (0..self.height())
+        let Some(bounds) = self.bounds() else {
+            return Vec::new();
+        };
+        (bounds.min.row..=bounds.max.row)
             .map(|row| {
-                (0..self.width())
+                (bounds.min.column..=bounds.max.column)
                     .map(|column| {
-                        self.get(crate::Cell { column, row })
+                        self.get(Cell { column, row })
                             .map_or(EMPTY_KEY, |index| self.palette()[index].key)
                     })
                     .collect()

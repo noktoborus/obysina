@@ -77,7 +77,6 @@ fn turns(app: &mut App, ui: &mut egui::Ui) {
 fn tools(app: &mut App, ui: &mut egui::Ui) {
     for (tool, icon, name) in [
         (Tool::Pencil, icons::PENCIL, t!("tool.pencil")),
-        (Tool::Fill, icons::FILL, t!("tool.fill")),
         (Tool::Pick, icons::PICK, t!("tool.pick")),
     ] {
         if button::toggle(ui, app.tool == tool, icon, &name).clicked() {

@@ -2,7 +2,7 @@
 
 The kinds of grid, the endless field and how a pattern is kept on it.
 
-## Decided, not built yet
+## Decisions
 
 1. **Two kinds of grid: loom and peyote.** Brick stitch goes. A file that
    names `brick` is not read (`EXC` of `RULE pattern.version`).
@@ -42,8 +42,16 @@ on the field, columns 1 2 3       the file
    empty cell, fainter.
 9. **The active area is the box itself,** with no margin around it. A bead
    can be drawn outside it all the same.
-
 10. **The pale outlines are hidden when a bead is drawn small.** Below
     `PALE_MIN_BEAD` the ground stays bare outside the active area.
     - Why: a screen of small beads holds tens of thousands of outlines,
       costly to draw and of no use to the eye.
+    - The cost: the mesh holds the cells of the screen and half a screen
+      more on every side, and is built again when the screen leaves them.
+      At `PALE_MIN_BEAD` in a window of 1000 by 700 points a build took
+      about 40 ms of a release build; a frame that only moves the mesh
+      takes well under one.
+11. **A new pattern is an empty field,** shown on cell (0, 0). A pattern
+    with beads opens on the middle of its active area.
+12. **A turn keeps the middle of the screen.** What is seen in the middle
+    stays there; a pattern has no fixed middle any more.

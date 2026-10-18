@@ -30,20 +30,16 @@ pub fn load(text: &str) -> Result<Pattern> {
     }
 }
 
-/// Puts the beads of rows of keys into an empty pattern.
-fn fill(pattern: &mut Pattern, rows: &[String]) -> Result<()> {
-    if rows.len() != pattern.height() {
-        return Err(PatternError::RowCount {
-            expected: pattern.height(),
-            found: rows.len(),
-        });
-    }
+/// Puts the beads of rows of keys into an empty pattern, the first key of
+/// the first row at `origin`. Every row is as long as the first.
+fn put(pattern: &mut Pattern, origin: Cell, rows: &[String]) -> Result<()> {
+    let expected = rows.first().map_or(0, |keys| keys.chars().count());
     for (row, keys) in rows.iter().enumerate() {
         let found = keys.chars().count();
-        if found != pattern.width() {
+        if found != expected {
             return Err(PatternError::RowWidth {
                 row,
-                expected: pattern.width(),
+                expected,
                 found,
             });
         }
@@ -56,8 +52,16 @@ fn fill(pattern: &mut Pattern, rows: &[String]) -> Result<()> {
                 .iter()
                 .position(|bead| bead.key == key)
                 .ok_or(PatternError::UnknownKey { row, column, key })?;
-            pattern.set(Cell { column, row }, Some(index));
+            let cell = offset(origin, column, row).ok_or(PatternError::Outside { row, column })?;
+            pattern.set(cell, Some(index));
         }
     }
     Ok(())
+}
+
+/// The cell `column` and `row` past `origin`, if the field can name it.
+fn offset(origin: Cell, column: usize, row: usize) -> Option<Cell> {
+    let column = origin.column.checked_add(i32::try_from(column).ok()?)?;
+    let row = origin.row.checked_add(i32::try_from(row).ok()?)?;
+    Some(Cell { column, row })
 }

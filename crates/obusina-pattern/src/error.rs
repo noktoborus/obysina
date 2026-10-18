@@ -53,21 +53,12 @@ pub enum PatternError {
         found: u64,
     },
 
-    /// The number of rows is not the height of the grid.
-    #[error("the pattern has {found} rows, its grid has {expected}")]
-    RowCount {
-        /// The height of the grid.
-        expected: usize,
-        /// The rows in the file.
-        found: usize,
-    },
-
-    /// A row is not as long as the grid is wide.
-    #[error("row {row} has {found} beads, its grid has {expected}")]
+    /// A row is not as long as the first one.
+    #[error("row {row} has {found} beads, the first has {expected}")]
     RowWidth {
         /// The row, from zero.
         row: usize,
-        /// The width of the grid.
+        /// The beads in the first row.
         expected: usize,
         /// The beads in the row.
         found: usize,
@@ -99,15 +90,20 @@ pub enum PatternError {
         text: String,
     },
 
-    /// A grid has no beads, or a bead has no size.
-    #[error("the grid is {width} by {height} with a bead ratio of {ratio}")]
-    Size {
-        /// Columns.
-        width: usize,
-        /// Rows.
-        height: usize,
+    /// A bead has no size.
+    #[error("the bead ratio {ratio} is not a size")]
+    Ratio {
         /// The width of a bead to its height.
         ratio: f32,
+    },
+
+    /// A bead of the file lies outside the field a cell can name.
+    #[error("row {row}, column {column} lies outside the field")]
+    Outside {
+        /// The row of the file, from zero.
+        row: usize,
+        /// The column of the file, from zero.
+        column: usize,
     },
 }
 

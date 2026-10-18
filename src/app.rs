@@ -12,9 +12,6 @@ use crate::error::AppError;
 use crate::settings::Settings;
 use crate::ui::access::Named;
 
-/// The size of a new pattern: columns and rows.
-const NEW_SIZE: (usize, usize) = (20, 30);
-
 /// The colours of a new pattern.
 const NEW_PALETTE: [(char, [u8; 3]); 5] = [
     ('A', [0x1b, 0x1b, 0x1b]),
@@ -35,8 +32,6 @@ pub enum Tool {
     /// Switches the bead pressed on: to the colour, or to empty when it has
     /// the colour already.
     Pencil,
-    /// Paints the region of one colour under the pointer.
-    Fill,
     /// Takes the colour of the bead under the pointer.
     Pick,
 }
@@ -115,8 +110,7 @@ impl App {
 
     /// Turns the field a quarter; the pattern stays as it is.
     pub(crate) fn turn(&mut self, turn: obusina_canvas::Turn) {
-        let extent = obusina_canvas::extent(&self.pattern, self.view.bead);
-        self.view.turn(turn, extent);
+        self.view.turn(turn);
     }
 
     /// Undoes the last step.
@@ -154,10 +148,6 @@ impl App {
                     _ => colour,
                 };
                 self.history.paint(&mut self.pattern, &[cell], switched);
-            }
-            Tool::Fill => {
-                let region = self.pattern.region(cell);
-                self.history.paint(&mut self.pattern, &region, colour);
             }
             Tool::Pick => self.colours[which] = self.pattern.get(cell),
         }
@@ -224,9 +214,7 @@ fn new_pattern() -> Pattern {
             code: None,
         })
         .collect();
-    let (width, height) = NEW_SIZE;
-    Pattern::new(Grid::Loom, width, height, DEFAULT_BEAD_RATIO, palette)
-        .expect("the new pattern is valid")
+    Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, palette).expect("the new pattern is valid")
 }
 
 /// Writes a pattern file.

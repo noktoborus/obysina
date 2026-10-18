@@ -16,7 +16,7 @@ pub struct Change {
 /// One step of the history.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Edit {
-    /// Beads changed by one stroke or one fill.
+    /// Beads changed by one stroke.
     Beads(Vec<Change>),
     /// The kind of grid changed.
     Grid {
@@ -124,7 +124,7 @@ mod tests {
             catalog: None,
             code: None,
         };
-        Pattern::new(Grid::Loom, 4, 4, DEFAULT_BEAD_RATIO, vec![bead]).expect("a pattern")
+        Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, vec![bead]).expect("a pattern")
     }
 
     #[test]

@@ -32,9 +32,6 @@ view.turn_right:
 tool.pencil:
   en: "Pencil"
   ru: "Карандаш"
-tool.fill:
-  en: "Fill"
-  ru: "Заливка"
 tool.pick:
   en: "Pick a colour"
   ru: "Взять цвет"
@@ -52,9 +49,6 @@ grid.loom:
 grid.peyote:
   en: "Peyote"
   ru: "Мозаика"
-grid.brick:
-  en: "Brick stitch"
-  ru: "Кирпичик"
 
 palette.bead:
   en: "Bead %{key}, %{rgb}, %{count} in the pattern"

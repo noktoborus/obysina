@@ -1,8 +1,10 @@
 {
   "format": 1,
   "grid": "peyote",
-  "width": 6,
-  "height": 3,
+  "origin": [
+    -3,
+    2
+  ],
   "bead_ratio": 1.0,
   "palette": [
     {
@@ -18,7 +20,6 @@
   ],
   "rows": [
     "AAB.BB",
-    "ABABAB",
-    "......"
+    "ABABA."
   ]
 }

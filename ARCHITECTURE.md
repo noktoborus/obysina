@@ -33,10 +33,11 @@ crates (`RULE crate.deps`).
 
 ## The model
 
-`Pattern` holds a `Grid`, a size, the width of a bead to its height, a palette
-and a colour or nothing for every cell. `Grid` answers where a bead stands,
-which bead is under a point and which beads touch it. Nothing else knows a
-rule of a stitch.
+`Pattern` holds a `Grid`, the width of a bead to its height, a palette and
+the beads put on a field with no end; every other cell is empty. Its active
+area, `Pattern::bounds`, is the box around the beads. `Grid` answers where a
+bead stands and which bead is under a point. Nothing else knows a rule of a
+stitch.
 
 The format of the file is `crates/obusina-pattern/README.md`.
 
@@ -49,7 +50,7 @@ press on a bead ──► App::press ──► History::paint(cells, colour) ─
 drag            ──► the field moves; the pattern does not change
 ```
 
-A fill is one step. A change of the kind of grid is one step too.
+A change of the kind of grid is one step too.
 
 ## Start
 

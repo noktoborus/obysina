@@ -3,12 +3,15 @@
 //! The tessellator of egui turns every rounded bead into triangles. That is
 //! the cost of a frame, so it is paid only when what the beads look like
 //! changes: the pattern, the size of a bead, the turn of the field or the
-//! pixels of the screen. A move of the field only moves the mesh.
+//! pixels of the screen. The field has no end, so the mesh holds a window of
+//! cells larger than the screen; a move of the field only moves the mesh,
+//! until the screen leaves the window.
 
 use std::sync::Arc;
 
 use egui::epaint::{Mesh, Tessellator};
 use egui::{Pos2, Ui};
+use obusina_pattern::Bounds;
 
 /// What the mesh is built from, but its place.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -28,6 +31,8 @@ pub struct Key {
 pub struct Kept {
     /// What it was built from.
     pub key: Key,
+    /// The cells it holds.
+    pub window: Bounds,
     /// The top left of the pattern the vertices stand at.
     pub origin: Pos2,
     /// The beads.
@@ -47,9 +52,15 @@ impl Kept {
     }
 }
 
-/// Tessellates `shapes`, standing at `origin`, as egui would at the end of a
-/// frame.
-pub fn tessellate(ui: &Ui, key: Key, origin: Pos2, shapes: Vec<egui::Shape>) -> Kept {
+/// Tessellates `shapes`, the cells of `window` standing at `origin`, as egui
+/// would at the end of a frame.
+pub fn tessellate(
+    ui: &Ui,
+    key: Key,
+    window: Bounds,
+    origin: Pos2,
+    shapes: Vec<egui::Shape>,
+) -> Kept {
     let options = ui.ctx().tessellation_options(|options| *options);
     let font_size = ui.ctx().fonts(|fonts| fonts.font_image_size());
     let mut tessellator = Tessellator::new(key.pixels_per_point, options, font_size, Vec::new());
@@ -59,6 +70,7 @@ pub fn tessellate(ui: &Ui, key: Key, origin: Pos2, shapes: Vec<egui::Shape>) -> 
     }
     Kept {
         key,
+        window,
         origin,
         mesh: Arc::new(mesh),
     }
