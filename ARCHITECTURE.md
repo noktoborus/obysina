@@ -17,7 +17,7 @@ obusina (binary and library)
  ├── obusina-pattern
  └── plate-menu         (a copy of the crate of zyterm)
 experiments/glyphs     (nothing depends on it)
-experiments/mockups    (nothing depends on it)
+experiments/mockups    (nothing depends on it) ──► ../showcase
 ```
 
 | Crate | Purpose |

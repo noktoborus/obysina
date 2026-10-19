@@ -16,9 +16,10 @@ open = false
 wasm_bindgen = "0.2.129"
 
 [watch]
-# The notes the receiver writes are no change of the mockups.
-ignore = ["notes"]
+# The notes and the pictures of the receiver are no change of the mockups.
+ignore = ["notes", "shots"]
 
-# The notes of the page go to the receiver, `src/bin/notes`.
+# The notes and the pictures of the page come from the receiver of
+# /workspace/showcase, `src/bin/notes`.
 [[proxy]]
 backend = "http://127.0.0.1:6081/notes"

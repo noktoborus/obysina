@@ -18,5 +18,7 @@
 *.diff.png
 *.old.png
 
-# The notes left on the mockups, until they are read
+# The notes left on the mockups, until they are read, and the pictures put
+# beside them for one discussion
 /experiments/mockups/notes/
+/experiments/mockups/shots/

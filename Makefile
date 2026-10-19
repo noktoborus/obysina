@@ -42,13 +42,14 @@ install:
 
 # The mockups of experiments/mockups on port 6080, rebuilt and reloaded in
 # the browser when a file of them changes, and the receiver of the notes
-# left on them, which stops with the server. The files are polled: on the 9p
+# left on them and of the pictures of experiments/mockups/shots, which stops
+# with the server. The receiver is built in /workspace/showcase. The files are polled: on the 9p
 # mount of /workspace a change is not always told to a watcher. trunk and wasm-bindgen are the
 # ones /opt/packages.sh installs: run after `. /opt/env.sh`.
 mockups:
-	cargo build -p mockups --bin notes
-	mkdir -p experiments/mockups/notes
-	target/debug/notes experiments/mockups/notes & trap 'kill $$!' EXIT; \
+	cargo build --manifest-path ../showcase/Cargo.toml --bin notes
+	mkdir -p experiments/mockups/notes experiments/mockups/shots
+	../showcase/target/debug/notes experiments/mockups/notes 6081 experiments/mockups/shots & trap 'kill $$!' EXIT; \
 	cd experiments/mockups && TRUNK_WATCH_POLL=true TRUNK_WATCH_POLL_INTERVAL=1s trunk serve
 
 uninstall:
