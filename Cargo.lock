@@ -3654,6 +3654,7 @@ name = "showcase"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "clap",
  "eframe",
  "egui",
  "ehttp",

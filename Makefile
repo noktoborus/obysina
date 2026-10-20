@@ -40,17 +40,15 @@ install:
 	sudo install -Dm644 assets/icon.svg $(ICONDIR)/scalable/apps/$(ID).svg
 	sudo update-desktop-database $(APPDIR) 2>/dev/null || true
 
-# The mockups of experiments/mockups on port 6080, rebuilt and reloaded in
-# the browser when a file of them changes, and the receiver of the notes
-# left on them and of the pictures of experiments/mockups/shots, which stops
-# with the server. The receiver is built in /workspace/showcase. The files are polled: on the 9p
-# mount of /workspace a change is not always told to a watcher. trunk and wasm-bindgen are the
-# ones /opt/packages.sh installs: run after `. /opt/env.sh`.
+# The mockups of experiments/mockups, built into the module `mockups` of the
+# desk `obusina` of the server of /workspace/showcase on port 6080. The server
+# is started if none answers, and lives on after the command. trunk and
+# wasm-bindgen are the ones /opt/packages.sh installs: run after
+# `. /opt/env.sh`.
 mockups:
-	cargo build --manifest-path ../showcase/Cargo.toml --bin notes
-	mkdir -p experiments/mockups/notes experiments/mockups/shots
-	../showcase/target/debug/notes experiments/mockups/notes 6081 experiments/mockups/shots & trap 'kill $$!' EXIT; \
-	cd experiments/mockups && TRUNK_WATCH_POLL=true TRUNK_WATCH_POLL_INTERVAL=1s trunk serve
+	cargo build --manifest-path ../showcase/Cargo.toml --bin showcase
+	../showcase/target/debug/showcase up
+	../showcase/target/debug/showcase build experiments/mockups --desk obusina --as mockups
 
 uninstall:
 	sudo rm -f $(BINDIR)/obusina

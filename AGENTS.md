@@ -323,22 +323,24 @@ THEN the emoji faces come with the feature `monochrome_emoji_fonts` of egui;
 REF  experiments/glyphs/README.md
 
 RULE ui.mockup : a design discussed before it is built is shown as a mockup
-     of `experiments/mockups`, served by `make mockups` on port 6080
+     of `experiments/mockups`, built by `make mockups` into the module
+     `mockups` of the desk `obusina` of showcase
 THEN one module of `src/mock/` per mockup, drawn with the widget crates and
-     made up data; the address `#<name>` opens it
-THEN the gallery, the notes and the receiver are `/workspace/showcase`, a
+     made up data; the address `#obusina/mockups/<name>` opens it
+THEN the gallery, the notes and the server are `/workspace/showcase`, a
      project of its own; `experiments/mockups` holds only the mockups of
      obusina and depends on it by path
 REF  /workspace/showcase/README.md
 THEN a mockup is no test and no part of the window: the window is built and
      tested on its own (`RULE test.window`)
-RULE ui.mockup.notes : a note left on a mockup is read from
-     `experiments/mockups/notes/`, acted on, then deleted with its picture
+RULE ui.mockup.notes : a note left on a mockup is read with
+     `../showcase/target/debug/showcase notes --desk obusina`, acted on, then
+     deleted with its picture
 THEN what it decided goes to the plan or to the documentation; a note is not
      kept
-THEN while the user works on mockups, `../showcase/target/debug/notes wait
-     experiments/mockups/notes` runs in the background; when it ends, the
-     notes are read and it is started again
+THEN while the user works on mockups, `../showcase/target/debug/showcase wait
+     --desk obusina` runs in the background; when it ends, the notes are read
+     and it is started again
 REF  experiments/mockups/README.md
 
 RULE log.lang = english, through the `log` crate

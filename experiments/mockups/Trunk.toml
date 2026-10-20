@@ -1,25 +1,12 @@
-# `make mockups` serves the mockups on this port; trunk rebuilds the module
-# and reloads the page when a file of the crate changes.
+# `make mockups` builds the mockups with trunk into a module of a desk of
+# /workspace/showcase, with addresses relative to the page; `trunk build`
+# alone builds them here.
 [build]
 target = "index.html"
 dist = "../../target/mockups-site"
 cargo_profile = "mockups"
 offline = true
 
-[serve]
-addresses = ["0.0.0.0"]
-port = 6080
-open = false
-
 [tools]
 # The wasm-bindgen of /opt/packages.sh: trunk downloads nothing.
 wasm_bindgen = "0.2.129"
-
-[watch]
-# The notes and the pictures of the receiver are no change of the mockups.
-ignore = ["notes", "shots"]
-
-# The notes and the pictures of the page come from the receiver of
-# /workspace/showcase, `src/bin/notes`.
-[[proxy]]
-backend = "http://127.0.0.1:6081/notes"
