@@ -61,20 +61,7 @@ impl Pattern {
         if !(ratio.is_finite() && ratio > 0.0) {
             return Err(PatternError::Ratio { ratio });
         }
-        if palettes.is_empty() {
-            return Err(PatternError::NoPalette);
-        }
-        let mut seen = vec![NO_BEAD];
-        for colour in palettes
-            .iter()
-            .flat_map(|palette| palette.places())
-            .flatten()
-        {
-            if seen.contains(&colour.id.0) {
-                return Err(PatternError::DuplicateId { id: colour.id.0 });
-            }
-            seen.push(colour.id.0);
-        }
+        check(&palettes)?;
         Ok(Pattern {
             grid,
             ratio,
@@ -317,6 +304,27 @@ impl Pattern {
         }
     }
 
+    /// Puts back palettes kept before, as an undo does. They are refused
+    /// when a bead would hold an id none of their colours has.
+    pub fn set_palettes(&mut self, palettes: Vec<Palette>) -> Result<()> {
+        check(&palettes)?;
+        let known = |id: &ColourId| {
+            palettes
+                .iter()
+                .flat_map(Palette::places)
+                .flatten()
+                .any(|colour| colour.id == *id)
+        };
+        if let Some(lost) = self.beads.values().find(|id| !known(id)) {
+            return Err(PatternError::Lost { id: lost.0 });
+        }
+        if palettes != self.palettes {
+            self.palettes = palettes;
+            self.revision = next_revision();
+        }
+        Ok(())
+    }
+
     /// An id no colour has.
     fn next_id(&self) -> ColourId {
         let last = self
@@ -344,6 +352,21 @@ impl Pattern {
             self.palettes.remove(palette);
         }
     }
+}
+
+/// Palettes a pattern can hold: one or more, and no id twice or reserved.
+fn check(palettes: &[Palette]) -> Result<()> {
+    if palettes.is_empty() {
+        return Err(PatternError::NoPalette);
+    }
+    let mut seen = vec![NO_BEAD];
+    for colour in palettes.iter().flat_map(Palette::places).flatten() {
+        if seen.contains(&colour.id.0) {
+            return Err(PatternError::DuplicateId { id: colour.id.0 });
+        }
+        seen.push(colour.id.0);
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -637,5 +660,25 @@ mod tests {
         assert_eq!(pattern.count(FIRST), 0);
         assert_eq!(pattern.count(SECOND), 1);
         assert!(pattern.colour(FIRST).is_some());
+    }
+
+    #[test]
+    fn palettes_put_back_are_checked_against_the_beads() {
+        let mut pattern = pattern();
+        let kept = pattern.palettes().to_vec();
+        pattern.move_colour(0, 1, None).expect("the colour moves");
+        pattern.set(CELL, Some(SECOND));
+
+        pattern
+            .set_palettes(kept.clone())
+            .expect("the beads have colours");
+        assert_eq!(pattern.palettes(), kept.as_slice());
+
+        let only_first = Palette::new(vec![Some(colour(FIRST))]).expect("a palette");
+        assert!(matches!(
+            pattern.set_palettes(vec![only_first]),
+            Err(PatternError::Lost { id: 2 })
+        ));
+        assert_eq!(pattern.palettes(), kept.as_slice(), "nothing changed");
     }
 }

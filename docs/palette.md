@@ -144,9 +144,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-2. **The history.** `Edit` grows a step for each: add, change, move,
-   remove. "Accept" makes one step of all the changes of the picker. A remove
-   keeps the beads, so its undo only brings the colour back.
 3. **The window of the palette.** `src/ui/palette_window.rs`: a `Modal`
    with no title, the tabs and the places, opened by decision 15. A tap on a
    colour opens its `PlateMenu`, the picker in its notice
@@ -177,5 +174,7 @@ test of the window with it (`RULE test.window`).
   mockups: notes on a widget by its path, the list of notes, a comment to
   the chat, the mockup frozen while a note is written.
 - No note waits on the desk `obusina` of showcase.
-- Next: step 2 of the plan. Until step 5, the panel shows the first palette
+- Done in the history: `Edit::Palettes`, `History::change_colours`,
+  `keep_palettes` for the picker, `delete_beads`, each with its test.
+- Next: step 3 of the plan. Until step 5, the panel shows the first palette
   only, and a bead of a colour not seen is drawn grey until step 6.

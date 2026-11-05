@@ -1,6 +1,6 @@
 //! Every change to a pattern, so that it can be undone (`RULE ui.undo`).
 
-use obusina_pattern::{Bounds, Cell, ColourId, Grid, Pattern};
+use obusina_pattern::{Bounds, Cell, ColourId, Grid, Palette, Pattern};
 
 /// One bead changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +25,21 @@ pub enum Edit {
         /// The kind after.
         after: Grid,
     },
+    /// The colours changed: added, changed, moved, removed, hidden. The
+    /// beads do not change, so all the palettes before and after are kept.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "made by the window of the palette, step 3 of docs/palette.md"
+        )
+    )]
+    Palettes {
+        /// The palettes before.
+        before: Vec<Palette>,
+        /// The palettes after.
+        after: Vec<Palette>,
+    },
     /// The sheet changed its size.
     Sheet {
         /// The sheet before.
@@ -44,6 +59,7 @@ impl Edit {
                 }
             }
             Edit::Grid { after, .. } => pattern.set_grid(*after),
+            Edit::Palettes { after, .. } => put_back(pattern, after),
             Edit::Sheet { after, .. } => pattern.set_sheet(*after),
         }
     }
@@ -57,8 +73,18 @@ impl Edit {
                 }
             }
             Edit::Grid { before, .. } => pattern.set_grid(*before),
+            Edit::Palettes { before, .. } => put_back(pattern, before),
             Edit::Sheet { before, .. } => pattern.set_sheet(*before),
         }
+    }
+}
+
+/// Puts back palettes. The history undoes and redoes in order, so the
+/// beads are those the palettes were kept with, and a refusal is a fault of
+/// the history.
+fn put_back(pattern: &mut Pattern, palettes: &[Palette]) {
+    if let Err(error) = pattern.set_palettes(palettes.to_vec()) {
+        log::error!("the palettes are not put back: {error}");
     }
 }
 
@@ -92,6 +118,61 @@ impl History {
         if !changes.is_empty() {
             self.apply(pattern, Edit::Beads(changes));
         }
+    }
+
+    /// Changes the colours by `change` as one step. Nothing is kept when the
+    /// change fails or changes nothing.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "used by the window of the palette, step 3 of docs/palette.md"
+        )
+    )]
+    pub fn change_colours<T>(
+        &mut self,
+        pattern: &mut Pattern,
+        change: impl FnOnce(&mut Pattern) -> obusina_pattern::Result<T>,
+    ) -> obusina_pattern::Result<T> {
+        let before = pattern.palettes().to_vec();
+        let done = change(pattern)?;
+        self.keep_palettes(pattern, before);
+        Ok(done)
+    }
+
+    /// Keeps as one step every change of the colours since `before`, which
+    /// were made past the history while they were shown: the changes of a
+    /// picker before "Accept".
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "used by the window of the palette, step 3 of docs/palette.md"
+        )
+    )]
+    pub fn keep_palettes(&mut self, pattern: &Pattern, before: Vec<Palette>) {
+        let after = pattern.palettes().to_vec();
+        if after != before {
+            self.done.push(Edit::Palettes { before, after });
+            self.undone.clear();
+        }
+    }
+
+    /// Deletes the beads of a colour as one step; the colour stays.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "used by the window of the palette, step 3 of docs/palette.md"
+        )
+    )]
+    pub fn delete_beads(&mut self, pattern: &mut Pattern, id: ColourId) {
+        let cells: Vec<Cell> = pattern
+            .beads()
+            .filter(|(_, bead)| *bead == id)
+            .map(|(cell, _)| cell)
+            .collect();
+        self.paint(pattern, &cells, None);
     }
 
     /// Gives the sheet a new size as a step. Changes of the size one after
@@ -199,5 +280,110 @@ mod tests {
         history.paint(&mut pattern, &[Cell { column: 0, row: 0 }], None);
 
         assert!(!history.can_undo());
+    }
+
+    fn two_colours() -> Pattern {
+        let colours = vec![
+            Colour::new(COLOUR, Rgb([0, 0, 0])),
+            Colour::new(ColourId(2), Rgb([255, 255, 255])),
+        ];
+        Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, colours).expect("a pattern")
+    }
+
+    /// A move to a new palette is one step, undone and redone.
+    #[test]
+    fn a_change_of_the_colours_is_undone() {
+        let mut pattern = two_colours();
+        let start = pattern.clone();
+        let mut history = History::default();
+
+        history
+            .change_colours(&mut pattern, |pattern| pattern.move_colour(0, 1, None))
+            .expect("the colour moves");
+        let moved = pattern.clone();
+        assert_eq!(moved.palettes().len(), 2);
+
+        history.undo(&mut pattern);
+        assert_eq!(pattern, start);
+        history.redo(&mut pattern);
+        assert_eq!(pattern, moved);
+    }
+
+    /// A removed colour comes back by undo, and its beads take it again.
+    #[test]
+    fn a_removed_colour_comes_back_with_its_beads() {
+        let mut pattern = two_colours();
+        let mut history = History::default();
+        let cell = Cell { column: 0, row: 0 };
+        history.paint(&mut pattern, &[cell], Some(COLOUR));
+
+        history
+            .change_colours(&mut pattern, |pattern| pattern.remove_colour(0, 0))
+            .expect("the colour goes");
+        assert!(pattern.colour(COLOUR).and_then(Colour::seen).is_none());
+
+        history.undo(&mut pattern);
+        assert!(pattern.colour(COLOUR).and_then(Colour::seen).is_some());
+        assert_eq!(pattern.get(cell), Some(COLOUR));
+    }
+
+    /// The changes of a picker, made past the history, are one step.
+    #[test]
+    fn the_changes_of_a_picker_are_one_step() {
+        let mut pattern = two_colours();
+        let start = pattern.clone();
+        let mut history = History::default();
+        let before = pattern.palettes().to_vec();
+        for grey in [10, 20, 30] {
+            pattern
+                .put_colour(0, 0, Rgb([grey; 3]))
+                .expect("the place is there");
+        }
+
+        history.keep_palettes(&pattern, before);
+        history.undo(&mut pattern);
+
+        assert_eq!(pattern, start);
+        assert!(!history.can_undo());
+    }
+
+    /// A change that fails or changes nothing is no step.
+    #[test]
+    fn a_change_of_nothing_is_no_step() {
+        let mut pattern = two_colours();
+        let mut history = History::default();
+
+        let failed = history.change_colours(&mut pattern, |pattern| pattern.remove_colour(0, 5));
+        history
+            .change_colours(&mut pattern, |pattern| {
+                pattern.set_hidden(ColourId(9), true);
+                Ok(())
+            })
+            .expect("nothing to hide");
+
+        assert!(failed.is_err());
+        assert!(!history.can_undo());
+    }
+
+    /// Deleting the beads of a colour is one step; the colour stays.
+    #[test]
+    fn deleting_the_beads_is_undone() {
+        let mut pattern = two_colours();
+        let mut history = History::default();
+        let cells: Vec<Cell> = (0..3).map(|column| Cell { column, row: 0 }).collect();
+        history.paint(&mut pattern, &cells, Some(COLOUR));
+        history.paint(
+            &mut pattern,
+            &[Cell { column: 5, row: 0 }],
+            Some(ColourId(2)),
+        );
+
+        history.delete_beads(&mut pattern, COLOUR);
+        assert_eq!(pattern.count(COLOUR), 0);
+        assert_eq!(pattern.count(ColourId(2)), 1);
+        assert!(pattern.colour(COLOUR).is_some());
+
+        history.undo(&mut pattern);
+        assert_eq!(pattern.count(COLOUR), 3);
     }
 }

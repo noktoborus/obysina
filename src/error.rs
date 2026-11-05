@@ -65,6 +65,7 @@ impl AppError {
                 | PatternError::NoPalette
                 | PatternError::Place { .. }
                 | PatternError::Full { .. }
+                | PatternError::Lost { .. }
                 | PatternError::Colour { .. }
                 | PatternError::Ratio { .. }
                 | PatternError::Sheet { .. }

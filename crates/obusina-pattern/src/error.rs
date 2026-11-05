@@ -105,6 +105,13 @@ pub enum PatternError {
         place: usize,
     },
 
+    /// Palettes given back would leave a bead with no colour.
+    #[error("a bead holds the id {id}, which no colour has")]
+    Lost {
+        /// The id.
+        id: u32,
+    },
+
     /// A colour cannot go to a palette with no free place.
     #[error("palette {palette} has no free place")]
     Full {

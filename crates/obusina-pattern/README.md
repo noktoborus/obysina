@@ -13,7 +13,8 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
   A colour with no `rgb` was removed and keeps its beads; a hidden one keeps
   its `rgb`. `Colour::seen` is `None` for both: they are drawn hatched.
 - `Pattern::put_colour`, `swap_places`, `move_colour`, `remove_colour`,
-  `set_hidden`, `delete_beads`: the changes of the colours
+  `set_hidden`, `delete_beads`: the changes of the colours; `set_palettes`
+  puts back palettes kept before, for an undo
   (`docs/palette.md`). A palette left with nothing goes, unless it is the
   last one or holds a removed colour.
 - `Pattern::bounds`: the active area, the box around the beads; `None` when
@@ -122,4 +123,4 @@ the program.
 `Result<T, PatternError>`: `Read`, `Write` (with the path), `Json`, `NoFormat`,
 `Newer`, `UnknownFormat`, `RowWidth`, `UnknownId`, `Outside`, `DuplicateId`,
 `Palette`, `NoPalette`, `Colour`, `Ratio`, `Turn`, `Sheet`; for a change of
-the colours, `Place` and `Full`.
+the colours, `Place`, `Full` and `Lost`.
