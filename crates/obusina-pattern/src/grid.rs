@@ -107,6 +107,46 @@ impl Bounds {
         }
     }
 
+    /// The box resized around its middle, but never smaller than `inside`
+    /// and moved as little as it takes to hold it: a sheet over the beads.
+    pub fn resized_over(self, width: usize, height: usize, inside: Option<Bounds>) -> Bounds {
+        let Some(inside) = inside else {
+            return self.resized(width, height);
+        };
+        let resized = self.resized(width.max(inside.width()), height.max(inside.height()));
+        let shift = |min: i32, max: i32, inner_min: i32, inner_max: i32| {
+            if min > inner_min {
+                inner_min - min
+            } else if max < inner_max {
+                inner_max - max
+            } else {
+                0
+            }
+        };
+        let columns = shift(
+            resized.min.column,
+            resized.max.column,
+            inside.min.column,
+            inside.max.column,
+        );
+        let rows = shift(
+            resized.min.row,
+            resized.max.row,
+            inside.min.row,
+            inside.max.row,
+        );
+        Bounds {
+            min: Cell {
+                column: resized.min.column + columns,
+                row: resized.min.row + rows,
+            },
+            max: Cell {
+                column: resized.max.column + columns,
+                row: resized.max.row + rows,
+            },
+        }
+    }
+
     /// Columns.
     pub fn width(&self) -> usize {
         self.max.column.abs_diff(self.min.column) as usize + 1
@@ -380,5 +420,29 @@ mod tests {
         assert_eq!((bounds.width(), bounds.height()), (4, 4));
         assert!(bounds.contains(Cell { column: 0, row: 2 }));
         assert_eq!(bounds.cells().count(), 16);
+    }
+
+    #[test]
+    fn a_box_over_others_holds_them() {
+        let sheet = Bounds {
+            min: Cell { column: 0, row: 0 },
+            max: Cell { column: 9, row: 9 },
+        };
+        let beads = Bounds {
+            min: Cell { column: 1, row: 6 },
+            max: Cell { column: 4, row: 8 },
+        };
+
+        let smaller = sheet.resized_over(2, 2, Some(beads));
+        assert_eq!(smaller, beads, "no smaller than the beads, and over them");
+
+        let narrow = sheet.resized_over(6, 10, Some(beads));
+        assert_eq!((narrow.width(), narrow.height()), (6, 10));
+        assert!(
+            narrow.contains(beads.min) && narrow.contains(beads.max),
+            "{narrow:?}"
+        );
+
+        assert_eq!(sheet.resized_over(4, 4, None), sheet.resized(4, 4));
     }
 }

@@ -87,7 +87,10 @@ on the field, columns 1 2 3       the file
     its middle (`Bounds::resized`), up to `MAX_SIDE`. They are the start size
     of the work area, not its size: beads past the sheet grow the work area,
     and the numbers stay. A number is dragged or typed, so a finger reaches
-    it.
+    it. A number is never less than the box around the beads: the sheet
+    takes no smaller size, and moves as little as it takes to hold the beads
+    (`Bounds::resized_over`).
+    - Was: any size from 1, the beads left past a smaller sheet.
     - The sheet is part of the pattern (decision 17): a change of its size
       is a step of undo. Changes one after another are one step, since a
       number dragged changes it in every frame.

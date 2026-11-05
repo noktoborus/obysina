@@ -698,6 +698,29 @@ fn a_size_typed_in_the_tools_resizes_the_sheet() {
     assert!(!window.harness.state().history.can_undo(), "one step");
 }
 
+/// A size smaller than the box around the beads is not taken: the sheet is
+/// as small as the beads let it be, and over them.
+#[test]
+fn the_sheet_is_never_smaller_than_the_beads() {
+    let mut window = window();
+    let (left, right) = (Cell { column: 2, row: 4 }, Cell { column: 9, row: 6 });
+    window.press(left, PointerButton::Primary);
+    window.press(right, PointerButton::Primary);
+
+    window.harness.get_by_label(&t!("sheet.width")).click();
+    window.harness.run();
+    window
+        .harness
+        .get_by_label(&t!("sheet.width"))
+        .type_text("3");
+    window.harness.key_press(egui::Key::Enter);
+    window.harness.run();
+
+    let sheet = window.harness.state().pattern.sheet().expect("a sheet");
+    assert_eq!(sheet.width(), 8, "columns 2 to 9");
+    assert!(sheet.contains(left) && sheet.contains(right), "{sheet:?}");
+}
+
 /// The sheet is part of the pattern: it is saved and opens again.
 #[test]
 fn the_sheet_is_saved_with_the_pattern() {
