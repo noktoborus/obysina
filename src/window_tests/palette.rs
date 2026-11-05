@@ -222,3 +222,25 @@ fn the_menu_on_the_panel_hides_a_colour_and_deletes_its_beads() {
     window.click(&delete_beads(1));
     assert_eq!(window.harness.state().pattern.count(id_at(0)), 0);
 }
+
+#[test]
+fn a_new_colour_is_none_of_the_others() {
+    let mut window = opened();
+    let place = t!("palette.place", number = 6).to_string();
+
+    choose(&mut window, &place, &t!("palette.accept"));
+
+    let pattern = &window.harness.state().pattern;
+    let colours: Vec<_> = pattern.palettes()[0]
+        .places()
+        .iter()
+        .flatten()
+        .filter_map(|found| found.rgb)
+        .collect();
+    let new = colours[5];
+    assert_eq!(
+        colours.iter().filter(|rgb| **rgb == new).count(),
+        1,
+        "{new}"
+    );
+}

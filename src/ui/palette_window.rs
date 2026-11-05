@@ -4,7 +4,8 @@
 //! picker on top (`docs/palette.md`).
 //!
 //! ```text
-//! tap a place ──► the picker shows the colour in the palette and on the field
+//! tap a place ──► the picker shows the colour in the palette and on the field;
+//!                 an empty place shows the colour farthest from the others
 //!                    │──accept────────► one step of the history
 //!                    │──move──────────► one palette: a new one; more: a menu of them
 //!                    │──remove────────► with beads its place is hatched; with none, empty
@@ -24,9 +25,6 @@ use crate::app::App;
 use crate::ui::access::Named;
 use crate::ui::button;
 
-/// The colour a "+" puts in an empty place, until the colour farthest from
-/// the others comes (step 4 of `docs/palette.md`).
-const NEW_COLOUR: Rgb = Rgb([0x80, 0x80, 0x80]);
 /// The places in a row of the block, as on a numpad.
 const BLOCK_WIDTH: usize = 3;
 /// The swatch in the notice of the menu of a colour.
@@ -376,10 +374,10 @@ fn place_at(cells: &[(usize, Rect)], pointer: Pos2) -> Option<usize> {
 fn tap(app: &mut App, place: usize) {
     let before = app.pattern.palettes().to_vec();
     let colour = colour_at(app, place).cloned();
-    let shown = colour
-        .as_ref()
-        .and_then(|colour| colour.rgb)
-        .unwrap_or(NEW_COLOUR);
+    let shown = match colour.as_ref().and_then(|colour| colour.rgb) {
+        Some(rgb) => rgb,
+        None => new_colour(&app.pattern),
+    };
     let id = match app.pattern.put_colour(app.palette, place, shown) {
         Ok(id) => id,
         Err(error) => {
@@ -442,6 +440,18 @@ fn picker(editing: Arc<Mutex<Color32>>, number: usize, beads: usize) -> Notice {
             egui::color_picker::Alpha::Opaque,
         );
     })
+}
+
+/// The colour farthest from those of every palette and from the paper.
+fn new_colour(pattern: &Pattern) -> Rgb {
+    let taken: Vec<Rgb> = pattern
+        .palettes()
+        .iter()
+        .flat_map(Palette::places)
+        .flatten()
+        .filter_map(|colour| colour.rgb)
+        .collect();
+    crate::new_colour::next_colour(&taken, rgb(obusina_canvas::PAPER))
 }
 
 /// Puts back palettes kept before a menu opened.

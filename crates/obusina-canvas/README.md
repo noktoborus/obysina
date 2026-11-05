@@ -13,7 +13,8 @@ The field of beads: an egui widget that draws an
   drawn is the work area doubled (`Bounds::doubled`). Past it the ground is
   bare and a press does nothing. Only its cells on the screen are drawn.
 - A bead is drawn at its proportions, with a small gap. The ground of the
-  work area is paper; the rest of the field is in shade. An empty place is
+  work area is paper, `PAPER`, which a new colour is told from; the rest
+  of the field is in shade. An empty place is
   a faint outline, the same on both, at every size of a bead.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.

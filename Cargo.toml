@@ -72,6 +72,7 @@ obusina-canvas.workspace = true
 obusina-panel.workspace = true
 obusina-pattern.workspace = true
 directories.workspace = true
+palette.workspace = true
 plate-menu.workspace = true
 rust-i18n.workspace = true
 serde.workspace = true

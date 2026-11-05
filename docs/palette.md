@@ -144,8 +144,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-4. **The new colour.** `next_colour` of the mockup moves to the binary,
-   with the crate `palette` and its test.
 5. **The numpad.** The swatches of the panel of beads show the numbers, in
    the two views of decision 10, the view kept in the settings; the keys
    choose a colour; "+" and "-" switch the palette. The shake of the panel.
@@ -173,7 +171,7 @@ test of the window with it (`RULE test.window`).
   `keep_palettes` for the picker, `delete_beads`, each with its test.
 - Done in the window: `src/ui/palette_window.rs`, the window of decisions 1
   to 7, 10 to 12 and 15, with its tests (`src/window_tests/palette.rs`), and
-  the menu of the colour in hand of decision 14. A "+" puts a grey until
-  step 4; a hidden or removed colour is drawn with no fill until step 6.
-- Next: step 4 of the plan. Until step 5, the panel shows the first palette
-  only, and a bead of a colour not seen is drawn grey until step 6.
+  the menu of the colour in hand of decision 14. A hidden or removed colour
+  is drawn with no fill, and its beads grey, until step 6.
+- Done: decision 6 in `src/new_colour.rs`.
+- Next: step 5 of the plan.

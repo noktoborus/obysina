@@ -6,6 +6,7 @@
 mod app;
 mod edit;
 mod error;
+mod new_colour;
 mod render;
 mod settings;
 mod ui;

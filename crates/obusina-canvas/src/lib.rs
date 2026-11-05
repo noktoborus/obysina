@@ -20,7 +20,7 @@ const ROUNDING: f32 = 0.3;
 const OUTLINE: f32 = 1.0;
 /// The ground of the active area: a neutral grey, the same in every theme, so
 /// that a colour looks the same and a black bead is seen.
-const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
+pub const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
 /// The ground outside the active area: the paper in shade.
 const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
 /// The outline of an empty place: a faint dark line, seen on the paper and
