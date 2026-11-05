@@ -3,8 +3,8 @@
 #![deny(missing_docs)]
 
 use egui::{
-    Color32, Response, RichText, Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2, Widget,
-    WidgetText,
+    Color32, Pos2, Rect, Response, RichText, Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2,
+    Widget, WidgetText,
 };
 
 /// The width of the outline of a filled button that is selected.
@@ -14,6 +14,14 @@ const SELECTED_LINE: f32 = 3.0;
 const LINE: f32 = 1.0;
 /// The lightness above which black reads on a fill, and white below.
 const LIGHT: f32 = 140.0;
+/// The height of the bar under a marked button.
+const BAR: f32 = 4.0;
+/// The space between the bar and the button.
+const BAR_GAP: f32 = 2.0;
+/// The space between two lines of a hatch.
+const HATCH_STEP: f32 = 5.0;
+/// The room kept clear of the hatch around the label.
+const LABEL_ROOM: Vec2 = Vec2::new(18.0, 22.0);
 
 /// A button of a fixed size, its label in the middle.
 ///
@@ -25,6 +33,8 @@ pub struct SquareButton<'a> {
     text_size: Option<f32>,
     fill: Option<Color32>,
     selected: bool,
+    marked: bool,
+    hatched: bool,
     name: Option<&'a str>,
 }
 
@@ -37,6 +47,8 @@ impl<'a> SquareButton<'a> {
             text_size: None,
             fill: None,
             selected: false,
+            marked: false,
+            hatched: false,
             name: None,
         }
     }
@@ -60,6 +72,21 @@ impl<'a> SquareButton<'a> {
         self
     }
 
+    /// Marks the button with a bar under it, of one colour whatever its
+    /// fill: the button gets lower, and the bar lies on the ground around it,
+    /// so no fill hides it.
+    pub fn marked(mut self, marked: bool) -> Self {
+        self.marked = marked;
+        self
+    }
+
+    /// Draws diagonal lines over the button, its label kept clear: a thing
+    /// with no colour to show. A fill is not drawn.
+    pub fn hatched(mut self, hatched: bool) -> Self {
+        self.hatched = hatched;
+        self
+    }
+
     /// What a screen reader reads; the label when not given.
     pub fn name(mut self, name: &'a str) -> Self {
         self.name = Some(name);
@@ -71,7 +98,7 @@ impl Widget for SquareButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         let (rect, response) = ui.allocate_exact_size(self.size, Sense::click());
         let name = self.name.unwrap_or(self.label).to_owned();
-        let selected = self.selected;
+        let selected = self.selected || self.marked;
         let enabled = ui.is_enabled();
         response.widget_info(move || {
             let mut info = egui::WidgetInfo::labeled(egui::accesskit::Role::Button, enabled, &name);
@@ -83,7 +110,15 @@ impl Widget for SquareButton<'_> {
         }
 
         let visuals = ui.style().interact_selectable(&response, self.selected);
-        let (fill, stroke, text) = match self.fill {
+        let ground = ui.visuals().panel_fill;
+        let bar_colour = ui.visuals().strong_text_color();
+        let face = if self.marked {
+            Rect::from_min_max(rect.min, Pos2::new(rect.max.x, rect.max.y - BAR - BAR_GAP))
+        } else {
+            rect
+        };
+        let fill = if self.hatched { None } else { self.fill };
+        let (fill, stroke, text) = match fill {
             Some(fill) => {
                 let stroke = if self.selected {
                     Stroke::new(SELECTED_LINE, ui.visuals().selection.stroke.color)
@@ -99,13 +134,23 @@ impl Widget for SquareButton<'_> {
             ),
         };
         let painter = ui.painter();
+        if self.marked {
+            painter.rect_filled(rect, 0.0, ground);
+            let bar = Rect::from_min_max(Pos2::new(rect.min.x, rect.max.y - BAR), rect.max);
+            painter.rect_filled(bar, 1.0, bar_colour);
+        }
         painter.rect(
-            rect,
+            face,
             visuals.corner_radius,
             fill,
             stroke,
             StrokeKind::Inside,
         );
+        if self.hatched {
+            hatch(painter, face, text);
+            let room = Rect::from_center_size(face.center(), LABEL_ROOM);
+            painter.rect_filled(room, 3.0, fill);
+        }
 
         let mut label = RichText::new(self.label).color(text);
         if let Some(size) = self.text_size {
@@ -117,9 +162,26 @@ impl Widget for SquareButton<'_> {
             f32::INFINITY,
             egui::TextStyle::Button,
         );
-        let corner = rect.center() - galley.size() / 2.0;
+        let corner = face.center() - galley.size() / 2.0;
         painter.galley(corner, galley, text);
         response
+    }
+}
+
+/// Diagonal lines over `rect`, clipped to it.
+fn hatch(painter: &egui::Painter, rect: Rect, colour: Color32) {
+    let line = Stroke::new(1.0, colour.gamma_multiply(0.6));
+    let clipped = painter.with_clip_rect(painter.clip_rect().intersect(rect.shrink(1.0)));
+    let lines = ((rect.width() + rect.height()) / HATCH_STEP).ceil() as usize;
+    for step in 0..lines {
+        let along = step as f32 * HATCH_STEP;
+        clipped.line_segment(
+            [
+                rect.left_top() + Vec2::new(along, 0.0),
+                rect.left_top() + Vec2::new(0.0, along),
+            ],
+            line,
+        );
     }
 }
 

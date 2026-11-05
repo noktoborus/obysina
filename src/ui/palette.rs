@@ -1,5 +1,6 @@
 //! The floating panel of beads: the colours of the palette shown, each with
-//! the number of its place, and the empty place `0`; the one in hand marked.
+//! the number of its place, and the empty place `0`; the one in hand marked
+//! by a bar under it, a hidden one hatched.
 //! A line runs along the panel and turns with it; a block stands as the keys
 //! of a numpad (decision 10 of `docs/palette.md`). A shake of its grip turns
 //! one into the other.
@@ -180,10 +181,11 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
                 rgb = rgb,
                 count = app.pattern.count(id)
             );
-            let Rgb([red, green, blue]) = rgb;
-            let fill = Color32::from_rgb(red, green, blue);
+            let fill = colour
+                .and_then(obusina_pattern::Colour::seen)
+                .map(|Rgb([red, green, blue])| Color32::from_rgb(red, green, blue));
             let in_hand = app.colour == Some(id);
-            if button::swatch(ui, fill, &(place + 1).to_string(), in_hand, &name).clicked() {
+            if button::colour(ui, fill, &(place + 1).to_string(), in_hand, &name).clicked() {
                 tap(app, Some(id));
             }
         }
@@ -192,9 +194,9 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
             let in_hand = app.colour.is_none();
             let name = t!("palette.empty");
             let response = if wide {
-                button::wide_swatch(ui, fill, "0", in_hand, &name)
+                button::wide(ui, fill, "0", in_hand, &name)
             } else {
-                button::swatch(ui, fill, "0", in_hand, &name)
+                button::colour(ui, Some(fill), "0", in_hand, &name)
             };
             if response.clicked() {
                 tap(app, None);

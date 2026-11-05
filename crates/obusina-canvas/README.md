@@ -27,7 +27,9 @@ The field of beads: an egui widget that draws an
   - a tile of outlines that repeats (`tile.rs`): loom every cell, peyote
     every two columns; a column of the field on the screen is one quad of it;
   - one white bead (`sprite.rs`); a bead on the screen is one quad of it,
-    tinted its colour.
+    tinted its colour. A bead of a colour not seen, removed or hidden
+    (`Colour::seen`), is a quad of a second texture: its outline and
+    diagonal lines.
 
   Every frame lays the quads of what is on the screen anew; a frame costs
   as many quads as there are columns and beads on the screen.
@@ -51,10 +53,12 @@ The field of beads: an egui widget that draws an
 | Loom | ![Loom][picture-loom] |
 | Peyote | ![Peyote][picture-peyote] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
+| A colour removed, its beads hatched | ![Hatched][picture-hatched] |
 
 [picture-loom]: img/loom.png
 [picture-peyote]: img/peyote.png
 [picture-peyote-turned]: img/peyote-turned.png
+[picture-hatched]: img/hatched.png
 
 ## Boundaries
 

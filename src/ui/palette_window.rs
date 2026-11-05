@@ -262,8 +262,8 @@ fn shown(app: &App, place: usize) -> Option<&Colour> {
     colour_at(app, from)
 }
 
-/// One place: a colour with its number, a removed or hidden colour with its
-/// number and no fill, or a "+".
+/// One place: a colour with its number, a removed or hidden colour hatched
+/// with its number, or a "+".
 fn cell(
     app: &mut App,
     ui: &mut egui::Ui,
@@ -277,7 +277,7 @@ fn cell(
     let swatch = match shown(app, place) {
         Some(colour) => match colour.seen() {
             Some(seen) => button::swatch(ui, color32(seen), &number, lit, &number),
-            None => button::toggle(ui, lit, &number, &number),
+            None => button::hatched(ui, &number, lit, &number),
         },
         None => button::toggle(ui, lit, "+", "+"),
     };

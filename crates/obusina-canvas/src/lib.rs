@@ -27,8 +27,8 @@ const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
 /// in the shade alike.
 const OUTLINE_COLOUR: Color32 = Color32::from_black_alpha(40);
 
-/// A bead of a removed or hidden colour, until the hatch is drawn.
-const NOT_SEEN: Color32 = Color32::GRAY;
+/// The colour of the hatch of a bead of a removed or hidden colour.
+const HATCH: Color32 = Color32::from_gray(0x40);
 
 /// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -196,20 +196,28 @@ impl<'a> Canvas<'a> {
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The beads on the screen, each a sprite tinted its colour.
+    /// The beads on the screen, each a sprite tinted its colour; a bead of a
+    /// removed or hidden colour is a sprite of the hatch.
     fn draw_beads(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
         let pattern = self.pattern;
         let (grid, ratio) = (pattern.grid(), pattern.ratio());
         let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
+        let hatch = sprite::hatch_texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
+        let mut hatched = egui::Mesh::with_texture(hatch.id());
         for (cell, id) in pattern.beads().filter(|(cell, _)| visible.contains(*cell)) {
-            let colour = match pattern.colour(id).and_then(Colour::seen) {
-                Some(Rgb([red, green, blue])) => Color32::from_rgb(red, green, blue),
-                None => NOT_SEEN,
-            };
-            sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
+            match pattern.colour(id).and_then(Colour::seen) {
+                Some(Rgb([red, green, blue])) => {
+                    let colour = Color32::from_rgb(red, green, blue);
+                    sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
+                }
+                None => {
+                    sprite::add_bead(&mut hatched, grid, ratio, self.view, origin, cell, HATCH);
+                }
+            }
         }
         painter.add(egui::Shape::mesh(mesh));
+        painter.add(egui::Shape::mesh(hatched));
     }
 
     /// Keeps the middle of the field where it is when the field changes its

@@ -9,12 +9,16 @@ A button of a fixed size for egui, its label in the middle.
 - `.selected(true)`: drawn as selected; a filled button is outlined instead.
 - `.fill(colour)`: filled with a colour of its own; the label is black or
   white, whichever reads on it (`contrast`).
+- `.marked(true)`: lower, with a bar under it of one colour whatever its
+  fill; the bar lies on the ground of the panel. Read as selected.
+- `.hatched(true)`: diagonal lines over it, the label kept clear, the fill
+  left out: a thing with no colour to show.
 - `.text_size(points)`: the size of the label.
 - `.name(text)`: what a screen reader reads, when the label says nothing,
   such as an icon.
 - In a disabled `Ui` it is drawn faded and gives no clicks.
 
-![Plain, selected, disabled, an icon, light, dark and selected fills][picture-kinds]
+![Plain, selected, disabled, an icon, light, dark and selected fills, marked light and dark, hatched, hatched and marked][picture-kinds]
 
 [picture-kinds]: img/kinds.png
 

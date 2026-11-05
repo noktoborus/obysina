@@ -146,9 +146,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-6. **The hatch and the frame.** `obusina-canvas` draws a bead of a removed or
-   hidden colour hatched; `SquareButton` draws the hatch and the mark of
-   decision 13. Each with a picture test (`RULE test.picture`).
 7. **The mockups.** When the window has a part of the design, its mockup
    goes, or is cut down to what is still open: a mockup is not kept beside
    the code it drew.
@@ -170,10 +167,12 @@ test of the window with it (`RULE test.window`).
   `keep_palettes` for the picker, `delete_beads`, each with its test.
 - Done in the window: `src/ui/palette_window.rs`, the window of decisions 1
   to 7, 10 to 12 and 15, with its tests (`src/window_tests/palette.rs`), and
-  the menu of the colour in hand of decision 14. A hidden or removed colour
-  is drawn with no fill, and its beads grey, until step 6.
+  the menu of the colour in hand of decision 14.
 - Done: decision 6 in `src/new_colour.rs`.
 - Done on the panel of beads: the line and the block of decision 10, kept in
   the settings and turned by a shake of the grip (`PanelResponse::shaken` of
   `obusina-panel`); the switch of decision 11; the digits and "+" and "-".
-- Next: step 6 of the plan.
+- Done: the hatch of a bead (`obusina-canvas`) and of a swatch, and the bar
+  of the colour in hand (`SquareButton::hatched`, `marked`), each with its
+  picture.
+- Next: step 7 of the plan.

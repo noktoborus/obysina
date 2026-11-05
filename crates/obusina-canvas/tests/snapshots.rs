@@ -88,3 +88,23 @@ fn peyote() {
 fn peyote_turned() {
     picture(Grid::Peyote, &[Turn::Clockwise], "peyote-turned");
 }
+
+/// A colour removed with its beads: they are hatched.
+#[test]
+fn hatched() {
+    let mut pattern = pattern(Grid::Loom);
+    pattern.remove_colour(0, 0).expect("the black colour goes");
+    let mut view = View::default();
+    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let mut harness = Harness::builder()
+        .with_size(SIZE)
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.snapshot_options("hatched", &SnapshotOptions::new().output_path(PICTURES));
+}

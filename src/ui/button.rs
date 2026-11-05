@@ -29,23 +29,38 @@ pub fn swatch(ui: &mut Ui, fill: Color32, label: &str, selected: bool, name: &st
     ui.add(square(label).fill(fill).selected(selected).name(name))
 }
 
-/// A swatch as wide as two and the space between them, as the `0` of a
-/// numpad.
-pub fn wide_swatch(
+/// A swatch of the panel of beads: filled with its colour, or hatched with
+/// none to show; the one in hand marked by a bar under it.
+pub fn colour(
     ui: &mut Ui,
-    fill: Color32,
+    fill: Option<Color32>,
     label: &str,
-    selected: bool,
+    in_hand: bool,
     name: &str,
 ) -> Response {
+    ui.add(face(square(label), fill).marked(in_hand).name(name))
+}
+
+/// The empty place of the panel of beads, as wide as two swatches and the
+/// space between them, as the `0` of a numpad.
+pub fn wide(ui: &mut Ui, fill: Color32, label: &str, in_hand: bool, name: &str) -> Response {
     let size = vec2(SIZE.x * 2.0 + ui.spacing().item_spacing.x, SIZE.y);
-    ui.add(
-        SquareButton::new(label, size)
-            .text_size(TEXT)
-            .fill(fill)
-            .selected(selected)
-            .name(name),
-    )
+    let button = SquareButton::new(label, size).text_size(TEXT);
+    ui.add(button.fill(fill).marked(in_hand).name(name))
+}
+
+/// A place of the window of the palettes with a colour not seen: hatched,
+/// selected while a dragged colour would go there.
+pub fn hatched(ui: &mut Ui, label: &str, selected: bool, name: &str) -> Response {
+    ui.add(square(label).hatched(true).selected(selected).name(name))
+}
+
+/// A button filled with `fill`, or hatched with none.
+fn face(button: SquareButton<'_>, fill: Option<Color32>) -> SquareButton<'_> {
+    match fill {
+        Some(fill) => button.fill(fill),
+        None => button.hatched(true),
+    }
 }
 
 /// A button of the panels with `label` on it.
