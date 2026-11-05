@@ -104,6 +104,11 @@ model (`crates/obusina-pattern/README.md`). Its tests are
     - The digits of the keyboard and the numpad choose the colour in hand, `0`
       the empty place; a field of the tools that holds the focus keeps its
       digits.
+    - The place `0` shows the no entry sign `🚫` (`icons::EMPTY`), not the
+      digit: it takes beads away. The fonts of egui carry no eraser; the
+      sign was picked from the list of `glyphs` of zyterm (`RULE
+      icon.search` there).
+    - Was: the digit `0`.
 11. **A pattern has several palettes.** Together they hold more colours than
     the keys of one. "+" and "-" of the keyboard or the numpad show the next
     and the previous palette, in a circle. The digits choose in the palette

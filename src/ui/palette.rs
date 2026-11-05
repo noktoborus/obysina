@@ -1,5 +1,6 @@
 //! The floating panel of beads: the colours of the palette shown, each with
-//! the number of its place, and the empty place `0`; the one in hand marked
+//! the number of its place, and the empty place `0`, shown by `icons::EMPTY`;
+//! the one in hand marked
 //! by a bar under it, a hidden one hatched.
 //! A line runs along the panel and turns with it; a block stands as the keys
 //! of a numpad (decision 10 of `docs/palette.md`). A shake of its grip turns
@@ -196,9 +197,9 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
             let in_hand = app.colour.is_none();
             let name = t!("palette.empty");
             let response = if wide {
-                button::wide(ui, fill, "0", in_hand, &name)
+                button::wide(ui, fill, icons::EMPTY, in_hand, &name)
             } else {
-                button::colour(ui, Some(fill), "0", in_hand, &name)
+                button::colour(ui, Some(fill), icons::EMPTY, in_hand, &name)
             };
             if response.clicked() {
                 tap(app, None);

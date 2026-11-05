@@ -25,10 +25,14 @@ pub const SAVE: &str = "\u{1f4be}";
 /// The kind of grid, the square cut in four.
 pub const GRID: &str = "\u{229e}";
 
+/// The empty place `0`, no colour, which takes beads away. The fonts of the
+/// toolkit carry no eraser; the no entry sign is the nearest.
+pub const EMPTY: &str = "\u{1f6ab}";
+
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID, EMPTY,
 ];
 
 #[cfg(test)]
