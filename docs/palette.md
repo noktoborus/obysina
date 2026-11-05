@@ -1,8 +1,9 @@
 # The palette
 
-How the colours of a pattern are filled in. The design is drawn as the
-mockups `palette`, `panel` and `numpad` of `experiments/mockups`; the window
-does not have it yet.
+How the colours of a pattern are filled in: the window of the palettes
+(`src/ui/palette_window.rs`), the panel of beads (`src/ui/palette.rs`) and the
+model (`crates/obusina-pattern/README.md`). Its tests are
+`src/window_tests/palette.rs`.
 
 ## Decisions
 
@@ -141,38 +142,10 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 "+", "-" ──► the next and the previous palette, in a circle
 ```
 
-## Plan
-
-The steps that bring the window to the design. Each is one commit, its
-test of the window with it (`RULE test.window`).
-
-7. **The mockups.** When the window has a part of the design, its mockup
-   goes, or is cut down to what is still open: a mockup is not kept beside
-   the code it drew.
-
 ## Where the work stands
 
-- Done in the window: decision 8, one colour in hand, and the second button
-  does nothing.
-- Done in `obusina-pattern`: the palettes, the ids, the file of decision 9 and
-  the changes of the colours, each with its test. The panel numbers a swatch
-  by its place.
-- Done: decisions 1 to 7 and 10 to 15 as mockups, with no shake;
-  `PlateMenu` takes a widget as its notice and leaves its drags and focused
-  keys to it; the tools of the
-  mockups: notes on a widget by its path, the list of notes, a comment to
-  the chat, the mockup frozen while a note is written.
+- Every decision is in the window. The mockups that drew them are gone
+  (`RULE ui.mockup`): the history of `experiments/mockups` keeps them.
+- The menu of the colour in hand (decision 14) came with the window of the
+  palettes, as its way in.
 - No note waits on the desk `obusina` of showcase.
-- Done in the history: `Edit::Palettes`, `History::change_colours`,
-  `keep_palettes` for the picker, `delete_beads`, each with its test.
-- Done in the window: `src/ui/palette_window.rs`, the window of decisions 1
-  to 7, 10 to 12 and 15, with its tests (`src/window_tests/palette.rs`), and
-  the menu of the colour in hand of decision 14.
-- Done: decision 6 in `src/new_colour.rs`.
-- Done on the panel of beads: the line and the block of decision 10, kept in
-  the settings and turned by a shake of the grip (`PanelResponse::shaken` of
-  `obusina-panel`); the switch of decision 11; the digits and "+" and "-".
-- Done: the hatch of a bead (`obusina-canvas`) and of a swatch, and the bar
-  of the colour in hand (`SquareButton::hatched`, `marked`), each with its
-  picture.
-- Next: step 7 of the plan.
