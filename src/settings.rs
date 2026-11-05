@@ -36,7 +36,7 @@ pub struct Settings {
 
 /// How the places of a palette stand, on the panel of beads and in the
 /// window of the palettes (decision 10 of `docs/palette.md`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PaletteView {
     /// One line along the panel; turned with it.

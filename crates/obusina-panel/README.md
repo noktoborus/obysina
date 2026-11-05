@@ -46,6 +46,9 @@ otherwise                           → wanted
 - `PanelResponse::changed` is set in the frame the panel is let go or
   folded; `PanelResponse::placement` is then the place to keep for the next
   start.
+- `FloatingPanel::content(key)`: the key of the shape of the content. When
+  it changes, the panel measures itself again; otherwise it keeps its size,
+  and a content that got smaller would stand in a panel too large.
 - `PanelResponse::shaken` is set in the frame the held grip is shaken: the
   pointer turns three times within a short time (`shake.rs`). One drag is
   one shake at most. The panel gives it no meaning.

@@ -33,7 +33,7 @@ const NAME: &str = "palette";
 const SPACING: egui::Vec2 = vec2(4.0, 4.0);
 
 /// One button of the panel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Entry {
     /// A colour: its place and its id.
     Colour(usize, ColourId),
@@ -53,8 +53,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
         .settings
         .panel(NAME)
         .unwrap_or(Placement::new(vec2(1.0, 0.0), Orientation::Vertical));
+    let content = (app.settings.palette_view(), entries(app));
     let shown = FloatingPanel::new(NAME, t!("panel.palette"))
         .placement(placement)
+        .content(content)
         .show(context, |ui, room| {
             ui.spacing_mut().item_spacing = SPACING;
             match app.settings.palette_view() {

@@ -48,6 +48,8 @@ struct State {
     /// The content changed its shape: the next frame measures the panel
     /// again instead of laying the content out in the size it had.
     measure: bool,
+    /// The key of the shape of the content the panel was measured for.
+    content: u64,
 }
 
 /// A drag of the grip.
@@ -95,6 +97,7 @@ pub struct FloatingPanel {
     id: Id,
     name: String,
     placement: Placement,
+    content: u64,
 }
 
 impl FloatingPanel {
@@ -104,7 +107,19 @@ impl FloatingPanel {
             id: Id::unique(("floating-panel", id_salt)),
             name: name.into(),
             placement: Placement::new(Vec2::ZERO, Orientation::Horizontal),
+            content: 0,
         }
+    }
+
+    /// The key of the shape of the content: when it differs from the one of
+    /// the last frame, the panel measures itself again. A panel otherwise keeps
+    /// the size it had, and a content that got smaller would stand in it.
+    pub fn content(mut self, key: impl std::hash::Hash) -> Self {
+        use std::hash::Hasher as _;
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        key.hash(&mut hasher);
+        self.content = hasher.finish();
+        self
     }
 
     /// Where the panel stands the first time it is shown. Later it keeps the
@@ -129,7 +144,13 @@ impl FloatingPanel {
             size: Vec2::ZERO,
             drag: None,
             measure: true,
+            content: self.content,
         });
+        if state.content != self.content {
+            state.content = self.content;
+            state.open = [None; 2];
+            state.measure = true;
+        }
         let (pointer, held, time) = context.input(|input| {
             (
                 input.pointer.latest_pos(),

@@ -388,3 +388,43 @@ fn a_shake_of_the_grip_turns_the_line_into_a_block() {
         PaletteView::Block
     );
 }
+
+/// The panel measures itself again when its content changes: back from a
+/// block to a line it is the size it was, and a colour taken away makes it
+/// smaller.
+#[test]
+fn the_panel_fits_its_content_again() {
+    let mut window = window();
+    let panel = |window: &super::Window| {
+        let id = egui::Id::unique(("floating-panel", "palette"));
+        window
+            .harness
+            .ctx
+            .memory(|memory| memory.area_rect(id))
+            .expect("the panel of beads is drawn")
+            .size()
+    };
+    let line = panel(&window);
+
+    window
+        .harness
+        .state_mut()
+        .keep_palette_view(PaletteView::Block);
+    window.harness.run();
+    let block = panel(&window);
+    window
+        .harness
+        .state_mut()
+        .keep_palette_view(PaletteView::Line);
+    window.harness.run();
+
+    assert_ne!(line, block);
+    assert_eq!(panel(&window), line, "the size it had before the block");
+
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    choose(&mut window, &colour(5), &t!("palette.remove"));
+    window.harness.state_mut().palette_window.open = false;
+    window.harness.run();
+    assert!(panel(&window).y < line.y, "one colour less");
+}
