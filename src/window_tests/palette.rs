@@ -94,6 +94,26 @@ fn a_new_colour_not_accepted_is_gone() {
 }
 
 #[test]
+fn cancel_at_the_end_of_the_menu_puts_the_colour_back() {
+    let mut window = opened();
+    let place = t!("palette.place", number = 6).to_string();
+
+    window.click(&place);
+    assert!(window.harness.state().pattern.palettes()[0].places()[5].is_some());
+    window.click(&t!("palette.cancel"));
+
+    let app = window.harness.state();
+    assert!(app.pattern.palettes()[0].places()[5].is_none());
+    assert!(app.palette_window.open, "the window stays");
+    assert!(
+        window
+            .harness
+            .query_by_label(&t!("palette.cancel"))
+            .is_none()
+    );
+}
+
+#[test]
 fn the_changes_of_the_window_are_one_step_made_when_it_closes() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);

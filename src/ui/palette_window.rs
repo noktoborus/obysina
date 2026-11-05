@@ -9,7 +9,8 @@
 //!                    │──accept────────► kept, as the steps below
 //!                    │──move──────────► one palette: a new one; more: a menu of them
 //!                    │──remove────────► with beads its place is hatched; with none, empty
-//!                    └──delete beads──► the beads of a removed colour go
+//!                    │──delete beads──► the beads of a removed colour go
+//!                    └──cancel────────► the palettes as they were
 //!      closed with no entry, or by Escape ──► the palettes as they were
 //! all that is kept while the window is open is one step of the history,
 //! made when the window closes
@@ -421,6 +422,7 @@ fn tap(app: &mut App, place: usize) {
         MenuItem::new("accept", t!("palette.accept")),
         MenuItem::new("move", t!("palette.move")).enabled(colour.is_some()),
         last,
+        MenuItem::new("cancel", t!("palette.cancel")),
     ];
     let state = &mut app.palette_window;
     if let Err(error) = state.menu.open(items) {

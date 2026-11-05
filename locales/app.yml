@@ -114,6 +114,9 @@ palette.move:
 palette.remove:
   en: "Remove"
   ru: "Удалить"
+palette.cancel:
+  en: "Cancel"
+  ru: "Отмена"
 palette.delete_beads_one:
   en: "Delete %{count} bead"
   ru: "Удалить %{count} бусину"

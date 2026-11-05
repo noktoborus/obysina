@@ -20,8 +20,9 @@ model (`crates/obusina-pattern/README.md`). Its tests are
    - A new colour takes the numbers in order: 1, 2, 3.
    - Was: a list, where a colour removed changed the numbers of the next ones.
 3. **A tap on a colour opens a `PlateMenu` of it** (`RULE ui.menu`): the
-   picker of the colour on top, then accept, move to another palette and
-   remove.
+   picker of the colour on top, then accept, move to another palette,
+   remove, and "Cancel" at the very bottom, which puts back what the place
+   held, as Escape does.
    No button stands under a colour. While a menu is open nothing else of
    the window answers, and a press beside it does nothing: an entry or
    Escape leaves it (`src/ui/blocker.rs`). A "+" adds a colour in its place and opens its menu.
@@ -139,7 +140,8 @@ tap a colour ──► PlateMenu: the picker of the colour on top, then
                     │──accept──────────► the colour stays as picked
                     │──move to another─► one palette: a new one;
                     │                    more: a PlateMenu of them and a new one
-                    └──remove──────────► its place and its beads hatched
+                    │──remove──────────► its place and its beads hatched
+                    └──cancel──────────► the colour goes back to what it was
 tap a hatched place ──► the same, with "delete <n> beads" for "remove"
       closed with no entry ──► the colour goes back to what it was
 drag a colour ──► the place under the pointer is lit and shows it ──let go──► it stays,
