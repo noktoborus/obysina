@@ -22,9 +22,13 @@ An editor of bead patterns, for Linux, Windows and Android.
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
     the picker, the kind of grid, the columns and the rows of the sheet,
     save;
-  - **Beads**: the colours of the palette shown, each with its number, and
-    an empty place. The one in hand is marked. A tap on it opens its menu:
-    hide or show the colour, delete its beads, the settings of the palette.
+  - **Beads**: the colours of the palette shown, each with the number of its
+    place, and the empty place `0`. They stand as a line, which turns with
+    the panel, or as a block, as the keys of a numpad; the tabs of the window
+    of the palettes or a shake of the grip switch the two. With two palettes
+    or more, buttons switch the palette. The one in hand is marked. A tap on
+    it opens its menu: hide or show the colour, delete its beads, the
+    settings of the palette.
 - A pattern has one palette or more, each of nine places. The window of the
   palettes, opened from that menu or by `P`, shows the places as a line or
   as a block. A tap on a place opens the picker of its colour; the colour
@@ -47,8 +51,10 @@ An editor of bead patterns, for Linux, Windows and Android.
 | ctrl+z | undo |
 | ctrl+shift+z | redo |
 | ctrl+s | save |
+| 1 … 9 | the colour of that place of the palette shown |
+| 0 | the empty place |
+| + / - | the next and the previous palette |
 | P | the window of the palettes |
-| + / - | in that window: the next and the previous palette |
 
 ## Running
 

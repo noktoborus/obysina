@@ -25,6 +25,19 @@ const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z)
 const REDO: KeyboardShortcut =
     KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::Z);
 const SAVE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::S);
+/// The digits, `0` first: the top row and the numpad give the same keys.
+const DIGITS: [Key; 10] = [
+    Key::Num0,
+    Key::Num1,
+    Key::Num2,
+    Key::Num3,
+    Key::Num4,
+    Key::Num5,
+    Key::Num6,
+    Key::Num7,
+    Key::Num8,
+    Key::Num9,
+];
 
 /// What a press on the field does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,6 +111,13 @@ impl App {
             palette_window: Default::default(),
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
+        }
+    }
+
+    /// Keeps how the places of a palette stand for the next start.
+    pub(crate) fn keep_palette_view(&mut self, view: crate::settings::PaletteView) {
+        if let Err(error) = self.settings.keep_palette_view(view) {
+            self.message = Some(say(&error));
         }
     }
 
@@ -190,9 +210,33 @@ impl App {
         if save {
             self.save();
         }
-        let settings = ui.input(|input| input.key_pressed(Key::P));
-        if settings && !ui.ctx().egui_wants_keyboard_input() && !self.palette_window.open {
+        let free = !ui.ctx().egui_wants_keyboard_input()
+            && !self.palette_window.open
+            && !self.bead_menu.is_open()
+            && !self.menu.is_open();
+        if !free {
+            return;
+        }
+        if ui.input(|input| input.key_pressed(Key::P)) {
             self.palette_window.open = true;
+        }
+        crate::ui::palette_window::step_by_keys(self, ui);
+        if let Some(digit) = ui.input(|input| DIGITS.iter().position(|key| input.key_pressed(*key)))
+        {
+            self.take_by_digit(digit);
+        }
+    }
+
+    /// Takes in hand the colour of the place of a digit of the palette shown,
+    /// `0` the empty place. A digit of an empty or removed place does nothing.
+    fn take_by_digit(&mut self, digit: usize) {
+        if digit == 0 {
+            self.colour = None;
+            return;
+        }
+        let place = &self.pattern.palettes()[self.palette].places()[digit - 1];
+        if let Some(colour) = place.as_ref().filter(|colour| colour.rgb.is_some()) {
+            self.colour = Some(colour.id);
         }
     }
 

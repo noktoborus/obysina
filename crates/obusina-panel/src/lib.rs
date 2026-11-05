@@ -4,11 +4,14 @@
 
 mod edge;
 mod placement;
+mod shake;
 
 pub use edge::{Edge, HYSTERESIS, Orientation, SNAP, SNAP_PART};
 pub use placement::{MARGIN, Placement};
 
 use egui::{Context, Id, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
+
+use shake::Shake;
 
 /// The thin side of the grip: wide enough for a finger.
 const GRIP_THIN: f32 = 18.0;
@@ -58,6 +61,10 @@ struct Drag {
     edge: Option<Edge>,
     /// The pointer went far enough for a drag, not a tap.
     moved: bool,
+    /// The turns of the pointer, for a shake.
+    shake: Shake,
+    /// The grip was shaken in this drag: a drag is one shake at most.
+    shook: bool,
 }
 
 /// What the panel did in this frame.
@@ -73,6 +80,9 @@ pub struct PanelResponse<R> {
     /// The panel was let go or folded in this frame: `placement` is one the
     /// caller may keep, to give back at the next start.
     pub changed: bool,
+    /// The grip was shaken in this frame: held, and moved to and fro
+    /// quickly.
+    pub shaken: bool,
 }
 
 /// A floating panel with no title: a grip of dots moves it, a tap on the grip
@@ -120,10 +130,20 @@ impl FloatingPanel {
             drag: None,
             measure: true,
         });
-        let (pointer, held) =
-            context.input(|input| (input.pointer.latest_pos(), input.pointer.primary_down()));
+        let (pointer, held, time) = context.input(|input| {
+            (
+                input.pointer.latest_pos(),
+                input.pointer.primary_down(),
+                input.time,
+            )
+        });
+        let mut shaken = false;
         if let (Some(drag), Some(pointer), true) = (&mut state.drag, pointer, held) {
             drag.position = pointer - drag.grab;
+            if !drag.shook && drag.shake.feed(time, pointer) {
+                drag.shook = true;
+                shaken = true;
+            }
             if drag.moved {
                 drag.edge = Edge::under(window, pointer, drag.edge);
             }
@@ -180,6 +200,8 @@ impl FloatingPanel {
                 position: rect.min,
                 edge: None,
                 moved: false,
+                shake: Shake::default(),
+                shook: false,
             });
         }
         if let Some(drag) = &mut state.drag
@@ -217,6 +239,7 @@ impl FloatingPanel {
             rect,
             placement: state.placement,
             changed,
+            shaken,
         }
     }
 

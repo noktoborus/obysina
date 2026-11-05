@@ -1,5 +1,18 @@
-//! The floating panel of beads: the colours of the pattern, the one in hand
-//! marked.
+//! The floating panel of beads: the colours of the palette shown, each with
+//! the number of its place, and the empty place `0`; the one in hand marked.
+//! A line runs along the panel and turns with it; a block stands as the keys
+//! of a numpad (decision 10 of `docs/palette.md`). A shake of its grip turns
+//! one into the other.
+//!
+//! ```text
+//! line   < 1 2 3 4 5 6 7 8 9 0 >      block   7 8 9
+//!                                             4 5 6
+//!                                             1 2 3
+//!                                             [ 0 ] ↔
+//! ```
+//!
+//! With two palettes one button `↔` goes to the other, after `0`; with more,
+//! `<` and `>`; with one, none.
 
 use egui::{Color32, vec2};
 use rust_i18n::t;
@@ -8,19 +21,30 @@ use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
 use obusina_pattern::{ColourId, Rgb};
 use plate_menu::MenuItem;
 
-use crate::ui::palette_window::delete_beads;
-
 use crate::app::App;
+use crate::settings::PaletteView;
+use crate::ui::palette_window::{block, delete_beads, step};
 use crate::ui::{button, icons};
 
 /// The name the place of the panel is kept by.
 const NAME: &str = "palette";
 /// The space between two swatches.
 const SPACING: egui::Vec2 = vec2(4.0, 4.0);
-/// Swatches in one line of a row, when the window is wide enough.
-const ROW: usize = 8;
-/// Swatches in one line of a column, when the window is tall enough.
-const COLUMN: usize = 2;
+
+/// One button of the panel.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entry {
+    /// A colour: its place and its id.
+    Colour(usize, ColourId),
+    /// The empty place, `0`.
+    Empty,
+    /// The previous palette.
+    Back,
+    /// The next palette.
+    On,
+    /// The other palette, of two.
+    Other,
+}
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
@@ -31,75 +55,177 @@ pub fn show(app: &mut App, context: &egui::Context) {
     let shown = FloatingPanel::new(NAME, t!("panel.palette"))
         .placement(placement)
         .show(context, |ui, room| {
-            let count = shown(app).len() + 1;
-            swatches(app, ui, per_line(room, count));
+            ui.spacing_mut().item_spacing = SPACING;
+            match app.settings.palette_view() {
+                PaletteView::Line => line(app, ui, room),
+                PaletteView::Block => numpad(app, ui),
+            }
         });
     if shown.changed {
         app.keep_panel(NAME, shown.placement);
     }
+    if shown.shaken {
+        let other = match app.settings.palette_view() {
+            PaletteView::Line => PaletteView::Block,
+            PaletteView::Block => PaletteView::Line,
+        };
+        app.keep_palette_view(other);
+    }
 }
 
-/// How many of `count` swatches stand in one line, so the block of swatches
-/// fits the length of `room`.
-///
-/// In a row a line runs along the panel: it holds [`ROW`], or fewer when the
-/// window is narrow. In a column the lines are stacked along the panel: a
-/// line holds [`COLUMN`], or more when the window is too short for the lines.
+/// The buttons of the line, in order.
+fn entries(app: &App) -> Vec<Entry> {
+    let palettes = app.pattern.palettes().len();
+    let colours = shown(app)
+        .into_iter()
+        .map(|(place, id)| Entry::Colour(place, id));
+    let mut entries = Vec::new();
+    if palettes > 2 {
+        entries.push(Entry::Back);
+    }
+    entries.extend(colours);
+    entries.push(Entry::Empty);
+    match palettes {
+        1 => {}
+        2 => entries.push(Entry::Other),
+        _ => entries.push(Entry::On),
+    }
+    entries
+}
+
+/// How many of `count` buttons stand in one line, so they fit the length of
+/// `room`. Along a row they are one line, cut where the window ends; along a
+/// column they are one column, two or more when the window is too short.
 fn per_line(room: Room, count: usize) -> usize {
     let step = button::SIZE + SPACING;
-    let length = room.length;
     match room.orientation {
         Orientation::Horizontal => {
-            let fit = ((length + SPACING.x) / step.x).floor() as usize;
-            ROW.min(fit).max(1)
+            let fit = ((room.length + SPACING.x) / step.x).floor() as usize;
+            count.min(fit).max(1)
         }
         Orientation::Vertical => {
-            let lines = (((length + SPACING.y) / step.y).floor() as usize).max(1);
-            COLUMN.max(count.div_ceil(lines))
+            let lines = (((room.length + SPACING.y) / step.y).floor() as usize).max(1);
+            count.div_ceil(lines).max(1)
         }
     }
 }
 
-/// One swatch for each colour, and one for an empty place, `per_line` in a
-/// line.
-///
-/// The lines are one block, laid out like any other widget of the panel, so
-/// the block stands in the middle across the panel with the rest. A grid of
-/// egui would place its cells by a layout of its own.
-fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
-    let entries: Vec<Option<(usize, ColourId)>> =
-        shown(app).into_iter().map(Some).chain([None]).collect();
+/// The line: the buttons in one line along the panel. The lines are one
+/// block, laid out like any other widget of the panel, so the block stands in
+/// the middle across the panel with the rest.
+fn line(app: &mut App, ui: &mut egui::Ui, room: Room) {
+    let entries = entries(app);
+    let per_line = per_line(room, entries.len());
     ui.vertical(|ui| {
-        ui.spacing_mut().item_spacing = SPACING;
-        for line in entries.chunks(per_line) {
+        for chunk in entries.chunks(per_line) {
             ui.horizontal(|ui| {
-                for entry in line.iter().copied() {
-                    let name = match entry {
-                        Some((place, id)) => t!(
-                            "palette.bead",
-                            key = place + 1,
-                            rgb = app
-                                .pattern
-                                .colour(id)
-                                .and_then(|colour| colour.rgb)
-                                .unwrap_or(Rgb([0; 3])),
-                            count = app.pattern.count(id)
-                        )
-                        .to_string(),
-                        None => t!("palette.empty").to_string(),
-                    };
-                    let colour = entry.map(|(_, id)| id);
-                    if swatch(app, ui, entry, app.colour == colour, &name).clicked() {
-                        if app.colour == colour {
-                            open_menu(app, colour);
-                        } else {
-                            app.colour = colour;
+                for entry in chunk {
+                    button_of(app, ui, *entry, false);
+                }
+            });
+        }
+    });
+}
+
+/// The block: the colours as the keys of a numpad, rows with no colour
+/// folded, a gap for an empty place; the wide `0` under them, the switch of
+/// the palette beside it or under it.
+fn numpad(app: &mut App, ui: &mut egui::Ui) {
+    let colours = shown(app);
+    let rows = block(obusina_pattern::MAX_COLOURS);
+    let palettes = app.pattern.palettes().len();
+    ui.vertical(|ui| {
+        for row in rows {
+            if !row
+                .iter()
+                .any(|place| colours.iter().any(|(at, _)| at == place))
+            {
+                continue;
+            }
+            ui.horizontal(|ui| {
+                for place in row {
+                    match colours.iter().find(|(at, _)| *at == place) {
+                        Some((place, id)) => button_of(app, ui, Entry::Colour(*place, *id), false),
+                        None => {
+                            ui.allocate_exact_size(button::SIZE, egui::Sense::hover());
                         }
                     }
                 }
             });
         }
+        ui.horizontal(|ui| {
+            button_of(app, ui, Entry::Empty, true);
+            if palettes == 2 {
+                button_of(app, ui, Entry::Other, false);
+            }
+        });
+        if palettes > 2 {
+            ui.horizontal(|ui| {
+                button_of(app, ui, Entry::Back, false);
+                button_of(app, ui, Entry::On, false);
+            });
+        }
     });
+}
+
+/// One button of the panel and what a tap on it does.
+fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
+    match entry {
+        Entry::Colour(place, id) => {
+            let colour = app.pattern.colour(id);
+            let rgb = colour.and_then(|colour| colour.rgb).unwrap_or(Rgb([0; 3]));
+            let name = t!(
+                "palette.bead",
+                key = place + 1,
+                rgb = rgb,
+                count = app.pattern.count(id)
+            );
+            let Rgb([red, green, blue]) = rgb;
+            let fill = Color32::from_rgb(red, green, blue);
+            let in_hand = app.colour == Some(id);
+            if button::swatch(ui, fill, &(place + 1).to_string(), in_hand, &name).clicked() {
+                tap(app, Some(id));
+            }
+        }
+        Entry::Empty => {
+            let fill = ui.visuals().extreme_bg_color;
+            let in_hand = app.colour.is_none();
+            let name = t!("palette.empty");
+            let response = if wide {
+                button::wide_swatch(ui, fill, "0", in_hand, &name)
+            } else {
+                button::swatch(ui, fill, "0", in_hand, &name)
+            };
+            if response.clicked() {
+                tap(app, None);
+            }
+        }
+        Entry::Back => {
+            if button::icon(ui, "<", &t!("palette.previous"), true).clicked() {
+                step(app, -1);
+            }
+        }
+        Entry::On => {
+            if button::icon(ui, ">", &t!("palette.next"), true).clicked() {
+                step(app, 1);
+            }
+        }
+        Entry::Other => {
+            if button::icon(ui, icons::SWITCH, &t!("palette.switch"), true).clicked() {
+                step(app, 1);
+            }
+        }
+    }
+}
+
+/// A tap on a colour or the empty place: it goes in hand; what is in hand
+/// opens its menu.
+fn tap(app: &mut App, colour: Option<ColourId>) {
+    if app.colour == colour {
+        open_menu(app, colour);
+    } else {
+        app.colour = colour;
+    }
 }
 
 /// The colours the panel shows: the places of the palette shown, each with
@@ -114,25 +240,6 @@ fn shown(app: &App) -> Vec<(usize, ColourId)> {
             Some((place, colour.id))
         })
         .collect()
-}
-
-/// The swatch of a colour of the palette with its number, or of an empty
-/// place.
-fn swatch(
-    app: &App,
-    ui: &mut egui::Ui,
-    entry: Option<(usize, ColourId)>,
-    selected: bool,
-    name: &str,
-) -> egui::Response {
-    let rgb = entry.and_then(|(_, id)| app.pattern.colour(id).and_then(|colour| colour.rgb));
-    let (fill, label) = match (entry, rgb) {
-        (Some((place, _)), Some(Rgb([red, green, blue]))) => {
-            (Color32::from_rgb(red, green, blue), (place + 1).to_string())
-        }
-        _ => (ui.visuals().extreme_bg_color, icons::EMPTY.to_string()),
-    };
-    button::swatch(ui, fill, &label, selected, name)
 }
 
 /// The menu of what is in hand, opened by a second tap: hide or show and

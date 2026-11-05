@@ -87,7 +87,7 @@ does not have it yet.
     after the last colour, in the order of the numbers. A shake of the panel
     by its grip switches them too.
     - The line: `< 1 2 3 4 5 6 7 8 9 0 >`, with a narrow `0`; `<` and `>` while
-      there are two palettes or more. An empty place is left
+      there are three palettes or more, one `↔` after `0` with two. An empty place is left
       out in the panel. It turns by the room it has and by the edge it stands
       at (`RULE ui.dock`), in the same order.
     - The block: `7 8 9 / 4 5 6 / 1 2 3`, with a wide `0` under `1 2`. Empty rows
@@ -99,8 +99,10 @@ does not have it yet.
 11. **A pattern has several palettes.** Together they hold more colours than
     the keys of one. "+" and "-" of the keyboard or the numpad show the next
     and the previous palette, in a circle. The digits choose in the palette
-    shown. Buttons `<` and `>` do it by touch (`RULE ui.touch`), in the window
-    and on the panel: in a block they stand under `0`. A palette goes when nothing is left in its places, and the next
+    shown. Buttons do it by touch (`RULE ui.touch`), in the window and on the
+    panel: with two palettes one `↔` goes to the other, beside `0` in a block;
+    with more, `<` and `>`, under `0` in a block.
+    - Was: `<` and `>` with two palettes too. A palette goes when nothing is left in its places, and the next
     one is shown. Hatched beads keep a palette, because a "+" there colours
     them again. The last palette stays. A palette is a page of colours, not
     another colouring: the colours of all palettes show on the field.
@@ -144,9 +146,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-5. **The numpad.** The swatches of the panel of beads show the numbers, in
-   the two views of decision 10, the view kept in the settings; the keys
-   choose a colour; "+" and "-" switch the palette. The shake of the panel.
 6. **The hatch and the frame.** `obusina-canvas` draws a bead of a removed or
    hidden colour hatched; `SquareButton` draws the hatch and the mark of
    decision 13. Each with a picture test (`RULE test.picture`).
@@ -174,4 +173,7 @@ test of the window with it (`RULE test.window`).
   the menu of the colour in hand of decision 14. A hidden or removed colour
   is drawn with no fill, and its beads grey, until step 6.
 - Done: decision 6 in `src/new_colour.rs`.
-- Next: step 5 of the plan.
+- Done on the panel of beads: the line and the block of decision 10, kept in
+  the settings and turned by a shake of the grip (`PanelResponse::shaken` of
+  `obusina-panel`); the switch of decision 11; the digits and "+" and "-".
+- Next: step 6 of the plan.

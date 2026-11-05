@@ -1,5 +1,6 @@
 //! The settings of the program: `settings.yaml` in the configuration
-//! directory (`RULE config.dir`). They keep the place of each panel.
+//! directory (`RULE config.dir`). They keep the place of each panel and how
+//! the places of a palette stand.
 //!
 //! A file this version cannot read is renamed to [`UNREADABLE`] beside it,
 //! and the program starts from the defaults (`RULE config.legacy`).
@@ -29,6 +30,20 @@ pub struct Settings {
     path: Option<PathBuf>,
     /// The place of each panel, by its name.
     panels: BTreeMap<String, Panel>,
+    /// How the places of a palette stand.
+    palette_view: PaletteView,
+}
+
+/// How the places of a palette stand, on the panel of beads and in the
+/// window of the palettes (decision 10 of `docs/palette.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PaletteView {
+    /// One line along the panel; turned with it.
+    #[default]
+    Line,
+    /// Rows of three, as the keys of a numpad.
+    Block,
 }
 
 /// The place of a panel, as the file holds it.
@@ -72,6 +87,20 @@ impl Settings {
     /// Keeps the place of the panel `name` and writes the file.
     pub fn keep_panel(&mut self, name: &str, placement: Placement) -> Result<()> {
         self.panels.insert(name.to_owned(), placement.into());
+        self.write()
+    }
+
+    /// How the places of a palette stand.
+    pub fn palette_view(&self) -> PaletteView {
+        self.palette_view
+    }
+
+    /// Keeps how the places of a palette stand and writes the file.
+    pub fn keep_palette_view(&mut self, view: PaletteView) -> Result<()> {
+        if view == self.palette_view {
+            return Ok(());
+        }
+        self.palette_view = view;
         self.write()
     }
 
@@ -188,5 +217,21 @@ mod tests {
 
         assert!(error.is_none());
         assert_eq!(settings.panel("tools"), None);
+    }
+
+    #[test]
+    fn the_view_of_the_palette_is_read_back() {
+        let directory = tempfile::tempdir().expect("a scratch directory");
+        let path = directory.path().join(FILE);
+        let (mut settings, _) = Settings::load(Some(path.clone()));
+        assert_eq!(settings.palette_view(), PaletteView::Line);
+
+        settings
+            .keep_palette_view(PaletteView::Block)
+            .expect("written");
+
+        let (again, error) = Settings::load(Some(path));
+        assert!(error.is_none());
+        assert_eq!(again.palette_view(), PaletteView::Block);
     }
 }

@@ -46,6 +46,9 @@ otherwise                           → wanted
 - `PanelResponse::changed` is set in the frame the panel is let go or
   folded; `PanelResponse::placement` is then the place to keep for the next
   start.
+- `PanelResponse::shaken` is set in the frame the held grip is shaken: the
+  pointer turns three times within a short time (`shake.rs`). One drag is
+  one shake at most. The panel gives it no meaning.
 - `Room` gives the content its orientation and the length it may take along
   it.
 

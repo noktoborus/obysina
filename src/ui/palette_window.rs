@@ -1,6 +1,6 @@
 //! The window of the palettes: a modal with no title. Tabs on top show the
-//! places as a line or as a block; `<` and `>`, and the keys "+" and "-",
-//! show the next palette in a circle. A tap on a place opens its menu, the
+//! places as a line or as a block; `<` and `>`, or `↔` with two palettes,
+//! and the keys "+" and "-", show the next palette in a circle. A tap on a place opens its menu, the
 //! picker on top (`docs/palette.md`).
 //!
 //! ```text
@@ -22,23 +22,14 @@ use plate_menu::{MenuItem, Notice, PlateMenu};
 use rust_i18n::t;
 
 use crate::app::App;
+use crate::settings::PaletteView;
 use crate::ui::access::Named;
-use crate::ui::button;
+use crate::ui::{button, icons};
 
 /// The places in a row of the block, as on a numpad.
 const BLOCK_WIDTH: usize = 3;
 /// The swatch in the notice of the menu of a colour.
 const NOTICE_SWATCH: egui::Vec2 = vec2(28.0, 20.0);
-
-/// How the places of a palette stand.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum View {
-    /// One line: the places up to the last colour, and one "+" after it.
-    #[default]
-    Line,
-    /// Rows of three, as the keys of a numpad: every place.
-    Block,
-}
 
 /// What the menu of the window is open for.
 #[derive(Debug, Clone)]
@@ -54,8 +45,6 @@ enum MenuOf {
 pub struct PaletteWindow {
     /// True while the window is open.
     pub open: bool,
-    /// How the places stand.
-    pub view: View,
     menu: PlateMenu,
     menu_of: Option<MenuOf>,
     /// The colour the picker in the notice changes.
@@ -81,7 +70,7 @@ fn line(held: &[bool]) -> Vec<usize> {
 
 /// The places of a block, by rows from the top: the first places stand at
 /// the bottom, as on a numpad.
-fn block(places: usize) -> Vec<Vec<usize>> {
+pub fn block(places: usize) -> Vec<Vec<usize>> {
     let all: Vec<usize> = (0..places).collect();
     all.chunks(BLOCK_WIDTH)
         .rev()
@@ -166,9 +155,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
 fn window(app: &mut App, ui: &mut egui::Ui) {
     keys(app, ui);
     ui.horizontal(|ui| {
-        let state = &mut app.palette_window;
-        ui.selectable_value(&mut state.view, View::Line, t!("palette.line"));
-        ui.selectable_value(&mut state.view, View::Block, t!("palette.block"));
+        let mut view = app.settings.palette_view();
+        ui.selectable_value(&mut view, PaletteView::Line, t!("palette.line"));
+        ui.selectable_value(&mut view, PaletteView::Block, t!("palette.block"));
+        app.keep_palette_view(view);
         ui.separator();
         switch(app, ui);
     });
@@ -178,9 +168,9 @@ fn window(app: &mut App, ui: &mut egui::Ui) {
         .iter()
         .map(Option::is_some)
         .collect();
-    let rows = match app.palette_window.view {
-        View::Line => vec![line(&held)],
-        View::Block => block(held.len()),
+    let rows = match app.settings.palette_view() {
+        PaletteView::Line => vec![line(&held)],
+        PaletteView::Block => block(held.len()),
     };
     let mut tapped = None;
     let mut drags = Vec::new();
@@ -201,43 +191,62 @@ fn window(app: &mut App, ui: &mut egui::Ui) {
 }
 
 /// "+" and "-" of the keyboard or the numpad, while no menu is open and no
-/// colour is dragged. `=` is the key of "+" with no shift.
+/// colour is dragged.
 fn keys(app: &mut App, ui: &egui::Ui) {
     let state = &app.palette_window;
     if state.menu.is_open() || state.dragging.is_some() {
         return;
     }
+    step_by_keys(app, ui);
+}
+
+/// "+" and "-" show the next and the previous palette, in a circle. `=` is
+/// the key of "+" with no shift.
+pub fn step_by_keys(app: &mut App, ui: &egui::Ui) {
     let (next, previous) = ui.input(|input| {
         (
             input.key_pressed(Key::Plus) || input.key_pressed(Key::Equals),
             input.key_pressed(Key::Minus),
         )
     });
-    let count = app.pattern.palettes().len();
     if next {
-        app.palette = in_circle(app.palette, 1, count);
+        step(app, 1);
     }
     if previous {
-        app.palette = in_circle(app.palette, -1, count);
+        step(app, -1);
     }
 }
 
-/// The switch of the palette, the way to it by touch (`RULE ui.touch`).
+/// Shows the palette `by` away, in a circle.
+pub fn step(app: &mut App, by: isize) {
+    app.palette = in_circle(app.palette, by, app.pattern.palettes().len());
+}
+
+/// The switch of the palette, the way to it by touch (`RULE ui.touch`): with
+/// two palettes one button goes to the other, with more `<` and `>`.
 fn switch(app: &mut App, ui: &mut egui::Ui) {
     let count = app.pattern.palettes().len();
-    let many = count > 1;
-    let previous = ui.add_enabled(many, egui::Button::new("<"));
-    if previous.named(&t!("palette.previous")).clicked() {
-        app.palette = in_circle(app.palette, -1, count);
+    if count == 2 {
+        let both = ui.button(icons::SWITCH);
+        if both.named(&t!("palette.switch")).clicked() {
+            step(app, 1);
+        }
+    } else {
+        let previous = ui.add_enabled(count > 1, egui::Button::new("<"));
+        if previous.named(&t!("palette.previous")).clicked() {
+            step(app, -1);
+        }
     }
     ui.label(t!(
         "palette.number",
         number = app.palette + 1,
         count = count
     ));
-    let next = ui.add_enabled(many, egui::Button::new(">"));
-    if next.named(&t!("palette.next")).clicked() {
-        app.palette = in_circle(app.palette, 1, count);
+    if count != 2 {
+        let next = ui.add_enabled(count > 1, egui::Button::new(">"));
+        if next.named(&t!("palette.next")).clicked() {
+            step(app, 1);
+        }
     }
 }
 

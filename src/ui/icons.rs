@@ -18,17 +18,17 @@ pub const TURN_RIGHT: &str = "\u{21bb}";
 pub const PENCIL: &str = "\u{270f}";
 /// The picker, which takes the colour of a bead.
 pub const PICK: &str = "\u{1f4a7}";
+/// The other palette, of two: the arrow both ways.
+pub const SWITCH: &str = "\u{2194}";
 /// Save, the floppy disk.
 pub const SAVE: &str = "\u{1f4be}";
-/// An empty place, the cross.
-pub const EMPTY: &str = "\u{2716}";
 /// The kind of grid, the square cut in four.
 pub const GRID: &str = "\u{229e}";
 
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SAVE, EMPTY, GRID,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID,
 ];
 
 #[cfg(test)]

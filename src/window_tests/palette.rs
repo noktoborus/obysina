@@ -5,7 +5,8 @@ use egui::{Key, PointerButton};
 use egui_kittest::kittest::Queryable;
 use rust_i18n::t;
 
-use super::{FREE, id_at, swatch, window};
+use super::{FREE, SIZE, id_at, swatch, window, window_in};
+use crate::settings::PaletteView;
 use crate::ui::palette_window::delete_beads;
 
 /// The window of the palettes opened by `P`.
@@ -149,7 +150,14 @@ fn the_first_move_makes_a_palette_and_the_keys_switch_it() {
     window.harness.key_press(Key::Minus);
     window.harness.run();
     assert_eq!(window.harness.state().palette, 0);
-    window.click(&t!("palette.next"));
+    let other = t!("palette.switch").to_string();
+    let in_window = window
+        .harness
+        .query_all_by_label(&other)
+        .max_by(|first, second| first.rect().center().y.total_cmp(&second.rect().center().y))
+        .expect("the switch of the window, lower than the one of the panel");
+    in_window.click();
+    window.harness.run();
     assert_eq!(window.harness.state().palette, 1);
 }
 
@@ -242,5 +250,141 @@ fn a_new_colour_is_none_of_the_others() {
         colours.iter().filter(|rgb| **rgb == new).count(),
         1,
         "{new}"
+    );
+}
+
+/// A colour moved to a new palette, the window closed: two palettes.
+fn two_palettes() -> super::Window {
+    let mut window = opened();
+    choose(&mut window, &colour(2), &t!("palette.move"));
+    window.harness.state_mut().palette_window.open = false;
+    window.harness.run();
+    window
+}
+
+#[test]
+fn a_digit_takes_the_colour_of_its_place_and_zero_the_empty_place() {
+    let mut window = window();
+
+    window.harness.key_press(Key::Num3);
+    window.harness.run();
+    assert_eq!(window.harness.state().colour, Some(id_at(2)));
+
+    window.harness.key_press(Key::Num0);
+    window.harness.run();
+    assert_eq!(window.harness.state().colour, None);
+
+    window.harness.key_press(Key::Num9);
+    window.harness.run();
+    assert_eq!(window.harness.state().colour, None, "place 9 is empty");
+}
+
+#[test]
+fn the_keys_switch_the_palette_on_the_main_screen() {
+    let mut window = two_palettes();
+
+    window.harness.key_press(Key::Plus);
+    window.harness.run();
+    assert_eq!(window.harness.state().palette, 1);
+    window.harness.key_press(Key::Num1);
+    window.harness.run();
+    assert_eq!(
+        window.harness.state().colour,
+        Some(id_at(1)),
+        "a digit of that palette"
+    );
+
+    window.harness.key_press(Key::Minus);
+    window.harness.run();
+    assert_eq!(window.harness.state().palette, 0);
+}
+
+#[test]
+fn the_panel_has_one_switch_for_two_palettes_and_two_for_more() {
+    let mut window = window();
+    assert!(
+        window
+            .harness
+            .query_by_label(&t!("palette.switch"))
+            .is_none()
+    );
+
+    let mut window2 = two_palettes();
+    window2.click(&t!("palette.switch"));
+    assert_eq!(window2.harness.state().palette, 1);
+    assert!(
+        window2
+            .harness
+            .query_by_label(&t!("palette.next"))
+            .is_none()
+    );
+
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    choose(&mut window, &colour(2), &t!("palette.move"));
+    choose(&mut window, &colour(3), &t!("palette.move"));
+    window.click(&t!("palette.new"));
+    window.harness.state_mut().palette_window.open = false;
+    window.harness.run();
+    assert_eq!(window.harness.state().pattern.palettes().len(), 3);
+    window.click(&t!("palette.next"));
+    window.click(&t!("palette.next"));
+    window.click(&t!("palette.next"));
+    assert_eq!(window.harness.state().palette, 0, "a circle");
+}
+
+#[test]
+fn the_block_stands_as_a_numpad_and_is_kept() {
+    let mut window = opened();
+    window.click(&t!("palette.block"));
+    window.harness.state_mut().palette_window.open = false;
+    window.harness.run();
+
+    let first = swatch(window.harness.state(), 0);
+    let fourth = swatch(window.harness.state(), 3);
+    assert!(window.stacked(&fourth, &first), "4 stands over 1");
+    let empty = window.harness.get_by_label(&t!("palette.empty")).rect();
+    let one = window.harness.get_by_label(&first).rect();
+    assert!(empty.width() > one.width() * 2.0, "the 0 is wide");
+
+    let super::Window { harness, directory } = window;
+    drop(harness);
+    let again = window_in(directory, SIZE);
+    assert_eq!(
+        again.harness.state().settings.palette_view(),
+        PaletteView::Block
+    );
+}
+
+#[test]
+fn a_shake_of_the_grip_turns_the_line_into_a_block() {
+    let mut window = window();
+    let start = window
+        .harness
+        .get_by_label(&t!("panel.palette"))
+        .rect()
+        .center();
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    window.harness.event(egui::Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    for step in 0..8 {
+        let x = if step % 2 == 0 { -40.0 } else { 0.0 };
+        window
+            .harness
+            .event(egui::Event::PointerMoved(start + egui::vec2(x, 0.0)));
+        window.harness.step();
+    }
+    window.harness.event(button(start, false));
+    window.harness.run();
+
+    assert_eq!(
+        window.harness.state().settings.palette_view(),
+        PaletteView::Block
     );
 }

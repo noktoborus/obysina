@@ -84,6 +84,9 @@ palette.previous:
 palette.next:
   en: "Next palette"
   ru: "Следующая палитра"
+palette.switch:
+  en: "The other palette"
+  ru: "Другая палитра"
 palette.colour:
   en: "Colour %{number}"
   ru: "Цвет %{number}"

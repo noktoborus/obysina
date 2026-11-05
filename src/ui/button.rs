@@ -29,6 +29,25 @@ pub fn swatch(ui: &mut Ui, fill: Color32, label: &str, selected: bool, name: &st
     ui.add(square(label).fill(fill).selected(selected).name(name))
 }
 
+/// A swatch as wide as two and the space between them, as the `0` of a
+/// numpad.
+pub fn wide_swatch(
+    ui: &mut Ui,
+    fill: Color32,
+    label: &str,
+    selected: bool,
+    name: &str,
+) -> Response {
+    let size = vec2(SIZE.x * 2.0 + ui.spacing().item_spacing.x, SIZE.y);
+    ui.add(
+        SquareButton::new(label, size)
+            .text_size(TEXT)
+            .fill(fill)
+            .selected(selected)
+            .name(name),
+    )
+}
+
 /// A button of the panels with `label` on it.
 fn square(label: &str) -> SquareButton<'_> {
     SquareButton::new(label, SIZE).text_size(TEXT)
