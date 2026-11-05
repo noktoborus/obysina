@@ -13,24 +13,37 @@
     ]
   },
   "bead_ratio": 1.0,
-  "palette": [
-    {
-      "key": "A",
-      "rgb": "#1b1b1b",
-      "catalog": "miyuki-delica-11",
-      "code": "DB-0010"
-    },
-    {
-      "key": "B",
-      "rgb": "#f2efe6"
-    }
+  "palettes": [
+    [
+      {
+        "id": 1,
+        "rgb": "#1b1b1b",
+        "catalog": "miyuki-delica-11",
+        "code": "DB-0010"
+      },
+      {
+        "id": 2,
+        "rgb": "#f2efe6"
+      }
+    ],
+    [
+      null,
+      {
+        "id": 3
+      },
+      {
+        "id": 4,
+        "rgb": "#c03030",
+        "hidden": true
+      }
+    ]
   ],
   "rows_origin": [
     -3,
     2
   ],
   "rows": [
-    "AAB.BB",
-    "ABABA."
+    [1, 1, 2, 0, 2, 2],
+    [1, 2, 1, 2, 1, 3]
   ]
 }

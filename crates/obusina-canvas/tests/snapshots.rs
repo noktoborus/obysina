@@ -4,27 +4,26 @@
 
 use egui_kittest::{Harness, SnapshotOptions};
 use obusina_canvas::{Canvas, Turn, View};
-use obusina_pattern::{Bead, Bounds, Cell, Grid, Pattern, Rgb};
+use obusina_pattern::{Bounds, Cell, Colour, ColourId, Grid, Pattern, Rgb};
 
 /// Where the pictures are kept: beside the README, which shows them.
 const PICTURES: &str = "img";
 /// A window that holds the whole pattern and some of the field around it.
 const SIZE: egui::Vec2 = egui::vec2(260.0, 200.0);
 
+const BLACK: ColourId = ColourId(1);
+const PALE: ColourId = ColourId(2);
+const RED: ColourId = ColourId(3);
+
 /// Three colours.
-fn palette() -> Vec<Bead> {
+fn palette() -> Vec<Colour> {
     [
-        ('A', [0x1b, 0x1b, 0x1b]),
-        ('B', [0xf2, 0xef, 0xe6]),
-        ('C', [0xc0, 0x30, 0x30]),
+        (BLACK, [0x1b, 0x1b, 0x1b]),
+        (PALE, [0xf2, 0xef, 0xe6]),
+        (RED, [0xc0, 0x30, 0x30]),
     ]
     .into_iter()
-    .map(|(key, rgb)| Bead {
-        key,
-        rgb: Rgb(rgb),
-        catalog: None,
-        code: None,
-    })
+    .map(|(id, rgb)| Colour::new(id, Rgb(rgb)))
     .collect()
 }
 
@@ -39,11 +38,11 @@ fn pattern(grid: Grid) -> Pattern {
     for cell in area.cells() {
         let distance = cell.column.abs_diff(4) + cell.row.abs_diff(3);
         let colour = match distance {
-            0 => Some(2),
-            1..=2 => Some(0),
-            3 => Some(1),
+            0 => Some(RED),
+            1..=2 => Some(BLACK),
+            3 => Some(PALE),
             4 => None,
-            _ => Some(1),
+            _ => Some(PALE),
         };
         pattern.set(cell, colour);
     }

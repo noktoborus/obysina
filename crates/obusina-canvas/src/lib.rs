@@ -10,7 +10,7 @@ mod view;
 pub use view::{MAX_BEAD, MIN_BEAD, Turn, View};
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
-use obusina_pattern::{Bounds, Cell, Pattern};
+use obusina_pattern::{Bounds, Cell, Colour, Pattern, Rgb};
 
 /// The part of a bead left as a gap to its neighbours.
 const GAP: f32 = 0.08;
@@ -26,6 +26,9 @@ const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
 /// The outline of an empty place: a faint dark line, seen on the paper and
 /// in the shade alike.
 const OUTLINE_COLOUR: Color32 = Color32::from_black_alpha(40);
+
+/// A bead of a removed or hidden colour, until the hatch is drawn.
+const NOT_SEEN: Color32 = Color32::GRAY;
 
 /// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,9 +202,11 @@ impl<'a> Canvas<'a> {
         let (grid, ratio) = (pattern.grid(), pattern.ratio());
         let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        for (cell, index) in pattern.beads().filter(|(cell, _)| visible.contains(*cell)) {
-            let [red, green, blue] = pattern.palette()[index].rgb.0;
-            let colour = Color32::from_rgb(red, green, blue);
+        for (cell, id) in pattern.beads().filter(|(cell, _)| visible.contains(*cell)) {
+            let colour = match pattern.colour(id).and_then(Colour::seen) {
+                Some(Rgb([red, green, blue])) => Color32::from_rgb(red, green, blue),
+                None => NOT_SEEN,
+            };
             sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
         }
         painter.add(egui::Shape::mesh(mesh));

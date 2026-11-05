@@ -59,8 +59,12 @@ impl AppError {
                 | PatternError::NoFormat
                 | PatternError::UnknownFormat { .. }
                 | PatternError::RowWidth { .. }
-                | PatternError::UnknownKey { .. }
-                | PatternError::DuplicateKey { .. }
+                | PatternError::UnknownId { .. }
+                | PatternError::DuplicateId { .. }
+                | PatternError::Palette { .. }
+                | PatternError::NoPalette
+                | PatternError::Place { .. }
+                | PatternError::Full { .. }
                 | PatternError::Colour { .. }
                 | PatternError::Ratio { .. }
                 | PatternError::Sheet { .. }

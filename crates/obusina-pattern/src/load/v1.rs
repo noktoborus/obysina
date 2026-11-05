@@ -4,7 +4,7 @@ use serde::Deserialize;
 
 use crate::error::{PatternError, Result};
 use crate::grid::{Bounds, Cell, Grid};
-use crate::palette::{Bead, Rgb};
+use crate::palette::{Colour as Bead, ColourId, Palette, Rgb};
 use crate::pattern::Pattern;
 
 /// A file of format 1.
@@ -19,9 +19,9 @@ struct Document {
     #[serde(default)]
     sheet: Option<Sheet>,
     bead_ratio: f32,
-    palette: Vec<Colour>,
+    palettes: Vec<Vec<Option<Colour>>>,
     rows_origin: [i32; 2],
-    rows: Vec<String>,
+    rows: Vec<Vec<u32>>,
 }
 
 /// The sheet of format 1: its top left cell and its size.
@@ -36,8 +36,10 @@ struct Sheet {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Colour {
-    key: char,
-    rgb: String,
+    id: u32,
+    rgb: Option<String>,
+    #[serde(default)]
+    hidden: bool,
     catalog: Option<String>,
     code: Option<String>,
 }
@@ -46,19 +48,18 @@ struct Colour {
 pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     let document: Document =
         serde_json::from_value(value).map_err(|source| PatternError::Json { source })?;
-    let palette = document
-        .palette
+    let palettes = document
+        .palettes
         .into_iter()
-        .map(|colour| {
-            Ok(Bead {
-                key: colour.key,
-                rgb: Rgb::parse(&colour.rgb)?,
-                catalog: colour.catalog,
-                code: colour.code,
-            })
+        .map(|places| {
+            let places = places
+                .into_iter()
+                .map(|place| place.map(Colour::read).transpose())
+                .collect::<Result<Vec<_>>>()?;
+            Palette::new(places)
         })
         .collect::<Result<Vec<_>>>()?;
-    let mut pattern = Pattern::new(document.grid, document.bead_ratio, palette)?;
+    let mut pattern = Pattern::with_palettes(document.grid, document.bead_ratio, palettes)?;
     pattern.set_turn(document.turn)?;
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
@@ -66,6 +67,19 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
         pattern.set_sheet(Some(sheet.bounds()?));
     }
     Ok(pattern)
+}
+
+impl Colour {
+    /// The colour of the model.
+    fn read(self) -> Result<Bead> {
+        Ok(Bead {
+            id: ColourId(self.id),
+            rgb: self.rgb.as_deref().map(Rgb::parse).transpose()?,
+            hidden: self.hidden,
+            catalog: self.catalog,
+            code: self.code,
+        })
+    }
 }
 
 impl Sheet {

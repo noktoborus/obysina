@@ -4,7 +4,7 @@
 use egui::{Event, Modifiers, PointerButton, Pos2, TouchDeviceId, TouchId, TouchPhase, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
-use obusina_pattern::{Cell, Grid};
+use obusina_pattern::{Cell, ColourId, Grid};
 use rust_i18n::t;
 
 use crate::app::App;
@@ -118,14 +118,21 @@ impl Window {
     }
 }
 
+/// The id of the colour in a place of the first palette of a new pattern.
+const fn id_at(place: usize) -> ColourId {
+    ColourId(place as u32 + 1)
+}
+
 /// The name of the swatch of a colour, as the panel of beads says it.
-fn swatch(app: &App, index: usize) -> String {
-    let bead = &app.pattern.palette()[index];
+fn swatch(app: &App, place: usize) -> String {
+    let colour = app.pattern.palettes()[0].places()[place]
+        .as_ref()
+        .expect("a colour in that place");
     t!(
         "palette.bead",
-        key = bead.key,
-        rgb = bead.rgb,
-        count = app.pattern.counts()[index]
+        key = place + 1,
+        rgb = colour.rgb.expect("a colour with its rgb"),
+        count = app.pattern.count(colour.id)
     )
     .to_string()
 }
@@ -138,7 +145,7 @@ fn a_press_paints_a_bead_and_the_panel_counts_it() {
 
     window.press(FREE, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(2)));
     let counted = swatch(window.harness.state(), 2);
     assert!(counted.contains('1'));
     window.harness.get_by_label(&counted);
@@ -148,7 +155,7 @@ fn a_press_paints_a_bead_and_the_panel_counts_it() {
 fn a_second_press_empties_the_bead() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
-    assert_eq!(window.harness.state().pattern.get(FREE), Some(0));
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(0)));
 
     window.press(FREE, PointerButton::Primary);
 
@@ -161,7 +168,7 @@ fn the_second_button_does_nothing() {
     let red = swatch(window.harness.state(), 2);
     window.harness.get_by_label(&red).click_secondary();
     window.harness.run();
-    assert_eq!(window.harness.state().colour, Some(0));
+    assert_eq!(window.harness.state().colour, Some(id_at(0)));
 
     window.press(FREE, PointerButton::Secondary);
 
@@ -177,7 +184,7 @@ fn a_drag_moves_the_field_and_paints_nothing() {
 
     let app = window.harness.state();
     assert_eq!(app.view.offset - before, egui::vec2(120.0, 60.0));
-    assert!(app.pattern.counts().iter().all(|count| *count == 0));
+    assert_eq!(app.pattern.beads().count(), 0);
 }
 
 #[test]
@@ -189,7 +196,7 @@ fn a_press_is_undone_and_redone() {
     assert_eq!(window.harness.state().pattern.get(FREE), None);
 
     window.click(&t!("edit.redo"));
-    assert_eq!(window.harness.state().pattern.get(FREE), Some(0));
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(0)));
 }
 
 #[test]
@@ -200,8 +207,8 @@ fn a_tap_on_a_swatch_takes_the_colour_in_hand() {
     window.click(&red);
     window.press(FREE, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().colour, Some(2));
-    assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
+    assert_eq!(window.harness.state().colour, Some(id_at(2)));
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(2)));
 }
 
 #[test]
@@ -377,9 +384,7 @@ fn the_beads_fit_a_short_window() {
     let screen = egui::Rect::from_min_size(Pos2::ZERO, short);
     let app = window.harness.state();
 
-    let mut names: Vec<String> = (0..app.pattern.palette().len())
-        .map(|index| swatch(app, index))
-        .collect();
+    let mut names: Vec<String> = (0..5).map(|index| swatch(app, index)).collect();
     names.push(t!("palette.empty").to_string());
     for name in names {
         let rect = window.harness.get_by_label(&name).rect();
@@ -507,15 +512,7 @@ fn two_fingers_zoom_in_and_out() {
     window.pinch(120.0, 40.0);
     let smaller = window.bead_size();
     assert!(smaller < larger, "{smaller} < {larger}");
-    assert!(
-        window
-            .harness
-            .state()
-            .pattern
-            .counts()
-            .iter()
-            .all(|count| *count == 0)
-    );
+    assert_eq!(window.harness.state().pattern.beads().count(), 0);
 }
 
 #[test]
@@ -735,14 +732,14 @@ fn a_bead_in_the_shade_grows_the_work_area() {
     window.harness.run();
     let shade = Cell { column: 40, row: 0 };
     window.press(shade, PointerButton::Primary);
-    assert_eq!(window.harness.state().pattern.get(shade), Some(0));
+    assert_eq!(window.harness.state().pattern.get(shade), Some(id_at(0)));
 
     window.harness.state_mut().view.offset.x -= 600.0;
     window.harness.run();
     let further = Cell { column: 70, row: 0 };
     window.press(further, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().pattern.get(further), Some(0));
+    assert_eq!(window.harness.state().pattern.get(further), Some(id_at(0)));
 }
 
 /// The work area is the sheet set and the beads, never kept: when the bead
@@ -822,8 +819,8 @@ fn a_bead_left_of_the_middle_opens_where_it_was() {
     let path = window.directory.path().join("pattern.json");
     let again = App::open(Some(path), None);
 
-    assert_eq!(again.pattern.get(cell), Some(0));
-    assert_eq!(again.pattern.counts()[0], 1);
+    assert_eq!(again.pattern.get(cell), Some(id_at(0)));
+    assert_eq!(again.pattern.count(id_at(0)), 1);
 }
 
 #[test]
@@ -911,8 +908,8 @@ fn a_press_on_a_turned_field_reaches_its_bead() {
 
     window.press(cell, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().pattern.get(cell), Some(0));
-    assert_eq!(window.harness.state().pattern.counts()[0], 1);
+    assert_eq!(window.harness.state().pattern.get(cell), Some(id_at(0)));
+    assert_eq!(window.harness.state().pattern.count(id_at(0)), 1);
 }
 
 #[test]

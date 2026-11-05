@@ -144,25 +144,22 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-1. **The model.** `Pattern` holds palettes of at most `MAX_COLOURS` places; a
-   file with more is refused, `PatternError::Palette`. A colour has an id, and
-   a bead holds it. A colour is added, changed, moved and removed through
-   `Pattern`. The file by decision 9. By decisions 2, 7, 9, 11 and 12.
 2. **The history.** `Edit` grows a step for each: add, change, move,
    remove. "Accept" makes one step of all the changes of the picker. A remove
    keeps the beads, so its undo only brings the colour back.
 3. **The window of the palette.** `src/ui/palette_window.rs`: a `Modal`
-   with no title, the tabs and the places, opened by decision 15. A tap on a colour opens its `PlateMenu`, the picker in
-   its notice (`Notice::widget`), then its entries. Every text in
-   `locales/app.yml`, en and ru.
+   with no title, the tabs and the places, opened by decision 15. A tap on a
+   colour opens its `PlateMenu`, the picker in its notice
+   (`Notice::widget`), then its entries. Every text in `locales/app.yml`, en
+   and ru.
 4. **The new colour.** `next_colour` of the mockup moves to the binary,
    with the crate `palette` and its test.
 5. **The numpad.** The swatches of the panel of beads show the numbers, in
    the two views of decision 10, the view kept in the settings; the keys
    choose a colour; "+" and "-" switch the palette. The shake of the panel.
 6. **The hatch and the frame.** `obusina-canvas` draws a bead of a removed or
-   hidden colour hatched; `SquareButton` draws the hatch and the mark of decision 13.
-   Each with a picture test (`RULE test.picture`).
+   hidden colour hatched; `SquareButton` draws the hatch and the mark of
+   decision 13. Each with a picture test (`RULE test.picture`).
 7. **The mockups.** When the window has a part of the design, its mockup
    goes, or is cut down to what is still open: a mockup is not kept beside
    the code it drew.
@@ -171,9 +168,14 @@ test of the window with it (`RULE test.window`).
 
 - Done in the window: decision 8, one colour in hand, and the second button
   does nothing.
-- Done: decisions 1 to 7 and 10 to 15 as mockups, with no shake; `PlateMenu` takes a widget as its
-  notice and leaves its drags and focused keys to it; the tools of the
+- Done in `obusina-pattern`: the palettes, the ids, the file of decision 9 and
+  the changes of the colours, each with its test. The panel numbers a swatch
+  by its place.
+- Done: decisions 1 to 7 and 10 to 15 as mockups, with no shake;
+  `PlateMenu` takes a widget as its notice and leaves its drags and focused
+  keys to it; the tools of the
   mockups: notes on a widget by its path, the list of notes, a comment to
   the chat, the mockup frozen while a note is written.
 - No note waits on the desk `obusina` of showcase.
-- Next: step 1 of the plan.
+- Next: step 2 of the plan. Until step 5, the panel shows the first palette
+  only, and a bead of a colour not seen is drawn grey until step 6.

@@ -64,23 +64,52 @@ pub enum PatternError {
         found: usize,
     },
 
-    /// A bead names a key the palette does not have.
-    #[error("row {row}, column {column}: no colour has the key {key:?}")]
-    UnknownKey {
+    /// A bead names an id no colour has.
+    #[error("row {row}, column {column}: no colour has the id {id}")]
+    UnknownId {
         /// The row, from zero.
         row: usize,
         /// The column, from zero.
         column: usize,
-        /// The key.
-        key: char,
+        /// The id.
+        id: u32,
     },
 
-    /// Two colours of the palette have one key, or a colour has the key of
-    /// an empty place.
-    #[error("the key {key:?} is used twice or is reserved")]
-    DuplicateKey {
-        /// The key.
-        key: char,
+    /// Two colours have one id, or a colour has the number of a cell with no
+    /// bead.
+    #[error("the colour id {id} is used twice or is reserved")]
+    DuplicateId {
+        /// The id.
+        id: u32,
+    },
+
+    /// A palette has more places than it can.
+    #[error("a palette has {places} places, at most {max} are allowed")]
+    Palette {
+        /// The places of the file.
+        places: usize,
+        /// The most it can have.
+        max: usize,
+    },
+
+    /// A pattern has no palette.
+    #[error("the pattern has no palette")]
+    NoPalette,
+
+    /// A place of a palette is not there, or holds nothing to act on.
+    #[error("palette {palette} has no colour to act on at place {place}")]
+    Place {
+        /// The palette, from zero.
+        palette: usize,
+        /// The place, from zero.
+        place: usize,
+    },
+
+    /// A colour cannot go to a palette with no free place.
+    #[error("palette {palette} has no free place")]
+    Full {
+        /// The palette, from zero.
+        palette: usize,
     },
 
     /// A colour is not written as `#rrggbb`.

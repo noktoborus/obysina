@@ -22,7 +22,7 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 
 | Crate | Purpose |
 | --- | --- |
-| `obusina-pattern` | the model: grid, palette, beads; the JSON file and its loaders |
+| `obusina-pattern` | the model: grid, palettes, colours, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
@@ -35,8 +35,9 @@ crates (`RULE crate.deps`).
 
 ## The model
 
-`Pattern` holds a `Grid`, the width of a bead to its height, a palette and
-the beads put on a field with no end; every other cell is empty. Its active
+`Pattern` holds a `Grid`, the width of a bead to its height, its palettes
+and the beads put on a field with no end. A colour has an id, unique in the
+pattern, and a bead holds that id; every other cell is empty. Its active
 area, `Pattern::bounds`, is the box around the beads. `Grid` answers where a
 bead stands and which bead is under a point. Nothing else knows a rule of a
 stitch.

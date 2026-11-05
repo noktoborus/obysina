@@ -7,10 +7,11 @@ use std::io::Write as _;
 use std::path::Path;
 
 use serde::Serialize;
+use serde_json::value::RawValue;
 
 use crate::error::{PatternError, Result};
 use crate::grid::{Cell, Grid};
-use crate::palette::EMPTY_KEY;
+use crate::palette::{Colour, NO_BEAD};
 use crate::pattern::Pattern;
 
 /// The format this program writes.
@@ -25,9 +26,9 @@ struct Document<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     sheet: Option<Sheet>,
     bead_ratio: f32,
-    palette: Vec<Colour<'a>>,
+    palettes: Vec<Vec<Option<Written<'a>>>>,
     rows_origin: [i32; 2],
-    rows: Vec<String>,
+    rows: Vec<Box<RawValue>>,
 }
 
 /// The sheet as it is written: its top left cell and its size.
@@ -39,13 +40,42 @@ struct Sheet {
 
 /// One colour as it is written.
 #[derive(Serialize)]
-struct Colour<'a> {
-    key: char,
-    rgb: String,
+struct Written<'a> {
+    id: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    rgb: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
+    hidden: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     catalog: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     code: Option<&'a str>,
+}
+
+/// True for a value that is not written.
+fn is_false(value: &bool) -> bool {
+    !*value
+}
+
+/// The places of a palette as they are written: the empty ones at its end
+/// are left out.
+fn written(places: &[Option<Colour>]) -> Vec<Option<Written<'_>>> {
+    let end = places
+        .iter()
+        .rposition(Option::is_some)
+        .map_or(0, |last| last + 1);
+    places[..end]
+        .iter()
+        .map(|place| {
+            place.as_ref().map(|colour| Written {
+                id: colour.id.0,
+                rgb: colour.rgb.map(|rgb| rgb.to_string()),
+                hidden: colour.hidden,
+                catalog: colour.catalog.as_deref(),
+                code: colour.code.as_deref(),
+            })
+        })
+        .collect()
 }
 
 impl Pattern {
@@ -66,18 +96,13 @@ impl Pattern {
                 size: [sheet.width(), sheet.height()],
             }),
             bead_ratio: self.ratio(),
-            palette: self
-                .palette()
+            palettes: self
+                .palettes()
                 .iter()
-                .map(|bead| Colour {
-                    key: bead.key,
-                    rgb: bead.rgb.to_string(),
-                    catalog: bead.catalog.as_deref(),
-                    code: bead.code.as_deref(),
-                })
+                .map(|palette| written(palette.places()))
                 .collect(),
             rows_origin: [origin.column, origin.row],
-            rows: self.rows(),
+            rows: self.rows()?,
         };
         let mut text = serde_json::to_string_pretty(&document)
             .map_err(|source| PatternError::Json { source })?;
@@ -90,19 +115,23 @@ impl Pattern {
         crate::load::load(text)
     }
 
-    /// Each row of the active area as the keys of its beads.
-    fn rows(&self) -> Vec<String> {
+    /// Each row of the active area as the ids of its beads, as text, so that
+    /// a row stands on one line of the file (`RULE pattern.diff`).
+    fn rows(&self) -> Result<Vec<Box<RawValue>>> {
         let Some(bounds) = self.bounds() else {
-            return Vec::new();
+            return Ok(Vec::new());
         };
         (bounds.min.row..=bounds.max.row)
             .map(|row| {
-                (bounds.min.column..=bounds.max.column)
+                let ids: Vec<String> = (bounds.min.column..=bounds.max.column)
                     .map(|column| {
                         self.get(Cell { column, row })
-                            .map_or(EMPTY_KEY, |index| self.palette()[index].key)
+                            .map_or(NO_BEAD, |id| id.0)
+                            .to_string()
                     })
-                    .collect()
+                    .collect();
+                RawValue::from_string(format!("[{}]", ids.join(", ")))
+                    .map_err(|source| PatternError::Json { source })
             })
             .collect()
     }

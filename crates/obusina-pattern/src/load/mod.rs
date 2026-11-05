@@ -9,7 +9,7 @@ mod v1;
 use crate::error::{PatternError, Result};
 use crate::file::FORMAT;
 use crate::grid::Cell;
-use crate::palette::EMPTY_KEY;
+use crate::palette::{ColourId, NO_BEAD};
 use crate::pattern::Pattern;
 
 /// Reads a pattern of any known format.
@@ -30,12 +30,12 @@ pub fn load(text: &str) -> Result<Pattern> {
     }
 }
 
-/// Puts the beads of rows of keys into an empty pattern, the first key of
-/// the first row at `origin`. Every row is as long as the first.
-fn put(pattern: &mut Pattern, origin: Cell, rows: &[String]) -> Result<()> {
-    let expected = rows.first().map_or(0, |keys| keys.chars().count());
-    for (row, keys) in rows.iter().enumerate() {
-        let found = keys.chars().count();
+/// Puts the beads of rows of ids into an empty pattern, the first id of the
+/// first row at `origin`. Every row is as long as the first.
+fn put(pattern: &mut Pattern, origin: Cell, rows: &[Vec<u32>]) -> Result<()> {
+    let expected = rows.first().map_or(0, Vec::len);
+    for (row, ids) in rows.iter().enumerate() {
+        let found = ids.len();
         if found != expected {
             return Err(PatternError::RowWidth {
                 row,
@@ -43,17 +43,16 @@ fn put(pattern: &mut Pattern, origin: Cell, rows: &[String]) -> Result<()> {
                 found,
             });
         }
-        for (column, key) in keys.chars().enumerate() {
-            if key == EMPTY_KEY {
+        for (column, id) in ids.iter().copied().enumerate() {
+            if id == NO_BEAD {
                 continue;
             }
-            let index = pattern
-                .palette()
-                .iter()
-                .position(|bead| bead.key == key)
-                .ok_or(PatternError::UnknownKey { row, column, key })?;
+            let colour = ColourId(id);
+            if pattern.colour(colour).is_none() {
+                return Err(PatternError::UnknownId { row, column, id });
+            }
             let cell = offset(origin, column, row).ok_or(PatternError::Outside { row, column })?;
-            pattern.set(cell, Some(index));
+            pattern.set(cell, Some(colour));
         }
     }
     Ok(())

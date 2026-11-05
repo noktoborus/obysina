@@ -5,6 +5,7 @@ use egui::{Color32, vec2};
 use rust_i18n::t;
 
 use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
+use obusina_pattern::{ColourId, Rgb};
 
 use crate::app::App;
 use crate::ui::{button, icons};
@@ -27,7 +28,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
     let shown = FloatingPanel::new(NAME, t!("panel.palette"))
         .placement(placement)
         .show(context, |ui, room| {
-            let count = app.pattern.palette().len() + 1;
+            let count = shown(app).len() + 1;
             swatches(app, ui, per_line(room, count));
         });
     if shown.changed {
@@ -63,27 +64,29 @@ fn per_line(room: Room, count: usize) -> usize {
 /// the block stands in the middle across the panel with the rest. A grid of
 /// egui would place its cells by a layout of its own.
 fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
-    let counts = app.pattern.counts();
-    let entries: Vec<Option<usize>> = (0..app.pattern.palette().len())
-        .map(Some)
-        .chain([None])
-        .collect();
+    let entries: Vec<Option<(usize, ColourId)>> =
+        shown(app).into_iter().map(Some).chain([None]).collect();
     ui.vertical(|ui| {
         ui.spacing_mut().item_spacing = SPACING;
         for line in entries.chunks(per_line) {
             ui.horizontal(|ui| {
-                for colour in line.iter().copied() {
-                    let name = match colour {
-                        Some(index) => t!(
+                for entry in line.iter().copied() {
+                    let name = match entry {
+                        Some((place, id)) => t!(
                             "palette.bead",
-                            key = app.pattern.palette()[index].key,
-                            rgb = app.pattern.palette()[index].rgb,
-                            count = counts[index]
+                            key = place + 1,
+                            rgb = app
+                                .pattern
+                                .colour(id)
+                                .and_then(|colour| colour.rgb)
+                                .unwrap_or(Rgb([0; 3])),
+                            count = app.pattern.count(id)
                         )
                         .to_string(),
                         None => t!("palette.empty").to_string(),
                     };
-                    if swatch(app, ui, colour, app.colour == colour, &name).clicked() {
+                    let colour = entry.map(|(_, id)| id);
+                    if swatch(app, ui, entry, app.colour == colour, &name).clicked() {
                         app.colour = colour;
                     }
                 }
@@ -92,21 +95,35 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
     });
 }
 
-/// The swatch of a colour of the palette, or of an empty place.
+/// The colours the panel shows: the places of the first palette, each with
+/// its id. A removed colour does not stand on the panel.
+fn shown(app: &App) -> Vec<(usize, ColourId)> {
+    app.pattern.palettes()[0]
+        .places()
+        .iter()
+        .enumerate()
+        .filter_map(|(place, colour)| {
+            let colour = colour.as_ref().filter(|colour| colour.rgb.is_some())?;
+            Some((place, colour.id))
+        })
+        .collect()
+}
+
+/// The swatch of a colour of the palette with its number, or of an empty
+/// place.
 fn swatch(
     app: &App,
     ui: &mut egui::Ui,
-    colour: Option<usize>,
+    entry: Option<(usize, ColourId)>,
     selected: bool,
     name: &str,
 ) -> egui::Response {
-    let (fill, label) = match colour {
-        Some(index) => {
-            let bead = &app.pattern.palette()[index];
-            let [red, green, blue] = bead.rgb.0;
-            (Color32::from_rgb(red, green, blue), bead.key.to_string())
+    let rgb = entry.and_then(|(_, id)| app.pattern.colour(id).and_then(|colour| colour.rgb));
+    let (fill, label) = match (entry, rgb) {
+        (Some((place, _)), Some(Rgb([red, green, blue]))) => {
+            (Color32::from_rgb(red, green, blue), (place + 1).to_string())
         }
-        None => (ui.visuals().extreme_bg_color, icons::EMPTY.to_string()),
+        _ => (ui.visuals().extreme_bg_color, icons::EMPTY.to_string()),
     };
     button::swatch(ui, fill, &label, selected, name)
 }

@@ -3,7 +3,7 @@
 //! `tests/patterns/<format>.json` is a file of that format. It is never
 //! changed once the format is replaced.
 
-use obusina_pattern::{Bounds, Cell, FORMAT, Grid, Pattern, PatternError};
+use obusina_pattern::{Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError};
 
 /// The file of a format, as text.
 fn file(format: u64) -> String {
@@ -38,10 +38,27 @@ fn format_1_reads_its_beads() {
             max: Cell { column: 3, row: 4 },
         })
     );
-    assert_eq!(pattern.palette()[0].code.as_deref(), Some("DB-0010"));
-    assert_eq!(pattern.get(Cell { column: -1, row: 2 }), Some(1));
+    let first = pattern.colour(ColourId(1)).expect("the first colour");
+    assert_eq!(first.code.as_deref(), Some("DB-0010"));
+    assert_eq!(pattern.get(Cell { column: -1, row: 2 }), Some(ColourId(2)));
     assert_eq!(pattern.get(Cell { column: 0, row: 2 }), None);
-    assert_eq!(pattern.counts(), [5, 5]);
+    assert_eq!(pattern.count(ColourId(1)), 5);
+    assert_eq!(pattern.count(ColourId(2)), 5);
+    assert_eq!(pattern.count(ColourId(3)), 1);
+}
+
+#[test]
+fn format_1_reads_its_palettes() {
+    let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+
+    let palettes = pattern.palettes();
+    assert_eq!(palettes.len(), 2);
+    assert!(palettes[1].places()[0].is_none(), "an empty place");
+    let removed = pattern.colour(ColourId(3)).expect("a removed colour");
+    assert_eq!((removed.rgb, removed.seen()), (None, None));
+    let hidden = pattern.colour(ColourId(4)).expect("a hidden colour");
+    assert!(hidden.rgb.is_some());
+    assert_eq!(hidden.seen(), None);
 }
 
 #[test]
@@ -58,7 +75,7 @@ fn the_current_format_reads_back_what_it_wrote() {
 fn a_row_is_one_line_of_the_file() {
     let text = file(FORMAT);
 
-    assert!(text.contains("\n    \"AAB.BB\",\n"));
+    assert!(text.contains("\n    [1, 1, 2, 0, 2, 2],\n"));
 }
 
 #[test]
@@ -85,21 +102,21 @@ fn a_file_with_no_format_is_refused() {
 
 #[test]
 fn a_bead_of_no_colour_is_refused() {
-    let text = file(1).replace("\"ABABA.\"", "\"ABABAC\"");
+    let text = file(1).replace("[1, 2, 1, 2, 1, 3]", "[1, 2, 1, 2, 1, 7]");
 
     assert!(matches!(
         Pattern::from_json(&text),
-        Err(PatternError::UnknownKey {
+        Err(PatternError::UnknownId {
             row: 1,
             column: 5,
-            key: 'C'
+            id: 7
         })
     ));
 }
 
 #[test]
 fn a_row_shorter_than_the_first_is_refused() {
-    let text = file(1).replace("\"ABABA.\"", "\"ABABA\"");
+    let text = file(1).replace("[1, 2, 1, 2, 1, 3]", "[1, 2, 1, 2, 1]");
 
     assert!(matches!(
         Pattern::from_json(&text),
@@ -111,12 +128,35 @@ fn a_row_shorter_than_the_first_is_refused() {
     ));
 }
 
+#[test]
+fn a_file_with_no_palette_is_refused() {
+    let value: serde_json::Value = serde_json::from_str(&file(1)).expect("JSON");
+    let mut value = value;
+    value["palettes"] = serde_json::json!([]);
+
+    assert!(matches!(
+        Pattern::from_json(&value.to_string()),
+        Err(PatternError::NoPalette)
+    ));
+}
+
+#[test]
+fn a_palette_with_too_many_places_is_refused() {
+    let mut value: serde_json::Value = serde_json::from_str(&file(1)).expect("JSON");
+    value["palettes"][1] = serde_json::Value::Array(vec![serde_json::Value::Null; 10]);
+
+    assert!(matches!(
+        Pattern::from_json(&value.to_string()),
+        Err(PatternError::Palette { places: 10, .. })
+    ));
+}
+
 /// The rows are the active area, and `rows_origin` its place on the field:
 /// a pattern opens where it was, and a peyote column keeps its parity.
 #[test]
 fn a_bead_moved_out_moves_the_origin() {
     let mut pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
-    pattern.set(Cell { column: -4, row: 1 }, Some(0));
+    pattern.set(Cell { column: -4, row: 1 }, Some(ColourId(1)));
 
     let text = pattern.to_json().expect("the pattern writes");
 
@@ -153,7 +193,7 @@ fn a_file_with_no_sheet_reads_with_none() {
     let pattern = Pattern::from_json(&text).expect("it reads");
 
     assert_eq!(pattern.sheet(), None);
-    assert_eq!(pattern.counts(), [5, 5]);
+    assert_eq!(pattern.count(ColourId(1)), 5);
 }
 
 #[test]

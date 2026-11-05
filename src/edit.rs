@@ -1,6 +1,6 @@
 //! Every change to a pattern, so that it can be undone (`RULE ui.undo`).
 
-use obusina_pattern::{Bounds, Cell, Grid, Pattern};
+use obusina_pattern::{Bounds, Cell, ColourId, Grid, Pattern};
 
 /// One bead changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -8,9 +8,9 @@ pub struct Change {
     /// Where.
     pub cell: Cell,
     /// The colour before.
-    pub before: Option<usize>,
+    pub before: Option<ColourId>,
     /// The colour after.
-    pub after: Option<usize>,
+    pub after: Option<ColourId>,
 }
 
 /// One step of the history.
@@ -79,7 +79,7 @@ impl History {
 
     /// Puts colours in cells as one step; a cell that has its colour already
     /// is left out, and nothing is kept when no cell changes.
-    pub fn paint(&mut self, pattern: &mut Pattern, cells: &[Cell], colour: Option<usize>) {
+    pub fn paint(&mut self, pattern: &mut Pattern, cells: &[Cell], colour: Option<ColourId>) {
         let changes: Vec<Change> = cells
             .iter()
             .map(|cell| Change {
@@ -147,16 +147,13 @@ impl History {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use obusina_pattern::{Bead, DEFAULT_BEAD_RATIO, Rgb};
+    use obusina_pattern::{Colour, DEFAULT_BEAD_RATIO, Rgb};
+
+    const COLOUR: ColourId = ColourId(1);
 
     fn pattern() -> Pattern {
-        let bead = Bead {
-            key: 'A',
-            rgb: Rgb([0, 0, 0]),
-            catalog: None,
-            code: None,
-        };
-        Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, vec![bead]).expect("a pattern")
+        let colour = Colour::new(COLOUR, Rgb([0, 0, 0]));
+        Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, vec![colour]).expect("a pattern")
     }
 
     #[test]
@@ -165,7 +162,7 @@ mod tests {
         let empty = pattern.clone();
         let mut history = History::default();
         let cells: Vec<Cell> = (0..3).map(|column| Cell { column, row: 0 }).collect();
-        history.paint(&mut pattern, &cells, Some(0));
+        history.paint(&mut pattern, &cells, Some(COLOUR));
         let painted = pattern.clone();
 
         history.undo(&mut pattern);
@@ -188,7 +185,7 @@ mod tests {
         );
         history.undo(&mut pattern);
 
-        history.paint(&mut pattern, &[Cell { column: 0, row: 0 }], Some(0));
+        history.paint(&mut pattern, &[Cell { column: 0, row: 0 }], Some(COLOUR));
 
         assert!(!history.can_redo());
         assert_eq!(pattern.grid(), Grid::Loom);

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::{PatternError, Result};
 use crate::grid::{Bounds, Cell, Grid};
-use crate::palette::{Bead, EMPTY_KEY};
+use crate::palette::{Colour, ColourId, NO_BEAD, Palette, Rgb};
 
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
@@ -31,8 +31,8 @@ fn next_revision() -> u64 {
 pub struct Pattern {
     grid: Grid,
     ratio: f32,
-    palette: Vec<Bead>,
-    beads: BTreeMap<Cell, usize>,
+    palettes: Vec<Palette>,
+    beads: BTreeMap<Cell, ColourId>,
     sheet: Option<Bounds>,
     turn: u16,
     revision: u64,
@@ -42,7 +42,7 @@ impl PartialEq for Pattern {
     fn eq(&self, other: &Self) -> bool {
         self.grid == other.grid
             && self.ratio == other.ratio
-            && self.palette == other.palette
+            && self.palettes == other.palettes
             && self.beads == other.beads
             && self.sheet == other.sheet
             && self.turn == other.turn
@@ -50,22 +50,35 @@ impl PartialEq for Pattern {
 }
 
 impl Pattern {
-    /// A pattern with no beads.
-    pub fn new(grid: Grid, ratio: f32, palette: Vec<Bead>) -> Result<Pattern> {
+    /// A pattern with no beads and one palette of these colours.
+    pub fn new(grid: Grid, ratio: f32, colours: Vec<Colour>) -> Result<Pattern> {
+        let places = colours.into_iter().map(Some).collect();
+        Pattern::with_palettes(grid, ratio, vec![Palette::new(places)?])
+    }
+
+    /// A pattern with no beads and these palettes, at least one.
+    pub fn with_palettes(grid: Grid, ratio: f32, palettes: Vec<Palette>) -> Result<Pattern> {
         if !(ratio.is_finite() && ratio > 0.0) {
             return Err(PatternError::Ratio { ratio });
         }
-        let mut seen = vec![EMPTY_KEY];
-        for bead in &palette {
-            if seen.contains(&bead.key) {
-                return Err(PatternError::DuplicateKey { key: bead.key });
+        if palettes.is_empty() {
+            return Err(PatternError::NoPalette);
+        }
+        let mut seen = vec![NO_BEAD];
+        for colour in palettes
+            .iter()
+            .flat_map(|palette| palette.places())
+            .flatten()
+        {
+            if seen.contains(&colour.id.0) {
+                return Err(PatternError::DuplicateId { id: colour.id.0 });
             }
-            seen.push(bead.key);
+            seen.push(colour.id.0);
         }
         Ok(Pattern {
             grid,
             ratio,
-            palette,
+            palettes,
             beads: BTreeMap::new(),
             sheet: None,
             turn: 0,
@@ -98,9 +111,18 @@ impl Pattern {
         self.revision
     }
 
-    /// The colours.
-    pub fn palette(&self) -> &[Bead] {
-        &self.palette
+    /// The palettes, at least one.
+    pub fn palettes(&self) -> &[Palette] {
+        &self.palettes
+    }
+
+    /// The colour with this id, in any palette.
+    pub fn colour(&self, id: ColourId) -> Option<&Colour> {
+        self.palettes
+            .iter()
+            .flat_map(|palette| palette.places())
+            .flatten()
+            .find(|colour| colour.id == id)
     }
 
     /// The sheet: the size of the work area set by hand, where it stands on
@@ -155,25 +177,24 @@ impl Pattern {
     }
 
     /// Every bead and its colour.
-    pub fn beads(&self) -> impl Iterator<Item = (Cell, usize)> + '_ {
+    pub fn beads(&self) -> impl Iterator<Item = (Cell, ColourId)> + '_ {
         self.beads.iter().map(|(cell, colour)| (*cell, *colour))
     }
 
-    /// The colour of a bead, by its place in the palette; `None` for an empty
-    /// cell.
-    pub fn get(&self, cell: Cell) -> Option<usize> {
+    /// The colour of a bead; `None` for an empty cell.
+    pub fn get(&self, cell: Cell) -> Option<ColourId> {
         self.beads.get(&cell).copied()
     }
 
     /// Puts a colour, or nothing, in a cell. Gives back what was there.
     ///
-    /// A colour outside the palette changes nothing.
-    pub fn set(&mut self, cell: Cell, colour: Option<usize>) -> Option<usize> {
-        if colour.is_some_and(|index| index >= self.palette.len()) {
+    /// An id no colour has changes nothing.
+    pub fn set(&mut self, cell: Cell, colour: Option<ColourId>) -> Option<ColourId> {
+        if colour.is_some_and(|id| self.colour(id).is_none()) {
             return self.get(cell);
         }
         let before = match colour {
-            Some(index) => self.beads.insert(cell, index),
+            Some(id) => self.beads.insert(cell, id),
             None => self.beads.remove(&cell),
         };
         if before != colour {
@@ -182,13 +203,146 @@ impl Pattern {
         before
     }
 
-    /// How many beads of each colour, in the order of the palette.
-    pub fn counts(&self) -> Vec<usize> {
-        let mut counts = vec![0; self.palette.len()];
-        for index in self.beads.values() {
-            counts[*index] += 1;
+    /// How many beads a colour has.
+    pub fn count(&self, id: ColourId) -> usize {
+        self.beads.values().filter(|bead| **bead == id).count()
+    }
+
+    /// Puts a colour in a place and gives back its id. A colour there changes.
+    /// A removed colour there keeps its id, so its beads take the new colour.
+    /// An empty place takes a new id.
+    pub fn put_colour(&mut self, palette: usize, place: usize, rgb: Rgb) -> Result<ColourId> {
+        let next = self.next_id();
+        let slot = self.place_mut(palette, place)?;
+        let colour = slot.get_or_insert_with(|| Colour::new(next, rgb));
+        colour.rgb = Some(rgb);
+        let id = colour.id;
+        self.revision = next_revision();
+        Ok(id)
+    }
+
+    /// Two places of a palette change what they hold. No bead changes.
+    pub fn swap_places(&mut self, palette: usize, first: usize, second: usize) -> Result<()> {
+        self.place_mut(palette, first)?;
+        self.place_mut(palette, second)?;
+        self.palettes[palette].places_mut().swap(first, second);
+        self.revision = next_revision();
+        Ok(())
+    }
+
+    /// Moves what stands in a place to the first free place of another palette,
+    /// or of a new one with `None`. No bead changes. A palette left with
+    /// nothing goes, and the index of those after it falls by one.
+    pub fn move_colour(
+        &mut self,
+        palette: usize,
+        place: usize,
+        target: Option<usize>,
+    ) -> Result<()> {
+        if self.place_mut(palette, place)?.is_none() {
+            return Err(PatternError::Place { palette, place });
         }
-        counts
+        if target == Some(palette) {
+            return Ok(());
+        }
+        let target = match target {
+            Some(target) => target,
+            None => {
+                self.palettes.push(Palette::new(Vec::new())?);
+                self.palettes.len() - 1
+            }
+        };
+        let full = PatternError::Full { palette: target };
+        let free = self
+            .palettes
+            .get(target)
+            .and_then(Palette::first_free)
+            .ok_or(full)?;
+        let colour = self.palettes[palette].places_mut()[place].take();
+        self.palettes[target].places_mut()[free] = colour;
+        self.drop_if_empty(palette);
+        self.revision = next_revision();
+        Ok(())
+    }
+
+    /// Removes the colour of a place. With beads it keeps its id and its
+    /// place, with no rgb, and its beads stay. With none its place is empty,
+    /// and a palette left with nothing goes.
+    pub fn remove_colour(&mut self, palette: usize, place: usize) -> Result<()> {
+        let id = self
+            .place_mut(palette, place)?
+            .as_ref()
+            .map(|colour| colour.id);
+        let Some(id) = id else {
+            return Err(PatternError::Place { palette, place });
+        };
+        let has_beads = self.count(id) > 0;
+        let slot = self.place_mut(palette, place)?;
+        if has_beads {
+            if let Some(colour) = slot.as_mut() {
+                colour.rgb = None;
+                colour.hidden = false;
+            }
+        } else {
+            *slot = None;
+            self.drop_if_empty(palette);
+        }
+        self.revision = next_revision();
+        Ok(())
+    }
+
+    /// Hides a colour and its beads, or shows them. An id no colour has
+    /// changes nothing.
+    pub fn set_hidden(&mut self, id: ColourId, hidden: bool) {
+        let found = self
+            .palettes
+            .iter_mut()
+            .flat_map(|palette| palette.places_mut())
+            .flatten()
+            .find(|colour| colour.id == id);
+        if let Some(colour) = found
+            && colour.hidden != hidden
+        {
+            colour.hidden = hidden;
+            self.revision = next_revision();
+        }
+    }
+
+    /// Deletes the beads of a colour. The colour stays.
+    pub fn delete_beads(&mut self, id: ColourId) {
+        let before = self.beads.len();
+        self.beads.retain(|_, bead| *bead != id);
+        if self.beads.len() != before {
+            self.revision = next_revision();
+        }
+    }
+
+    /// An id no colour has.
+    fn next_id(&self) -> ColourId {
+        let last = self
+            .palettes
+            .iter()
+            .flat_map(|palette| palette.places())
+            .flatten()
+            .map(|colour| colour.id.0)
+            .max()
+            .unwrap_or(NO_BEAD);
+        ColourId(last + 1)
+    }
+
+    /// A place of a palette, to change.
+    fn place_mut(&mut self, palette: usize, place: usize) -> Result<&mut Option<Colour>> {
+        self.palettes
+            .get_mut(palette)
+            .and_then(|found| found.places_mut().get_mut(place))
+            .ok_or(PatternError::Place { palette, place })
+    }
+
+    /// Takes away a palette with nothing in it, unless it is the last one.
+    fn drop_if_empty(&mut self, palette: usize) {
+        if self.palettes.len() > 1 && self.palettes[palette].is_empty() {
+            self.palettes.remove(palette);
+        }
     }
 }
 
@@ -197,29 +351,34 @@ mod tests {
     use super::*;
     use crate::palette::Rgb;
 
-    fn bead(key: char) -> Bead {
-        Bead {
-            key,
-            rgb: Rgb([0, 0, 0]),
-            catalog: None,
-            code: None,
-        }
+    const FIRST: ColourId = ColourId(1);
+    const SECOND: ColourId = ColourId(2);
+
+    fn colour(id: ColourId) -> Colour {
+        Colour::new(id, Rgb([0, 0, 0]))
     }
 
     fn pattern() -> Pattern {
-        Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, vec![bead('A'), bead('B')]).expect("a pattern")
+        Pattern::new(
+            Grid::Loom,
+            DEFAULT_BEAD_RATIO,
+            vec![colour(FIRST), colour(SECOND)],
+        )
+        .expect("a pattern")
     }
+
+    const CELL: Cell = Cell { column: 0, row: 0 };
 
     #[test]
     fn a_bead_is_counted_by_its_colour() {
         let mut pattern = pattern();
-        pattern.set(Cell { column: 0, row: 0 }, Some(1));
-        pattern.set(Cell { column: 2, row: 1 }, Some(1));
-        pattern.set(Cell { column: -1, row: 1 }, Some(0));
+        pattern.set(Cell { column: 0, row: 0 }, Some(SECOND));
+        pattern.set(Cell { column: 2, row: 1 }, Some(SECOND));
+        pattern.set(Cell { column: -1, row: 1 }, Some(FIRST));
 
-        assert_eq!(pattern.counts(), [1, 2]);
-        assert_eq!(pattern.set(Cell { column: 0, row: 0 }, None), Some(1));
-        assert_eq!(pattern.counts(), [1, 1]);
+        assert_eq!((pattern.count(FIRST), pattern.count(SECOND)), (1, 2));
+        assert_eq!(pattern.set(Cell { column: 0, row: 0 }, None), Some(SECOND));
+        assert_eq!((pattern.count(FIRST), pattern.count(SECOND)), (1, 1));
     }
 
     #[test]
@@ -227,8 +386,8 @@ mod tests {
         let mut pattern = pattern();
         assert_eq!(pattern.bounds(), None);
 
-        pattern.set(Cell { column: 3, row: -2 }, Some(0));
-        pattern.set(Cell { column: -1, row: 4 }, Some(1));
+        pattern.set(Cell { column: 3, row: -2 }, Some(FIRST));
+        pattern.set(Cell { column: -1, row: 4 }, Some(SECOND));
         let bounds = pattern.bounds().expect("there are beads");
         assert_eq!(
             bounds.min,
@@ -259,7 +418,7 @@ mod tests {
         assert_eq!(pattern.work_area(), Some(sheet));
 
         let past = Cell { column: 6, row: 1 };
-        pattern.set(past, Some(0));
+        pattern.set(past, Some(FIRST));
         assert_eq!(pattern.work_area().map(|area| area.width()), Some(7));
 
         pattern.set(past, None);
@@ -278,7 +437,7 @@ mod tests {
         pattern.set_grid(Grid::Loom);
         assert_eq!(pattern.revision(), first);
 
-        pattern.set(Cell { column: 0, row: 0 }, Some(0));
+        pattern.set(Cell { column: 0, row: 0 }, Some(FIRST));
         let second = pattern.revision();
         assert_ne!(second, first);
 
@@ -287,19 +446,196 @@ mod tests {
     }
 
     #[test]
-    fn a_key_used_twice_is_refused() {
-        let error = Pattern::new(Grid::Loom, 1.0, vec![bead('A'), bead('A')]);
+    fn an_id_used_twice_is_refused() {
+        let error = Pattern::new(Grid::Loom, 1.0, vec![colour(FIRST), colour(FIRST)]);
 
-        assert!(matches!(
-            error,
-            Err(PatternError::DuplicateKey { key: 'A' })
-        ));
+        assert!(matches!(error, Err(PatternError::DuplicateId { id: 1 })));
     }
 
     #[test]
-    fn the_empty_key_is_not_a_colour() {
-        let error = Pattern::new(Grid::Loom, 1.0, vec![bead(EMPTY_KEY)]);
+    fn the_number_of_no_bead_is_not_a_colour() {
+        let error = Pattern::new(Grid::Loom, 1.0, vec![colour(ColourId(NO_BEAD))]);
 
-        assert!(matches!(error, Err(PatternError::DuplicateKey { .. })));
+        assert!(matches!(error, Err(PatternError::DuplicateId { .. })));
+    }
+
+    #[test]
+    fn a_pattern_has_a_palette() {
+        let error = Pattern::with_palettes(Grid::Loom, 1.0, Vec::new());
+
+        assert!(matches!(error, Err(PatternError::NoPalette)));
+    }
+
+    #[test]
+    fn an_id_no_colour_has_puts_no_bead() {
+        let mut pattern = pattern();
+
+        pattern.set(CELL, Some(ColourId(9)));
+
+        assert_eq!(pattern.get(CELL), None);
+    }
+
+    #[test]
+    fn a_swap_moves_colours_and_no_bead() {
+        let mut pattern = pattern();
+        pattern.set(CELL, Some(FIRST));
+
+        pattern.swap_places(0, 0, 1).expect("the places are there");
+
+        assert_eq!(
+            pattern.palettes()[0].places()[1]
+                .as_ref()
+                .map(|colour| colour.id),
+            Some(FIRST)
+        );
+        assert_eq!(pattern.get(CELL), Some(FIRST));
+    }
+
+    #[test]
+    fn a_place_that_is_not_there_is_refused() {
+        let mut pattern = pattern();
+
+        assert!(matches!(
+            pattern.swap_places(0, 0, crate::palette::MAX_COLOURS),
+            Err(PatternError::Place { .. })
+        ));
+        assert!(matches!(
+            pattern.remove_colour(1, 0),
+            Err(PatternError::Place { .. })
+        ));
+    }
+
+    /// A move makes a new palette, and the colour keeps its beads.
+    #[test]
+    fn a_move_to_a_new_palette_keeps_the_beads() {
+        let mut pattern = pattern();
+        pattern.set(CELL, Some(SECOND));
+
+        pattern.move_colour(0, 1, None).expect("the colour moves");
+
+        assert_eq!(pattern.palettes().len(), 2);
+        assert!(pattern.palettes()[0].places()[1].is_none());
+        assert_eq!(
+            pattern.palettes()[1].places()[0]
+                .as_ref()
+                .map(|colour| colour.id),
+            Some(SECOND)
+        );
+        assert_eq!(pattern.get(CELL), Some(SECOND));
+        assert!(pattern.colour(SECOND).is_some());
+    }
+
+    /// A palette left with nothing goes, unless it is the last one.
+    #[test]
+    fn a_palette_left_with_nothing_goes() {
+        let mut pattern = pattern();
+        pattern.move_colour(0, 1, None).expect("the colour moves");
+
+        pattern
+            .move_colour(1, 0, Some(0))
+            .expect("the colour moves");
+
+        assert_eq!(pattern.palettes().len(), 1);
+        assert_eq!(
+            pattern.palettes()[0].places()[1]
+                .as_ref()
+                .map(|colour| colour.id),
+            Some(SECOND)
+        );
+    }
+
+    #[test]
+    fn a_colour_does_not_go_to_a_full_palette() {
+        let mut pattern = pattern();
+        pattern.move_colour(0, 1, None).expect("the colour moves");
+        let full: Vec<Colour> = (10..19).map(|id| colour(ColourId(id))).collect();
+        pattern.palettes[0] =
+            Palette::new(full.into_iter().map(Some).collect()).expect("a palette");
+
+        assert!(matches!(
+            pattern.move_colour(1, 0, Some(0)),
+            Err(PatternError::Full { palette: 0 })
+        ));
+        assert!(pattern.colour(SECOND).is_some(), "the colour is not lost");
+    }
+
+    /// A colour with beads stays as a hatch; a new colour there colours them.
+    #[test]
+    fn a_removed_colour_keeps_its_beads_and_its_id() {
+        let mut pattern = pattern();
+        pattern.set(CELL, Some(FIRST));
+
+        pattern.remove_colour(0, 0).expect("the colour goes");
+
+        let removed = pattern.colour(FIRST).expect("it keeps its place");
+        assert_eq!(removed.seen(), None);
+        assert_eq!(pattern.get(CELL), Some(FIRST));
+
+        let rgb = Rgb([9, 9, 9]);
+        assert_eq!(pattern.put_colour(0, 0, rgb).expect("a colour"), FIRST);
+        assert_eq!(pattern.colour(FIRST).and_then(Colour::seen), Some(rgb));
+    }
+
+    #[test]
+    fn a_removed_colour_with_no_beads_leaves_the_place_empty() {
+        let mut pattern = pattern();
+
+        pattern.remove_colour(0, 0).expect("the colour goes");
+
+        assert!(pattern.palettes()[0].places()[0].is_none());
+        assert!(pattern.colour(FIRST).is_none());
+    }
+
+    /// Only the last colour with nothing else: the palette stays when it is
+    /// the only one, and hatched beads keep a palette.
+    #[test]
+    fn a_palette_with_hatched_beads_stays() {
+        let mut pattern = pattern();
+        pattern.move_colour(0, 1, None).expect("the colour moves");
+        pattern.set(CELL, Some(SECOND));
+
+        pattern.remove_colour(1, 0).expect("the colour goes");
+
+        assert_eq!(pattern.palettes().len(), 2);
+    }
+
+    #[test]
+    fn an_empty_place_takes_a_new_id() {
+        let mut pattern = pattern();
+
+        let id = pattern
+            .put_colour(0, 4, Rgb([1, 1, 1]))
+            .expect("the place is there");
+
+        assert_eq!(id, ColourId(3));
+    }
+
+    #[test]
+    fn a_hidden_colour_keeps_its_rgb_and_can_have_beads() {
+        let mut pattern = pattern();
+
+        pattern.set_hidden(FIRST, true);
+        pattern.set(CELL, Some(FIRST));
+
+        let hidden = pattern.colour(FIRST).expect("it stays");
+        assert!(hidden.rgb.is_some());
+        assert_eq!(hidden.seen(), None);
+        assert_eq!(pattern.get(CELL), Some(FIRST));
+
+        pattern.set_hidden(FIRST, false);
+        assert!(pattern.colour(FIRST).and_then(Colour::seen).is_some());
+    }
+
+    #[test]
+    fn deleting_the_beads_leaves_the_colour() {
+        let mut pattern = pattern();
+        pattern.set(CELL, Some(FIRST));
+        pattern.set(Cell { column: 1, row: 0 }, Some(SECOND));
+
+        pattern.delete_beads(FIRST);
+
+        assert_eq!(pattern.count(FIRST), 0);
+        assert_eq!(pattern.count(SECOND), 1);
+        assert!(pattern.colour(FIRST).is_some());
     }
 }

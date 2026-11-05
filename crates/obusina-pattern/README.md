@@ -1,11 +1,21 @@
 # obusina-pattern
 
-A bead pattern: its grid, its palette, its beads and its JSON file.
+A bead pattern: its grid, its palettes, its beads and its JSON file.
 
 ## Scope
 
 - `Pattern`: the beads put on a field with no end; every other cell is
   empty. A `Cell` has a signed column and row.
+- `Palette`: [`MAX_COLOURS`] places, each a `Colour` or empty. A pattern has
+  one palette or more.
+- `Colour`: an id, unique in the pattern, and what it looks like. A bead holds
+  the id, so a colour moves between places and palettes and no bead changes.
+  A colour with no `rgb` was removed and keeps its beads; a hidden one keeps
+  its `rgb`. `Colour::seen` is `None` for both: they are drawn hatched.
+- `Pattern::put_colour`, `swap_places`, `move_colour`, `remove_colour`,
+  `set_hidden`, `delete_beads`: the changes of the colours
+  (`docs/palette.md`). A palette left with nothing goes, unless it is the
+  last one or holds a removed colour.
 - `Pattern::bounds`: the active area, the box around the beads; `None` when
   there are none. `Bounds` grows, meets, joins and doubles.
 - `Pattern::revision`: changes with every change of the pattern; no other
@@ -38,17 +48,23 @@ an empty place.
     "size": [8, 4]
   },
   "bead_ratio": 1.0,
-  "palette": [
-    { "key": "A", "rgb": "#1b1b1b", "catalog": "miyuki-delica-11", "code": "DB-0010" },
-    { "key": "B", "rgb": "#f2efe6" }
+  "palettes": [
+    [
+      { "id": 1, "rgb": "#1b1b1b", "catalog": "miyuki-delica-11", "code": "DB-0010" },
+      { "id": 2, "rgb": "#f2efe6" }
+    ],
+    [null, { "id": 3 }, { "id": 4, "rgb": "#c03030", "hidden": true }]
   ],
   "rows_origin": [-3, 2],
-  "rows": ["AAB.BB", "ABABA."]
+  "rows": [
+    [1, 1, 2, 0, 2, 2],
+    [1, 2, 1, 2, 1, 3]
+  ]
 }
 ```
 
-The writer puts each number of an array on a line of its own; the example
-keeps them on one.
+The writer puts each number of an array on a line of its own, but a row of
+beads on one line; the example keeps them all on one.
 
 | Field | Meaning |
 | --- | --- |
@@ -59,11 +75,13 @@ keeps them on one.
 | `sheet.origin` | column and row of the field of its top left cell |
 | `sheet.size` | columns and rows, at least one each |
 | `bead_ratio` | the width of a bead to its height |
-| `palette[].key` | one character; never `.` |
-| `palette[].rgb` | `#rrggbb` |
-| `palette[].catalog`, `code` | where the colour comes from; may be left out |
+| `palettes` | one array or more, each of at most `MAX_COLOURS` places; the index is the place, `null` an empty one; empty places at the end are left out |
+| `palettes[][].id` | a number, unique in the file, never `0` |
+| `palettes[][].rgb` | `#rrggbb`; left out for a removed colour |
+| `palettes[][].hidden` | `true` for a hidden colour; left out otherwise |
+| `palettes[][].catalog`, `code` | where the colour comes from; may be left out |
 | `rows_origin` | column and row of the field of the first bead of the first row; `[0, 0]` with no rows |
-| `rows` | the active area, the box around the beads; every row as long as the first |
+| `rows` | the active area, the box around the beads; one id per cell, `0` for a cell with no bead; every row as long as the first |
 
 A cell of the field has a signed column and row. The rows and the sheet are
 both placed on the field by their own origin, so a pattern opens where it
@@ -75,8 +93,8 @@ on the field                          the file
         column -4         3           "sheet": origin [-4, 1], size [8, 4]
 row 1   ┌──── sheet ──────┐
         │ ┌── rows ──┐    │           "rows_origin": [-3, 2]
-row 2   │ │AAB.BB    │    │           "rows": ["AAB.BB",
-row 3   │ │ABABA.    │    │                    "ABABA."]
+row 2   │ │112022    │    │           "rows": [[1, 1, 2, 0, 2, 2],
+row 3   │ │121213    │    │                    [1, 2, 1, 2, 1, 3]]
 row 4   │ └──────────┘    │
         └─────────────────┘
 ```
@@ -102,5 +120,6 @@ the program.
 ## Errors
 
 `Result<T, PatternError>`: `Read`, `Write` (with the path), `Json`, `NoFormat`,
-`Newer`, `UnknownFormat`, `RowWidth`, `UnknownKey`, `Outside`, `DuplicateKey`,
-`Colour`, `Ratio`.
+`Newer`, `UnknownFormat`, `RowWidth`, `UnknownId`, `Outside`, `DuplicateId`,
+`Palette`, `NoPalette`, `Colour`, `Ratio`, `Turn`, `Sheet`; for a change of
+the colours, `Place` and `Full`.

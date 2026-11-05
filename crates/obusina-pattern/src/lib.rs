@@ -11,5 +11,5 @@ mod pattern;
 pub use error::{PatternError, Result};
 pub use file::{FORMAT, read, write};
 pub use grid::{Bounds, Cell, Grid};
-pub use palette::{Bead, EMPTY_KEY, Rgb};
+pub use palette::{Colour, ColourId, MAX_COLOURS, Palette, Rgb};
 pub use pattern::{DEFAULT_BEAD_RATIO, Pattern, TURNS};

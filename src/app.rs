@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use egui::{Key, KeyboardShortcut, Modifiers};
 use obusina_canvas::{Canvas, Press, View};
-use obusina_pattern::{Bead, Cell, DEFAULT_BEAD_RATIO, Grid, Pattern, Rgb};
+use obusina_pattern::{Cell, Colour, ColourId, DEFAULT_BEAD_RATIO, Grid, Pattern, Rgb};
 use rust_i18n::t;
 
 use crate::edit::{Edit, History};
@@ -13,12 +13,12 @@ use crate::settings::Settings;
 use crate::ui::access::Named;
 
 /// The colours of a new pattern.
-const NEW_PALETTE: [(char, [u8; 3]); 5] = [
-    ('A', [0x1b, 0x1b, 0x1b]),
-    ('B', [0xf2, 0xef, 0xe6]),
-    ('C', [0xc0, 0x30, 0x30]),
-    ('D', [0x2f, 0x5f, 0xb3]),
-    ('E', [0xe8, 0xc5, 0x47]),
+const NEW_PALETTE: [[u8; 3]; 5] = [
+    [0x1b, 0x1b, 0x1b],
+    [0xf2, 0xef, 0xe6],
+    [0xc0, 0x30, 0x30],
+    [0x2f, 0x5f, 0xb3],
+    [0xe8, 0xc5, 0x47],
 ];
 
 const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
@@ -47,7 +47,7 @@ pub struct App {
     /// What a press does.
     pub(crate) tool: Tool,
     /// The colour in hand; `None` is an empty place.
-    pub(crate) colour: Option<usize>,
+    pub(crate) colour: Option<ColourId>,
     /// The steps to undo and redo.
     pub(crate) history: History,
     /// A line for the user: what was saved, what failed.
@@ -75,12 +75,13 @@ impl App {
         let message = message.or_else(|| settings_error.map(|error| say(&error)));
         let mut view = View::default();
         view.set_degrees(pattern.turn());
+        let colour = first_colour(&pattern);
         App {
             pattern,
             path,
             view,
             tool: Tool::Pencil,
-            colour: Some(0),
+            colour,
             history: History::default(),
             message,
             menu: plate_menu::PlateMenu::new(),
@@ -215,16 +216,22 @@ impl eframe::App for App {
     }
 }
 
+/// The colour in hand at the start: the first of the first palette shown.
+fn first_colour(pattern: &Pattern) -> Option<ColourId> {
+    pattern.palettes()[0]
+        .places()
+        .iter()
+        .flatten()
+        .find(|colour| colour.rgb.is_some())
+        .map(|colour| colour.id)
+}
+
 /// A new pattern with the colours of [`NEW_PALETTE`].
 fn new_pattern() -> Pattern {
     let palette = NEW_PALETTE
         .into_iter()
-        .map(|(key, rgb)| Bead {
-            key,
-            rgb: Rgb(rgb),
-            catalog: None,
-            code: None,
-        })
+        .zip(1..)
+        .map(|(rgb, id)| Colour::new(ColourId(id), Rgb(rgb)))
         .collect();
     Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, palette).expect("the new pattern is valid")
 }
