@@ -10,7 +10,7 @@ use crate::ui::access::Named;
 /// The size of every button of a panel.
 pub const SIZE: Vec2 = vec2(44.0, 36.0);
 /// The size of the text and of the icon on a button.
-const TEXT: f32 = 18.0;
+pub const TEXT: f32 = 18.0;
 
 /// A button that carries an icon; `hint` is shown on hover and read by a
 /// screen reader.

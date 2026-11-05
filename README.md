@@ -22,8 +22,15 @@ An editor of bead patterns, for Linux, Windows and Android.
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
     the picker, the kind of grid, the columns and the rows of the sheet,
     save;
-  - **Beads**: the colours of the pattern with their counts and an empty
-    place. The one in hand is marked.
+  - **Beads**: the colours of the palette shown, each with its number, and
+    an empty place. The one in hand is marked. A tap on it opens its menu:
+    hide or show the colour, delete its beads, the settings of the palette.
+- A pattern has one palette or more, each of nine places. The window of the
+  palettes, opened from that menu or by `P`, shows the places as a line or
+  as a block. A tap on a place opens the picker of its colour; the colour
+  stays when it is accepted. A colour is moved to another palette, removed,
+  or dragged onto another place, which swaps the two. A removed colour keeps
+  its beads, hatched, until a colour is put in its place again.
 - A press on a bead switches it: to the colour in hand, or to empty when it
   has that colour already. The second button does nothing. On a touch screen
   a tap is the first button.
@@ -40,6 +47,8 @@ An editor of bead patterns, for Linux, Windows and Android.
 | ctrl+z | undo |
 | ctrl+shift+z | redo |
 | ctrl+s | save |
+| P | the window of the palettes |
+| + / - | in that window: the next and the previous palette |
 
 ## Running
 

@@ -1,0 +1,224 @@
+//! Tests of the palettes in the window: the window of the palettes, opened
+//! by the menu of the colour in hand or by `P`, and the changes it makes.
+
+use egui::{Key, PointerButton};
+use egui_kittest::kittest::Queryable;
+use rust_i18n::t;
+
+use super::{FREE, id_at, swatch, window};
+use crate::ui::palette_window::delete_beads;
+
+/// The window of the palettes opened by `P`.
+fn opened() -> super::Window {
+    let mut window = window();
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    assert!(window.harness.state().palette_window.open);
+    window
+}
+
+/// The name of a colour in the window.
+fn colour(number: usize) -> String {
+    t!("palette.colour", number = number).to_string()
+}
+
+/// Taps a place of the window, then an entry of its menu.
+fn choose(window: &mut super::Window, place: &str, entry: &str) {
+    window.click(place);
+    window.click(entry);
+}
+
+#[test]
+fn a_second_tap_on_the_colour_in_hand_opens_its_menu() {
+    let mut window = window();
+    let first = swatch(window.harness.state(), 0);
+
+    window.click(&first);
+    assert!(window.harness.state().bead_menu.is_open());
+    window.click(&t!("palette.settings"));
+
+    assert!(window.harness.state().palette_window.open);
+}
+
+#[test]
+fn the_empty_place_in_hand_opens_the_settings() {
+    let mut window = window();
+
+    window.click(&t!("palette.empty"));
+    assert_eq!(window.harness.state().colour, None);
+    window.click(&t!("palette.empty"));
+    assert!(window.harness.query_by_label(&t!("palette.hide")).is_none());
+    window.click(&t!("palette.settings"));
+
+    assert!(window.harness.state().palette_window.open);
+}
+
+#[test]
+fn a_new_colour_stays_when_accepted_and_is_undone() {
+    let mut window = opened();
+    let place = t!("palette.place", number = 6).to_string();
+
+    choose(&mut window, &place, &t!("palette.accept"));
+    let places =
+        |window: &super::Window| window.harness.state().pattern.palettes()[0].places()[5].is_some();
+    assert!(places(&window));
+
+    let app = window.harness.state_mut();
+    app.history.undo(&mut app.pattern);
+    window.harness.run();
+    assert!(!places(&window));
+}
+
+#[test]
+fn a_new_colour_not_accepted_is_gone() {
+    let mut window = opened();
+    let place = t!("palette.place", number = 6).to_string();
+
+    window.click(&place);
+    assert!(window.harness.state().pattern.palettes()[0].places()[5].is_some());
+    window.harness.key_press(Key::Escape);
+    window.harness.run();
+
+    assert!(window.harness.state().pattern.palettes()[0].places()[5].is_none());
+    assert!(!window.harness.state().history.can_undo());
+}
+
+#[test]
+fn a_removed_colour_keeps_its_beads_and_comes_back_by_undo() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    window.harness.key_press(Key::P);
+    window.harness.run();
+
+    choose(&mut window, &colour(1), &t!("palette.remove"));
+
+    let app = window.harness.state();
+    assert!(
+        app.pattern
+            .colour(id_at(0))
+            .and_then(|found| found.rgb)
+            .is_none()
+    );
+    assert_eq!(app.pattern.get(FREE), Some(id_at(0)));
+    assert!(
+        window
+            .harness
+            .query_by_label(&t!("palette.removed", number = 1))
+            .is_some()
+    );
+
+    let app = window.harness.state_mut();
+    app.history.undo(&mut app.pattern);
+    assert!(
+        app.pattern
+            .colour(id_at(0))
+            .and_then(|found| found.rgb)
+            .is_some()
+    );
+}
+
+#[test]
+fn a_removed_colour_deletes_only_its_beads() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    choose(&mut window, &colour(1), &t!("palette.remove"));
+
+    let removed = t!("palette.removed", number = 1).to_string();
+    choose(&mut window, &removed, &delete_beads(1));
+
+    let app = window.harness.state();
+    assert_eq!(app.pattern.count(id_at(0)), 0);
+    assert!(app.pattern.colour(id_at(0)).is_some(), "the place stays");
+}
+
+#[test]
+fn the_first_move_makes_a_palette_and_the_keys_switch_it() {
+    let mut window = opened();
+
+    choose(&mut window, &colour(2), &t!("palette.move"));
+
+    assert_eq!(window.harness.state().pattern.palettes().len(), 2);
+    window
+        .harness
+        .get_by_label(&t!("palette.number", number = 1, count = 2));
+    window.harness.key_press(Key::Plus);
+    window.harness.run();
+    assert_eq!(window.harness.state().palette, 1);
+    window.harness.key_press(Key::Minus);
+    window.harness.run();
+    assert_eq!(window.harness.state().palette, 0);
+    window.click(&t!("palette.next"));
+    assert_eq!(window.harness.state().palette, 1);
+}
+
+#[test]
+fn a_later_move_asks_where() {
+    let mut window = opened();
+    choose(&mut window, &colour(2), &t!("palette.move"));
+
+    choose(&mut window, &colour(1), &t!("palette.move"));
+    window
+        .harness
+        .get_by_label(&t!("palette.where", number = 1));
+    window.click(&t!("palette.to", number = 2));
+
+    let palettes = window.harness.state().pattern.palettes();
+    assert_eq!(palettes.len(), 2);
+    assert_eq!(
+        palettes[1].places()[1].as_ref().map(|found| found.id),
+        Some(id_at(0))
+    );
+}
+
+#[test]
+fn a_colour_dragged_onto_another_swaps_with_it() {
+    let mut window = opened();
+    let to = window.harness.get_by_label(&colour(3)).rect().center();
+
+    window.drag(&colour(1), to);
+
+    let places = window.harness.state().pattern.palettes()[0].places();
+    assert_eq!(places[2].as_ref().map(|found| found.id), Some(id_at(0)));
+    assert_eq!(places[0].as_ref().map(|found| found.id), Some(id_at(2)));
+    assert!(window.harness.state().history.can_undo());
+}
+
+#[test]
+fn the_tab_of_the_block_shows_every_place() {
+    let mut window = opened();
+    let seventh = t!("palette.place", number = 7).to_string();
+    assert!(window.harness.query_by_label(&seventh).is_none());
+
+    window.click(&t!("palette.block"));
+
+    for number in 6..=9 {
+        window
+            .harness
+            .get_by_label(&t!("palette.place", number = number));
+    }
+}
+
+#[test]
+fn the_menu_on_the_panel_hides_a_colour_and_deletes_its_beads() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    let first = swatch(window.harness.state(), 0);
+
+    window.click(&first);
+    window.click(&t!("palette.hide"));
+    assert!(
+        window
+            .harness
+            .state()
+            .pattern
+            .colour(id_at(0))
+            .is_some_and(|found| found.hidden)
+    );
+
+    let first = swatch(window.harness.state(), 0);
+    window.click(&first);
+    window.click(&delete_beads(1));
+    assert_eq!(window.harness.state().pattern.count(id_at(0)), 0);
+}

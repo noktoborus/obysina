@@ -27,13 +27,6 @@ pub enum Edit {
     },
     /// The colours changed: added, changed, moved, removed, hidden. The
     /// beads do not change, so all the palettes before and after are kept.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "made by the window of the palette, step 3 of docs/palette.md"
-        )
-    )]
     Palettes {
         /// The palettes before.
         before: Vec<Palette>,
@@ -122,13 +115,6 @@ impl History {
 
     /// Changes the colours by `change` as one step. Nothing is kept when the
     /// change fails or changes nothing.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "used by the window of the palette, step 3 of docs/palette.md"
-        )
-    )]
     pub fn change_colours<T>(
         &mut self,
         pattern: &mut Pattern,
@@ -143,13 +129,6 @@ impl History {
     /// Keeps as one step every change of the colours since `before`, which
     /// were made past the history while they were shown: the changes of a
     /// picker before "Accept".
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "used by the window of the palette, step 3 of docs/palette.md"
-        )
-    )]
     pub fn keep_palettes(&mut self, pattern: &Pattern, before: Vec<Palette>) {
         let after = pattern.palettes().to_vec();
         if after != before {
@@ -159,13 +138,6 @@ impl History {
     }
 
     /// Deletes the beads of a colour as one step; the colour stays.
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "used by the window of the palette, step 3 of docs/palette.md"
-        )
-    )]
     pub fn delete_beads(&mut self, pattern: &mut Pattern, id: ColourId) {
         let cells: Vec<Cell> = pattern
             .beads()

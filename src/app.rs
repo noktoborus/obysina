@@ -56,6 +56,14 @@ pub struct App {
     pub(crate) menu: plate_menu::PlateMenu,
     /// The settings: the place of each panel.
     pub(crate) settings: Settings,
+    /// The palette the panel and the window show.
+    pub(crate) palette: usize,
+    /// The window of the palettes.
+    pub(crate) palette_window: crate::ui::palette_window::PaletteWindow,
+    /// The menu of the colour in hand on the panel of beads.
+    pub(crate) bead_menu: plate_menu::PlateMenu,
+    /// What that menu is of: a colour, or the empty place.
+    pub(crate) bead_menu_of: Option<Option<ColourId>>,
 }
 
 impl App {
@@ -86,6 +94,10 @@ impl App {
             message,
             menu: plate_menu::PlateMenu::new(),
             settings,
+            palette: 0,
+            palette_window: Default::default(),
+            bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
+            bead_menu_of: None,
         }
     }
 
@@ -178,6 +190,10 @@ impl App {
         if save {
             self.save();
         }
+        let settings = ui.input(|input| input.key_pressed(Key::P));
+        if settings && !ui.ctx().egui_wants_keyboard_input() && !self.palette_window.open {
+            self.palette_window.open = true;
+        }
     }
 
     /// The field of beads over the whole window.
@@ -212,7 +228,10 @@ impl eframe::App for App {
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
         crate::ui::palette::show(self, ui.ctx());
+        crate::ui::palette_window::show(self, ui.ctx());
+        crate::ui::palette::menu(self, ui.ctx());
         crate::ui::grid_menu::show(self, ui.ctx());
+        crate::ui::palette_window::keep_in_hand(self);
     }
 }
 

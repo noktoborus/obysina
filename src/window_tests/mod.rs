@@ -9,6 +9,8 @@ use rust_i18n::t;
 
 use crate::app::App;
 
+mod palette;
+
 /// The size of the window in every test.
 const SIZE: egui::Vec2 = egui::vec2(1000.0, 700.0);
 /// A bead far from the panels.

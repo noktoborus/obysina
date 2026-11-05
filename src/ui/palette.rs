@@ -6,6 +6,9 @@ use rust_i18n::t;
 
 use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
 use obusina_pattern::{ColourId, Rgb};
+use plate_menu::MenuItem;
+
+use crate::ui::palette_window::delete_beads;
 
 use crate::app::App;
 use crate::ui::{button, icons};
@@ -87,7 +90,11 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
                     };
                     let colour = entry.map(|(_, id)| id);
                     if swatch(app, ui, entry, app.colour == colour, &name).clicked() {
-                        app.colour = colour;
+                        if app.colour == colour {
+                            open_menu(app, colour);
+                        } else {
+                            app.colour = colour;
+                        }
                     }
                 }
             });
@@ -95,10 +102,10 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
     });
 }
 
-/// The colours the panel shows: the places of the first palette, each with
+/// The colours the panel shows: the places of the palette shown, each with
 /// its id. A removed colour does not stand on the panel.
 fn shown(app: &App) -> Vec<(usize, ColourId)> {
-    app.pattern.palettes()[0]
+    app.pattern.palettes()[app.palette]
         .places()
         .iter()
         .enumerate()
@@ -126,4 +133,61 @@ fn swatch(
         _ => (ui.visuals().extreme_bg_color, icons::EMPTY.to_string()),
     };
     button::swatch(ui, fill, &label, selected, name)
+}
+
+/// The menu of what is in hand, opened by a second tap: hide or show and
+/// delete the beads of a colour, and the settings of the palette. The empty
+/// place has the settings only.
+fn open_menu(app: &mut App, colour: Option<ColourId>) {
+    let settings = MenuItem::new("settings", t!("palette.settings"));
+    let (items, title) = match colour.and_then(|id| app.pattern.colour(id)) {
+        Some(found) => {
+            let hide = if found.hidden {
+                MenuItem::new("hide", t!("palette.show"))
+            } else {
+                MenuItem::new("hide", t!("palette.hide"))
+            };
+            let beads = app.pattern.count(found.id);
+            let delete = MenuItem::new("beads", delete_beads(beads)).enabled(beads > 0);
+            let rgb = found.rgb.unwrap_or(Rgb([0; 3]));
+            (
+                vec![hide, delete, settings],
+                t!("palette.in_hand", id = found.id, rgb = rgb),
+            )
+        }
+        None => (vec![settings], t!("palette.empty")),
+    };
+    if let Err(error) = app.bead_menu.open(items) {
+        log::error!("the menu of the colour in hand does not open: {error}");
+        return;
+    }
+    app.bead_menu.notice(title);
+    app.bead_menu_of = Some(colour);
+}
+
+/// Draws the menu of what is in hand while it is open, and does what is
+/// chosen.
+pub fn menu(app: &mut App, context: &egui::Context) {
+    app.bead_menu.nothing_found(t!("menu.nothing_found"));
+    let Some(chosen) = app.bead_menu.show(context) else {
+        return;
+    };
+    let Some(colour) = app.bead_menu_of.take() else {
+        return;
+    };
+    match (chosen.id.as_str(), colour) {
+        ("settings", _) => app.palette_window.open = true,
+        ("hide", Some(id)) => {
+            let hidden = app.pattern.colour(id).is_some_and(|found| found.hidden);
+            let changed = app.history.change_colours(&mut app.pattern, |pattern| {
+                pattern.set_hidden(id, !hidden);
+                Ok(())
+            });
+            if let Err(error) = changed {
+                log::error!("the colour is not hidden: {error}");
+            }
+        }
+        ("beads", Some(id)) => app.history.delete_beads(&mut app.pattern, id),
+        _ => {}
+    }
 }

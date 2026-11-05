@@ -63,6 +63,78 @@ palette.bead:
 palette.empty:
   en: "Empty place"
   ru: "Пустое место"
+palette.window:
+  en: "Palettes"
+  ru: "Палитры"
+palette.settings:
+  en: "Palette settings"
+  ru: "Настройка палитры"
+palette.line:
+  en: "Line"
+  ru: "Линия"
+palette.block:
+  en: "Block"
+  ru: "Блок"
+palette.number:
+  en: "Palette %{number} / %{count}"
+  ru: "Палитра %{number} / %{count}"
+palette.previous:
+  en: "Previous palette"
+  ru: "Предыдущая палитра"
+palette.next:
+  en: "Next palette"
+  ru: "Следующая палитра"
+palette.colour:
+  en: "Colour %{number}"
+  ru: "Цвет %{number}"
+palette.removed:
+  en: "Removed colour %{number}"
+  ru: "Удалённый цвет %{number}"
+palette.hidden_colour:
+  en: "Hidden colour %{number}"
+  ru: "Скрытый цвет %{number}"
+palette.place:
+  en: "Empty place %{number}"
+  ru: "Пустое место %{number}"
+palette.title:
+  en: "Colour %{number} · %{rgb} · beads: %{count}"
+  ru: "Цвет %{number} · %{rgb} · бусин: %{count}"
+palette.in_hand:
+  en: "Colour %{rgb}"
+  ru: "Цвет %{rgb}"
+palette.accept:
+  en: "Accept"
+  ru: "Принять"
+palette.move:
+  en: "Move to another palette"
+  ru: "Переместить в другую палитру"
+palette.remove:
+  en: "Remove"
+  ru: "Удалить"
+palette.delete_beads_one:
+  en: "Delete %{count} bead"
+  ru: "Удалить %{count} бусину"
+palette.delete_beads_few:
+  en: "Delete %{count} beads"
+  ru: "Удалить %{count} бусины"
+palette.delete_beads_many:
+  en: "Delete %{count} beads"
+  ru: "Удалить %{count} бусин"
+palette.where:
+  en: "Where does colour %{number} go?"
+  ru: "Куда переместить цвет %{number}?"
+palette.to:
+  en: "Palette %{number}"
+  ru: "Палитра %{number}"
+palette.new:
+  en: "A new palette"
+  ru: "Новая палитра"
+palette.hide:
+  en: "Hide"
+  ru: "Скрыть"
+palette.show:
+  en: "Show"
+  ru: "Показать"
 
 file.save:
   en: "Save"

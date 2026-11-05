@@ -144,11 +144,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-3. **The window of the palette.** `src/ui/palette_window.rs`: a `Modal`
-   with no title, the tabs and the places, opened by decision 15. A tap on a
-   colour opens its `PlateMenu`, the picker in its notice
-   (`Notice::widget`), then its entries. Every text in `locales/app.yml`, en
-   and ru.
 4. **The new colour.** `next_colour` of the mockup moves to the binary,
    with the crate `palette` and its test.
 5. **The numpad.** The swatches of the panel of beads show the numbers, in
@@ -176,5 +171,9 @@ test of the window with it (`RULE test.window`).
 - No note waits on the desk `obusina` of showcase.
 - Done in the history: `Edit::Palettes`, `History::change_colours`,
   `keep_palettes` for the picker, `delete_beads`, each with its test.
-- Next: step 3 of the plan. Until step 5, the panel shows the first palette
+- Done in the window: `src/ui/palette_window.rs`, the window of decisions 1
+  to 7, 10 to 12 and 15, with its tests (`src/window_tests/palette.rs`), and
+  the menu of the colour in hand of decision 14. A "+" puts a grey until
+  step 4; a hidden or removed colour is drawn with no fill until step 6.
+- Next: step 4 of the plan. Until step 5, the panel shows the first palette
   only, and a bead of a colour not seen is drawn grey until step 6.
