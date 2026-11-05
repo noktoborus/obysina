@@ -1,114 +1,180 @@
 # The palette
 
 How the colours of a pattern are filled in. The design is drawn as the
-mockups `palette-move` and `palette-drag` of `experiments/mockups`; the
-window does not have it yet.
+mockups `palette`, `panel` and `numpad` of `experiments/mockups`; the window
+does not have it yet.
 
 ## Decisions
 
 1. **The palette is filled in a window with no title,** a modal over the
-   field. The colours stand in a line, a "+" at its end. A palette holds
-   at most nine colours; at nine the "+" is off.
-2. **A tap on a colour opens a `PlateMenu` of it** (`RULE ui.menu`): the
-   picker of the colour on top, then move and remove. No button stands
-   under a colour. "+" adds a colour and opens its menu.
+   field. It holds `MAX_COLOURS` places.
+2. **A palette is a row of places, each with a colour or empty.** A number
+   is a place, and stays with the colour until the colour is moved.
+   - The line shows every place up to the last colour.
+   - An empty place in the line is a "+".
+   - One more "+" stands after the last colour. It stands for all the places
+     left, and fills the first of them. A full palette does not have it.
+   - The code treats every "+" as an empty place. It does not know the
+     number of places.
+   - A new colour takes the numbers in order: 1, 2, 3.
+   - Was: a list, where a colour removed changed the numbers of the next ones.
+3. **A tap on a colour opens a `PlateMenu` of it** (`RULE ui.menu`): the
+   picker of the colour on top, then accept, move to another palette and
+   remove.
+   No button stands under a colour. A "+" adds a colour in its place and opens its menu.
    - Was: a "-" under each colour, which doubled the line and was read as
      a colour of its own.
-3. **The picker is the notice of the menu,** as wide as the menu: a
+4. **The picker is the notice of the menu,** as wide as the menu: a
    swatch, the number and `#rrggbb` over it, which change as it changes.
-   The colour changes in the palette at once. The notice of a `PlateMenu`
+   The colour shows in the palette and on the field at once, and stays only
+   by "Accept". A menu closed with no entry puts back what the place held, so
+   a new colour not accepted is gone. The notice of a `PlateMenu`
    takes a widget of the caller (`Notice::widget`); a drag that begins
    on it and the keys while it holds the focus are its own, not the
    menu's.
    - Was: a picker under the line, for the colour chosen last; then one
      at the cell, too small; then one under the cell opened by "Pick a
      colour" of the menu, one step more than needed.
-4. **How a colour is moved is open between two variants,** each a mockup:
-   - `palette-move`: "Move" lifts the colour; the next tap on a colour puts
-     it in that place.
-   - `palette-drag`: the colour is dragged and rises above the pointer.
-     The line already shows it in the place under the pointer, with the
-     number of that place, the others moved aside and numbered anew; let
-     go, it stays there. A tap still opens the menu, which has no "Move".
-     - Was: a mark between two colours, which showed the place but not the
-       number the colour would take.
-5. **"+" adds the colour farthest from the others.** Of the steps of
+5. **A colour is moved by a drag.** It rises above the pointer. The place
+   under the pointer is lit and shows the colour with its number. A colour
+   in that place shows in the place the dragged one left; no other colour
+   moves. Let go, it stays there. A drag onto a "+" leaves a "+" behind. A
+   tap still opens the menu, which has no "Move".
+   - Was: "Move" of the menu and a tap on the new place; then a drag that
+     moved the other colours aside and numbered them anew.
+6. **"+" adds the colour farthest from the others.** Of the steps of
    lightness, chroma and hue of OKLCh a screen can show, it takes the one
    whose nearest neighbour, among the colours and the paper of the field,
    is farthest in OKLab. Its menu opens, the picker on top.
    - Why: a fixed grey was the same every time and near the paper.
+7. **A removed colour leaves its place and its beads.** Nothing asks. The
+   colour keeps its id, with no rgb. Its place in the window and its beads on
+   the field are hatched. It does not stand on the panel. A tap on the place
+   opens the same menu, with "delete <n> beads" for "remove" while it has
+   beads: a colour picked and accepted there colours the beads again; the
+   delete takes only the beads, and the place stays hatched. With no beads the
+   entry is "remove", which leaves a "+". Undo brings the colour back. A
+   colour with no beads leaves a "+" at once. A hatched place is dragged and
+   moved to another palette as any colour.
+   - Was: a question that named the count of beads, and the beads gone; then
+     a "+" in the place.
+8. **One colour is in hand.** It is the one framed on the panel; no swatch of
+   its own stands apart. It follows a colour that is moved. A colour removed
+   leaves the empty place in hand.
+   - Was: two colours in hand, one for each button, and a button that swapped
+     them.
+9. **A colour has an id, unique in the pattern, and a bead holds that id.**
+   A row of the file is an array of ids, one for each cell; `0` is a cell with
+   no bead. The place is the index in the array of its palette, and `null` is
+   an empty place. A swap or a move between palettes changes no row
+   (`RULE pattern.diff`). Format 1 changes itself before 1.0.0 (`EXC` of
+   `RULE pattern.version`).
+   - Was: a character for each bead: a letter, then the number of the place.
+
+   ```json
+   "palettes": [
+     [{ "id": 1, "rgb": "#1b1b1b" }, null, { "id": 3 }],
+     [{ "id": 2, "rgb": "#f2efe6" }]
+   ],
+   "rows": [
+     [1, 1, 2, 0],
+     [3, 2, 0, 0]
+   ]
+   ```
+
+10. **The palette has two views, a line and a block.** Tabs on top of the
+    window of the palette switch them. A new colour takes the first free place
+    after the last colour, in the order of the numbers. A shake of the panel
+    by its grip switches them too.
+    - The line: `< 1 2 3 4 5 6 7 8 9 0 >`, with a narrow `0`; `<` and `>` while
+      there are two palettes or more. An empty place is left
+      out in the panel. It turns by the room it has and by the edge it stands
+      at (`RULE ui.dock`), in the same order.
+    - The block: `7 8 9 / 4 5 6 / 1 2 3`, with a wide `0` under `1 2`. Empty rows
+      are folded in the panel, and an empty place in a row is a gap. In the
+      window, every place stands, each empty one a "+".
+    - The digits of the keyboard and the numpad choose the colour in hand, `0`
+      the empty place; a field of the tools that holds the focus keeps its
+      digits.
+11. **A pattern has several palettes.** Together they hold more colours than
+    the keys of one. "+" and "-" of the keyboard or the numpad show the next
+    and the previous palette, in a circle. The digits choose in the palette
+    shown. Buttons `<` and `>` do it by touch (`RULE ui.touch`), in the window
+    and on the panel: in a block they stand under `0`. A palette goes when nothing is left in its places, and the next
+    one is shown. Hatched beads keep a palette, because a "+" there colours
+    them again. The last palette stays. A palette is a page of colours, not
+    another colouring: the colours of all palettes show on the field.
+12. **A colour is moved to another palette from its menu.** With one palette,
+    the entry makes a new one. With more, a `PlateMenu` names the others and a
+    new one; a full palette is off. The colour takes the first free place, and
+    leaves its old place empty. The palette shown does not change.
+13. **The colour in hand is marked by a bar under the swatch,** of one colour
+    for every swatch. The bar lies on the ground of the panel, so no colour
+    hides it. The swatch gets lower.
+    - Was: a thick frame, black or white, whichever read on the swatch; a ring;
+      two bars.
+14. **A tap on the colour in hand opens its menu on the panel:** its title,
+    then hide or show, delete <n> beads, and palette settings. A first tap
+    takes the colour in hand. The right button does nothing on the panel or on the field. A hidden colour keeps its rgb and
+    stands on the panel, hatched, and its beads are hatched; "show" brings it
+    back. In the window it is hatched with its number. It can be drawn with,
+    and the new beads are hatched. Delete takes only the beads.
+
+15. **The window of the palette opens from the menu on the panel,** by the
+    entry "palette settings", or by the key `P` while no field holds the focus.
+    `0` is the way with no colours: a tap takes it in hand, a second tap opens a
+    menu with that one entry.
 
 ```text
 tap a colour ──► PlateMenu: the picker of the colour on top, then
-                    │──move────► the next tap on a colour puts it there
-                    └──remove──► gone
-drag a colour ──► the line shows it in its new place, renumbered ──let go──► it stays
-tap "+" ──► the colour farthest from the others and the paper, its menu open
+                    │──accept──────────► the colour stays as picked
+                    │──move to another─► one palette: a new one;
+                    │                    more: a PlateMenu of them and a new one
+                    └──remove──────────► its place and its beads hatched
+tap a hatched place ──► the same, with "delete <n> beads" for "remove"
+      closed with no entry ──► the colour goes back to what it was
+drag a colour ──► the place under the pointer is lit and shows it ──let go──► it stays,
+                  what stood there takes the place it left
+tap a "+" ──► the colour farthest from the others and the paper, its menu open
+"+", "-" ──► the next and the previous palette, in a circle
 ```
-
-## Open
-
-Each of these is decided before the step of the plan that needs it.
-
-1. **Moving a colour:** `palette-move` or `palette-drag` (decision 4). With
-   a drag the menu has no "Move".
-2. **The beads of a colour removed:** gone with it as one step of undo
-   (proposed), or "Remove" off while the colour has beads, or a question
-   first.
-3. **A list or nine places:**
-   - a list: a colour removed or moved moves the numbers of the next ones,
-     and the beads are numbered anew;
-   - nine places (proposed): a number is a place, 1 to 9; a colour removed
-     leaves a hole, which "+" fills first; a move swaps two places or goes
-     to an empty one. The drag then lights a place instead of moving the
-     others aside.
-4. **The key of a colour in the file:** the letters of now, or the number
-   of its place, `1`…`9`, with `.` for an empty cell (proposed). Format 1
-   may change itself before 1.0.0 (`EXC` of `RULE pattern.version`).
-5. **The hint of the numpad on a swatch,** the second subject of this
-   chapter, waits for 3 and 4:
-   - a number is a key of the numpad: in a column of two, `7 8 / 4 5 /
-     1 2`; in a row, `1 2 4 5 7 8`; a seventh colour adds the third column,
-     `3 6 9`;
-   - proposed: the numbers stay as they are given, `1 2 4 5 7 8`, then
-     `3 6 9`; a row in rising order; empty rows of a column folded; the
-     empty place is `0`, wide, under `1 2`, first in a row;
-   - the digits of the keyboard and the numpad choose the first colour,
-     with shift the second, `0` the empty place; a field of the tools that
-     holds the focus keeps its digits.
-6. **The colours in hand** after a colour is removed or moved: they follow
-   it, and one removed is the empty place (proposed).
 
 ## Plan
 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-1. **The model.** `Pattern` holds at most `MAX_COLOURS` (9) colours; a file
-   with more is refused, `PatternError::Palette`. A colour is added,
-   changed, moved and removed through `Pattern`; a bead keeps its colour,
-   not its number. By open 2, 3 and 4.
+0. **One colour in hand.** `App::colours` becomes one colour; the second
+   button of a swatch, the swatches in hand and the swap go. README and the
+   window tests change with it. By decisions 8 and 14: the right button does nothing.
+1. **The model.** `Pattern` holds palettes of at most `MAX_COLOURS` places; a
+   file with more is refused, `PatternError::Palette`. A colour has an id, and
+   a bead holds it. A colour is added, changed, moved and removed through
+   `Pattern`. The file by decision 9. By decisions 2, 7, 9, 11 and 12.
 2. **The history.** `Edit` grows a step for each: add, change, move,
-   remove. The changes of a colour while its picker is dragged are one
-   step, as the size of the sheet is (`History::resize_sheet`).
+   remove. "Accept" makes one step of all the changes of the picker. A remove
+   keeps the beads, so its undo only brings the colour back.
 3. **The window of the palette.** `src/ui/palette_window.rs`: a `Modal`
-   with no title, the line of colours and "+", opened by a button of the
-   panel of beads. A tap on a colour opens its `PlateMenu`, the picker in
-   its notice (`Notice::widget`), then the entries of open 1. Every text in
+   with no title, the tabs and the places, opened by decision 15. A tap on a colour opens its `PlateMenu`, the picker in
+   its notice (`Notice::widget`), then its entries. Every text in
    `locales/app.yml`, en and ru.
 4. **The new colour.** `next_colour` of the mockup moves to the binary,
    with the crate `palette` and its test.
-5. **The numpad.** The swatches of the panel of beads show the numbers
-   and stand as on a numpad (open 5); the keys choose a colour.
-6. **The mockups.** When the window has a part of the design, its mockup
+5. **The numpad.** The swatches of the panel of beads show the numbers, in
+   the two views of decision 10, the view kept in the settings; the keys
+   choose a colour; "+" and "-" switch the palette. The shake of the panel.
+6. **The hatch and the frame.** `obusina-canvas` draws a bead of a removed or
+   hidden colour hatched; `SquareButton` draws the hatch and the mark of decision 13.
+   Each with a picture test (`RULE test.picture`).
+7. **The mockups.** When the window has a part of the design, its mockup
    goes, or is cut down to what is still open: a mockup is not kept beside
    the code it drew.
 
 ## Where the work stands
 
-- Done: decisions 1 to 5 as mockups; `PlateMenu` takes a widget as its
+- Done: decisions 1 to 7 and 10 to 15 as mockups, with no shake; `PlateMenu` takes a widget as its
   notice and leaves its drags and focused keys to it; the tools of the
   mockups: notes on a widget by its path, the list of notes, a comment to
   the chat, the mockup frozen while a note is written.
-- No note waits in `experiments/mockups/notes/`.
-- Next: answers to open 1 to 4, then step 1 of the plan.
+- No note waits on the desk `obusina` of showcase.
+- Next: steps 0 and 1 of the plan.

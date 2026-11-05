@@ -43,5 +43,5 @@ the gallery answer is in `/workspace/showcase/README.md`.
 ## Usage
 
 ```text
-. /opt/env.sh && make mockups     then  http://localhost:6080/#obusina/mockups/palette-move
+. /opt/env.sh && make mockups     then  http://localhost:6080/#obusina/mockups/palette
 ```
