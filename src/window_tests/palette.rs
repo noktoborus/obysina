@@ -428,3 +428,69 @@ fn the_panel_fits_its_content_again() {
     window.harness.run();
     assert!(panel(&window).y < line.y, "one colour less");
 }
+
+/// The first button pressed and let go at a point, as a mouse does.
+fn press_at(window: &mut super::Window, at: egui::Pos2) {
+    window.harness.event(egui::Event::PointerMoved(at));
+    for pressed in [true, false] {
+        window.harness.event(egui::Event::PointerButton {
+            pos: at,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+        window.harness.step();
+    }
+    window.harness.run();
+}
+
+/// While the picker of a colour is open, a press on the window of the
+/// palettes where the picker does not cover it changes nothing, and the
+/// picker stays on top.
+#[test]
+fn the_window_under_the_picker_does_not_answer() {
+    let mut window = opened();
+    let first = window.harness.get_by_label(&colour(1)).rect();
+    window.click(&colour(2));
+    let picker = window.harness.get_by_label(&t!("palette.accept")).rect();
+    let uncovered = egui::pos2(first.left() + 3.0, first.center().y);
+    assert!(
+        uncovered.x < picker.left(),
+        "the press is beside the picker"
+    );
+    let menu = window.harness.state().palette_window.menu_layer();
+
+    press_at(&mut window, uncovered);
+
+    let top = window
+        .harness
+        .ctx
+        .memory(|memory| memory.areas().top_layer_id(egui::Order::Foreground));
+    assert_eq!(top, Some(menu), "the picker stays on top");
+    assert!(
+        window
+            .harness
+            .query_by_label(&t!("palette.accept"))
+            .is_some()
+    );
+    let places = window.harness.state().pattern.palettes()[0].places();
+    assert!(places[0].is_some(), "colour 1 was not tapped");
+}
+
+/// While the menu of the colour in hand is open, the panels do not answer.
+#[test]
+fn the_panels_under_the_menu_of_the_colour_in_hand_do_not_answer() {
+    let mut window = window();
+    let first = swatch(window.harness.state(), 0);
+    let third = window
+        .harness
+        .get_by_label(&swatch(window.harness.state(), 2))
+        .rect()
+        .center();
+    window.click(&first);
+    assert!(window.harness.state().bead_menu.is_open());
+
+    press_at(&mut window, third);
+
+    assert_eq!(window.harness.state().colour, Some(id_at(0)));
+}

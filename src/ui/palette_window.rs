@@ -57,6 +57,14 @@ pub struct PaletteWindow {
     drop_to: usize,
 }
 
+#[cfg(test)]
+impl PaletteWindow {
+    /// The layer of its menu.
+    pub fn menu_layer(&self) -> egui::LayerId {
+        self.menu.layer_id()
+    }
+}
+
 /// The places the line shows: every place up to the last one that holds
 /// anything, then the first after it, the "+" of all the places left. A full
 /// palette has no such place.
@@ -475,6 +483,9 @@ fn menu(app: &mut App, context: &egui::Context) {
     app.palette_window
         .menu
         .nothing_found(t!("menu.nothing_found"));
+    if app.palette_window.menu.is_open() {
+        crate::ui::blocker::under(context, "palette-window", &mut app.palette_window.menu);
+    }
     let chosen = app.palette_window.menu.show(context);
     if let Some(MenuOf::Place { place, .. }) = app.palette_window.menu_of {
         let picked = *app

@@ -22,7 +22,9 @@ model (`crates/obusina-pattern/README.md`). Its tests are
 3. **A tap on a colour opens a `PlateMenu` of it** (`RULE ui.menu`): the
    picker of the colour on top, then accept, move to another palette and
    remove.
-   No button stands under a colour. A "+" adds a colour in its place and opens its menu.
+   No button stands under a colour. While a menu is open nothing else of
+   the window answers, and a press beside it does nothing: an entry or
+   Escape leaves it (`src/ui/blocker.rs`). A "+" adds a colour in its place and opens its menu.
    - Was: a "-" under each colour, which doubled the line and was read as
      a colour of its own.
 4. **The picker is the notice of the menu,** as wide as the menu: a
