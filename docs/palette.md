@@ -38,6 +38,10 @@ model (`crates/obusina-pattern/README.md`). Its tests are
    - Was: a picker under the line, for the colour chosen last; then one
      at the cell, too small; then one under the cell opened by "Pick a
      colour" of the menu, one step more than needed.
+   - All that is kept while the window is open, accepted, moved, removed,
+     swapped, beads deleted, is one step of undo, made when the window
+     closes. While it is open there is nothing to undo.
+   - Was: each of them a step of its own.
 5. **A colour is moved by a drag.** It rises above the pointer. The place
    under the pointer is lit and shows the colour with its number. A colour
    in that place shows in the place the dragged one left; no other colour
@@ -142,6 +146,7 @@ drag a colour ──► the place under the pointer is lit and shows it ──le
                   what stood there takes the place it left
 tap a "+" ──► the colour farthest from the others and the paper, its menu open
 "+", "-" ──► the next and the previous palette, in a circle
+close the window ──► all kept while it was open is one step of undo
 ```
 
 ## Where the work stands

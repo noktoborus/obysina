@@ -6,11 +6,13 @@
 //! ```text
 //! tap a place ──► the picker shows the colour in the palette and on the field;
 //!                 an empty place shows the colour farthest from the others
-//!                    │──accept────────► one step of the history
+//!                    │──accept────────► kept, as the steps below
 //!                    │──move──────────► one palette: a new one; more: a menu of them
 //!                    │──remove────────► with beads its place is hatched; with none, empty
-//!                    └──delete beads──► the beads of a removed colour go, one step
+//!                    └──delete beads──► the beads of a removed colour go
 //!      closed with no entry, or by Escape ──► the palettes as they were
+//! all that is kept while the window is open is one step of the history,
+//! made when the window closes
 //! drag a colour ──► the place under the pointer is lit ──let go──► the two places swap
 //! ```
 
@@ -144,8 +146,10 @@ pub fn delete_beads(count: usize) -> String {
 pub fn show(app: &mut App, context: &egui::Context) {
     app.palette = app.palette.min(app.pattern.palettes().len() - 1);
     if !app.palette_window.open {
+        app.history.end();
         return;
     }
+    app.history.begin();
     let escape =
         |input: &mut egui::InputState| input.consume_key(egui::Modifiers::NONE, Key::Escape);
     if app.palette_window.menu.is_open() && context.input_mut(escape) {
@@ -157,6 +161,9 @@ pub fn show(app: &mut App, context: &egui::Context) {
         app.palette_window.open = false;
     }
     menu(app, context);
+    if !app.palette_window.open {
+        app.history.end();
+    }
 }
 
 /// The content of the window.

@@ -72,10 +72,13 @@ on the field, columns 1 2 3       the file
 
     - The sheet is the start size of the work area: the numbers of the
       tools, the cells of the screen when the pattern is first shown.
-    - The work area has two sizes: the one set, the sheet, and the one the
-      beads make. It is the box around both, computed and never kept. A
-      bead put past the sheet, in the shade, grows it, and the field with
-      it; when that bead goes, the work area is the sheet again.
+    - A bead put past the sheet, in the shade, grows the sheet to hold it,
+      and the field with it, in the same step of undo as the bead. When
+      that bead goes, the sheet stays as it grew; undo takes it back.
+    - The work area is still the box around the sheet and the beads: the
+      beads of a file can lie past its sheet.
+    - Was: the sheet stayed, and only the work area grew; it was the sheet
+      again when the bead went. One undo took the bead, not the size.
     - The field is the work area grown by half its width on each side and
       half its height above and below. Past the field the ground is bare,
       and a press does nothing.
@@ -84,9 +87,8 @@ on the field, columns 1 2 3       the file
       field with no end of decision 2.
 14. **The size of the sheet is set in the tools.** Two fields, columns and
     rows, start at the size of the first screen and change the sheet around
-    its middle (`Bounds::resized`), up to `MAX_SIDE`. They are the start size
-    of the work area, not its size: beads past the sheet grow the work area,
-    and the numbers stay. A number is dragged or typed, so a finger reaches
+    its middle (`Bounds::resized`), up to `MAX_SIDE`. A bead put past the
+    sheet grows it, and the numbers with it (decision 13). A number is dragged or typed, so a finger reaches
     it. A number is never less than the box around the beads: the sheet
     takes no smaller size, and moves as little as it takes to hold the beads
     (`Bounds::resized_over`).

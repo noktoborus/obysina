@@ -721,6 +721,31 @@ fn the_sheet_is_never_smaller_than_the_beads() {
     assert!(sheet.contains(left) && sheet.contains(right), "{sheet:?}");
 }
 
+/// A bead put past the sheet grows the sheet to hold it, and one undo takes
+/// both back.
+#[test]
+fn a_bead_past_the_sheet_grows_it_in_one_step() {
+    let mut window = window();
+    let small = obusina_pattern::Bounds {
+        min: Cell { column: 2, row: 2 },
+        max: Cell { column: 7, row: 7 },
+    };
+    window.harness.state_mut().pattern.set_sheet(Some(small));
+    window.harness.run();
+    let past = Cell { column: 9, row: 4 };
+
+    window.press(past, PointerButton::Primary);
+
+    let app = window.harness.state_mut();
+    assert!(app.pattern.get(past).is_some());
+    let grown = app.pattern.sheet().expect("a sheet");
+    assert_eq!(grown, small.with(past));
+    app.history.undo(&mut app.pattern);
+    assert_eq!(app.pattern.get(past), None);
+    assert_eq!(app.pattern.sheet(), Some(small));
+    assert!(!app.history.can_undo());
+}
+
 /// The sheet is part of the pattern: it is saved and opens again.
 #[test]
 fn the_sheet_is_saved_with_the_pattern() {
@@ -767,24 +792,28 @@ fn a_bead_in_the_shade_grows_the_work_area() {
     assert_eq!(window.harness.state().pattern.get(further), Some(id_at(0)));
 }
 
-/// The work area is the sheet set and the beads, never kept: when the bead
-/// past the sheet goes, the field is the one of the sheet again.
+/// The sheet grown by a bead stays grown when the bead goes: taking a bead
+/// away is a step of its own. Undo gives the sheet back with the bead.
 #[test]
-fn a_bead_taken_away_gives_the_work_area_back() {
+fn a_bead_taken_away_leaves_the_sheet_grown() {
     let mut window = window();
+    let sheet = window.harness.state().pattern.sheet();
     window.harness.state_mut().view.offset.x -= 600.0;
     window.harness.run();
     let shade = Cell { column: 40, row: 0 };
     window.press(shade, PointerButton::Primary);
     window.press(shade, PointerButton::Primary);
-    assert_eq!(window.harness.state().pattern.get(shade), None);
 
-    window.harness.state_mut().view.offset.x -= 600.0;
-    window.harness.run();
-    let further = Cell { column: 70, row: 0 };
-    window.press(further, PointerButton::Primary);
-
-    assert_eq!(window.harness.state().pattern.get(further), None);
+    let app = window.harness.state_mut();
+    assert_eq!(app.pattern.get(shade), None);
+    assert!(
+        app.pattern
+            .sheet()
+            .is_some_and(|grown| grown.contains(shade))
+    );
+    app.history.undo(&mut app.pattern);
+    app.history.undo(&mut app.pattern);
+    assert_eq!(app.pattern.sheet(), sheet);
 }
 
 /// A new size of the window keeps the middle of the field where it is: the

@@ -23,6 +23,13 @@ fn colour(number: usize) -> String {
     t!("palette.colour", number = number).to_string()
 }
 
+/// Closes the window of the palettes by Escape.
+fn close(window: &mut super::Window) {
+    window.harness.key_press(Key::Escape);
+    window.harness.run();
+    assert!(!window.harness.state().palette_window.open);
+}
+
 /// Taps a place of the window, then an entry of its menu.
 fn choose(window: &mut super::Window, place: &str, entry: &str) {
     window.click(place);
@@ -63,6 +70,7 @@ fn a_new_colour_stays_when_accepted_and_is_undone() {
     let places =
         |window: &super::Window| window.harness.state().pattern.palettes()[0].places()[5].is_some();
     assert!(places(&window));
+    close(&mut window);
 
     let app = window.harness.state_mut();
     app.history.undo(&mut app.pattern);
@@ -81,7 +89,33 @@ fn a_new_colour_not_accepted_is_gone() {
     window.harness.run();
 
     assert!(window.harness.state().pattern.palettes()[0].places()[5].is_none());
+    close(&mut window);
     assert!(!window.harness.state().history.can_undo());
+}
+
+#[test]
+fn the_changes_of_the_window_are_one_step_made_when_it_closes() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    let before = window.harness.state().pattern.palettes().to_vec();
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    let place = t!("palette.place", number = 6).to_string();
+    choose(&mut window, &place, &t!("palette.accept"));
+    choose(&mut window, &colour(1), &t!("palette.remove"));
+    let removed = t!("palette.removed", number = 1).to_string();
+    choose(&mut window, &removed, &delete_beads(1));
+    assert!(!window.harness.state().history.can_undo(), "no step yet");
+
+    close(&mut window);
+    let app = window.harness.state_mut();
+    assert_eq!(app.pattern.get(FREE), None);
+    app.history.undo(&mut app.pattern);
+
+    assert_eq!(app.pattern.palettes(), before.as_slice());
+    assert_eq!(app.pattern.get(FREE), Some(id_at(0)), "the bead is back");
+    app.history.undo(&mut app.pattern);
+    assert_eq!(app.pattern.get(FREE), None, "the next step is the bead");
 }
 
 #[test]
@@ -107,6 +141,7 @@ fn a_removed_colour_keeps_its_beads_and_comes_back_by_undo() {
             .query_by_label(&t!("palette.removed", number = 1))
             .is_some()
     );
+    close(&mut window);
 
     let app = window.harness.state_mut();
     app.history.undo(&mut app.pattern);
@@ -190,6 +225,7 @@ fn a_colour_dragged_onto_another_swaps_with_it() {
     let places = window.harness.state().pattern.palettes()[0].places();
     assert_eq!(places[2].as_ref().map(|found| found.id), Some(id_at(0)));
     assert_eq!(places[0].as_ref().map(|found| found.id), Some(id_at(2)));
+    close(&mut window);
     assert!(window.harness.state().history.can_undo());
 }
 

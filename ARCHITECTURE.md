@@ -50,10 +50,14 @@ Every change goes through `edit::History` (`src/edit.rs`):
 
 ```text
 press on a bead ──► App::press ──► History::paint(cells, colour) ──► one step
+                    a bead past the sheet: the sheet grows, in the same step
 drag            ──► the field moves; the pattern does not change
+window of the palettes open ──► History::begin ... closed ──► History::end
+                    every edit between is one step: `Edit::Many`
 ```
 
-A change of the kind of grid is one step too.
+A change of the kind of grid is one step too. While a batch is open there
+is nothing to undo or redo: its edits are no step yet.
 
 ## Start
 

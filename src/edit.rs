@@ -40,6 +40,8 @@ pub enum Edit {
         /// The sheet after.
         after: Option<Bounds>,
     },
+    /// Edits done as one step: done in order, undone in reverse.
+    Many(Vec<Edit>),
 }
 
 impl Edit {
@@ -54,6 +56,7 @@ impl Edit {
             Edit::Grid { after, .. } => pattern.set_grid(*after),
             Edit::Palettes { after, .. } => put_back(pattern, after),
             Edit::Sheet { after, .. } => pattern.set_sheet(*after),
+            Edit::Many(edits) => edits.iter().for_each(|edit| edit.apply(pattern)),
         }
     }
 
@@ -68,6 +71,7 @@ impl Edit {
             Edit::Grid { before, .. } => pattern.set_grid(*before),
             Edit::Palettes { before, .. } => put_back(pattern, before),
             Edit::Sheet { before, .. } => pattern.set_sheet(*before),
+            Edit::Many(edits) => edits.iter().rev().for_each(|edit| edit.revert(pattern)),
         }
     }
 }
@@ -86,18 +90,51 @@ fn put_back(pattern: &mut Pattern, palettes: &[Palette]) {
 pub struct History {
     done: Vec<Edit>,
     undone: Vec<Edit>,
+    /// The edits of a batch while it is open; they become one step when it
+    /// ends.
+    batch: Option<Vec<Edit>>,
 }
 
 impl History {
     /// Applies an edit and keeps it.
     pub fn apply(&mut self, pattern: &mut Pattern, edit: Edit) {
         edit.apply(pattern);
-        self.done.push(edit);
-        self.undone.clear();
+        self.keep(edit);
+    }
+
+    /// Keeps an edit already applied: in the open batch, or as a step.
+    fn keep(&mut self, edit: Edit) {
+        match &mut self.batch {
+            Some(batch) => batch.push(edit),
+            None => {
+                self.done.push(edit);
+                self.undone.clear();
+            }
+        }
+    }
+
+    /// Opens a batch: the edits kept until it ends are one step. Nothing
+    /// changes when a batch is open already.
+    pub fn begin(&mut self) {
+        self.batch.get_or_insert_with(Vec::new);
+    }
+
+    /// Ends the batch as one step; an empty batch is no step. Nothing
+    /// changes when no batch is open.
+    pub fn end(&mut self) {
+        let Some(mut edits) = self.batch.take() else {
+            return;
+        };
+        match edits.len() {
+            0 => {}
+            1 => self.keep(edits.remove(0)),
+            _ => self.keep(Edit::Many(edits)),
+        }
     }
 
     /// Puts colours in cells as one step; a cell that has its colour already
-    /// is left out, and nothing is kept when no cell changes.
+    /// is left out, and nothing is kept when no cell changes. A bead put past
+    /// the sheet grows the sheet to hold it, in the same step.
     pub fn paint(&mut self, pattern: &mut Pattern, cells: &[Cell], colour: Option<ColourId>) {
         let changes: Vec<Change> = cells
             .iter()
@@ -108,9 +145,23 @@ impl History {
             })
             .filter(|change| change.before != change.after)
             .collect();
-        if !changes.is_empty() {
-            self.apply(pattern, Edit::Beads(changes));
+        if changes.is_empty() {
+            return;
         }
+        let before = pattern.sheet();
+        let after = before.map(|sheet| {
+            changes
+                .iter()
+                .filter(|change| change.after.is_some())
+                .fold(sheet, |sheet, change| sheet.with(change.cell))
+        });
+        let beads = Edit::Beads(changes);
+        let edit = if after == before {
+            beads
+        } else {
+            Edit::Many(vec![Edit::Sheet { before, after }, beads])
+        };
+        self.apply(pattern, edit);
     }
 
     /// Changes the colours by `change` as one step. Nothing is kept when the
@@ -132,8 +183,7 @@ impl History {
     pub fn keep_palettes(&mut self, pattern: &Pattern, before: Vec<Palette>) {
         let after = pattern.palettes().to_vec();
         if after != before {
-            self.done.push(Edit::Palettes { before, after });
-            self.undone.clear();
+            self.keep(Edit::Palettes { before, after });
         }
     }
 
@@ -155,6 +205,7 @@ impl History {
             return;
         }
         if self.undone.is_empty()
+            && self.batch.is_none()
             && let Some(Edit::Sheet { after: last, .. }) = self.done.last_mut()
         {
             *last = Some(after);
@@ -170,18 +221,22 @@ impl History {
         );
     }
 
-    /// True when there is a step to undo.
+    /// True when there is a step to undo. While a batch is open there is
+    /// none: its edits are no step yet.
     pub fn can_undo(&self) -> bool {
-        !self.done.is_empty()
+        self.batch.is_none() && !self.done.is_empty()
     }
 
-    /// True when there is a step to redo.
+    /// True when there is a step to redo, and no batch is open.
     pub fn can_redo(&self) -> bool {
-        !self.undone.is_empty()
+        self.batch.is_none() && !self.undone.is_empty()
     }
 
     /// Undoes the last step.
     pub fn undo(&mut self, pattern: &mut Pattern) {
+        if self.batch.is_some() {
+            return;
+        }
         if let Some(edit) = self.done.pop() {
             edit.revert(pattern);
             self.undone.push(edit);
@@ -190,6 +245,9 @@ impl History {
 
     /// Does again the last step undone.
     pub fn redo(&mut self, pattern: &mut Pattern) {
+        if self.batch.is_some() {
+            return;
+        }
         if let Some(edit) = self.undone.pop() {
             edit.apply(pattern);
             self.done.push(edit);

@@ -34,7 +34,9 @@ An editor of bead patterns, for Linux, Windows and Android.
   as a block. A tap on a place opens the picker of its colour; the colour
   stays when it is accepted. A colour is moved to another palette, removed,
   or dragged onto another place, which swaps the two. A removed colour keeps
-  its beads, hatched, until a colour is put in its place again.
+  its beads, hatched, until a colour is put in its place again. All that
+  is changed while the window is open is one step of undo, made when it
+  closes.
 - A press on a bead switches it: to the colour in hand, or to empty when it
   has that colour already. The second button does nothing. On a touch screen
   a tap is the first button.
