@@ -63,15 +63,6 @@ palette.bead:
 palette.empty:
   en: "Empty place"
   ru: "Пустое место"
-palette.first:
-  en: "First colour"
-  ru: "Первый цвет"
-palette.second:
-  en: "Second colour"
-  ru: "Второй цвет"
-palette.swap:
-  en: "Swap the colours"
-  ru: "Поменять цвета"
 
 file.save:
   en: "Save"

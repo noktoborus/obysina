@@ -22,12 +22,11 @@ An editor of bead patterns, for Linux, Windows and Android.
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
     the picker, the kind of grid, the columns and the rows of the sheet,
     save;
-  - **Beads**: the colours of the pattern with their counts, an empty place,
-    and the two colours in hand.
+  - **Beads**: the colours of the pattern with their counts and an empty
+    place. The one in hand is marked.
 - A press on a bead switches it: to the colour in hand, or to empty when it
-  has that colour already. The first button uses the first colour, the second
-  button the second. On a touch screen a tap is the first button, and the
-  button with the turning arrows swaps the colours.
+  has that colour already. The second button does nothing. On a touch screen
+  a tap is the first button.
 - The field turns by quarters, both ways: 90, 180, 270 and 360 degrees,
   which is where it started. Only the showing turns, not the beads, so a
   turn is no step of undo. The turn is saved with the pattern, which opens

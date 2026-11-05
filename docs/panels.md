@@ -29,8 +29,7 @@ rules themselves are `crates/obusina-panel/README.md`.
    groups. In a column, two buttons on a line, so the column is half as tall.
    They do not break into lines by length: a panel that does not fit turns.
 7. **The beads fit by length.** They count how many swatches stand in a
-   line, so the swatches and the colours in hand fit: a palette is long
-   either way.
+   line, so the swatches fit: a palette is long either way.
    - Why not a wrapping layout of egui: a column of egui that wraps starts
      its next column after the whole width it was offered, and the panel
      grows every frame.

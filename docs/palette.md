@@ -144,9 +144,6 @@ tap a "+" ──► the colour farthest from the others and the paper, its menu 
 The steps that bring the window to the design. Each is one commit, its
 test of the window with it (`RULE test.window`).
 
-0. **One colour in hand.** `App::colours` becomes one colour; the second
-   button of a swatch, the swatches in hand and the swap go. README and the
-   window tests change with it. By decisions 8 and 14: the right button does nothing.
 1. **The model.** `Pattern` holds palettes of at most `MAX_COLOURS` places; a
    file with more is refused, `PatternError::Palette`. A colour has an id, and
    a bead holds it. A colour is added, changed, moved and removed through
@@ -172,9 +169,11 @@ test of the window with it (`RULE test.window`).
 
 ## Where the work stands
 
+- Done in the window: decision 8, one colour in hand, and the second button
+  does nothing.
 - Done: decisions 1 to 7 and 10 to 15 as mockups, with no shake; `PlateMenu` takes a widget as its
   notice and leaves its drags and focused keys to it; the tools of the
   mockups: notes on a widget by its path, the list of notes, a comment to
   the chat, the mockup frozen while a note is written.
 - No note waits on the desk `obusina` of showcase.
-- Next: steps 0 and 1 of the plan.
+- Next: step 1 of the plan.

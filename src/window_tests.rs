@@ -156,15 +156,16 @@ fn a_second_press_empties_the_bead() {
 }
 
 #[test]
-fn a_press_of_the_second_button_paints_the_second_colour() {
+fn the_second_button_does_nothing() {
     let mut window = window();
     let red = swatch(window.harness.state(), 2);
     window.harness.get_by_label(&red).click_secondary();
     window.harness.run();
+    assert_eq!(window.harness.state().colour, Some(0));
 
     window.press(FREE, PointerButton::Secondary);
 
-    assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
+    assert_eq!(window.harness.state().pattern.get(FREE), None);
 }
 
 #[test]
@@ -192,13 +193,15 @@ fn a_press_is_undone_and_redone() {
 }
 
 #[test]
-fn the_second_colour_is_reached_by_a_button() {
+fn a_tap_on_a_swatch_takes_the_colour_in_hand() {
     let mut window = window();
-    assert_eq!(window.harness.state().colours, [Some(0), None]);
+    let red = swatch(window.harness.state(), 2);
 
-    window.click(&t!("palette.swap"));
+    window.click(&red);
+    window.press(FREE, PointerButton::Primary);
 
-    assert_eq!(window.harness.state().colours, [None, Some(0)]);
+    assert_eq!(window.harness.state().colour, Some(2));
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(2));
 }
 
 #[test]
@@ -255,9 +258,6 @@ fn every_widget_has_a_name() {
         t!("grid.kind"),
         t!("file.save"),
         t!("palette.empty"),
-        t!("palette.first"),
-        t!("palette.second"),
-        t!("palette.swap"),
     ] {
         window.harness.get_by_label(&name);
     }
@@ -347,11 +347,11 @@ fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
     window.harness.set_size(narrow);
     window.harness.run();
 
-    let swap = window.harness.get_by_label(&t!("palette.swap")).rect();
-    assert!(swap.max.x <= narrow.x, "{swap:?}");
+    let empty = window.harness.get_by_label(&t!("palette.empty")).rect();
+    assert!(empty.max.x <= narrow.x, "{empty:?}");
     assert!(
-        swap.max.x > narrow.x - 3.0 * crate::ui::button::SIZE.x,
-        "{swap:?}"
+        empty.max.x > narrow.x - 3.0 * crate::ui::button::SIZE.x,
+        "{empty:?}"
     );
 }
 
@@ -390,12 +390,14 @@ fn the_beads_fit_a_short_window() {
 #[test]
 fn a_panel_in_the_centre_keeps_its_shape() {
     let mut window = window();
+    let first = swatch(window.harness.state(), 0);
+    let third = swatch(window.harness.state(), 2);
     window.drag(&t!("panel.palette"), pos2(SIZE.x - 8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("palette.first"), &t!("palette.second")));
+    assert!(window.stacked(&first, &third));
 
     window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
 
-    assert!(window.stacked(&t!("palette.first"), &t!("palette.second")));
+    assert!(window.stacked(&first, &third));
 }
 
 #[test]
@@ -629,9 +631,6 @@ fn every_button_of_the_panels_has_one_size() {
         t!("sheet.height"),
         t!("file.save"),
         t!("palette.empty"),
-        t!("palette.first"),
-        t!("palette.second"),
-        t!("palette.swap"),
         first.into(),
     ] {
         let size = window.harness.get_by_label(&name).rect().size();
@@ -855,18 +854,16 @@ fn the_buttons_of_a_row_stand_on_one_line() {
     let first = swatch(window.harness.state(), 0);
     let line = window.harness.get_by_label(&first).rect().center().y;
 
-    for name in [
-        t!("palette.empty"),
-        t!("palette.first"),
-        t!("palette.second"),
-        t!("palette.swap"),
-    ] {
-        let centre = window.harness.get_by_label(&name).rect().center().y;
-        assert!(
-            (centre - line).abs() < 0.5,
-            "{name} at {centre}, the row at {line}"
-        );
-    }
+    let centre = window
+        .harness
+        .get_by_label(&t!("palette.empty"))
+        .rect()
+        .center()
+        .y;
+    assert!(
+        (centre - line).abs() < 0.5,
+        "the empty place at {centre}, the row at {line}"
+    );
 }
 
 #[test]

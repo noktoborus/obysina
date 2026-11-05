@@ -46,9 +46,8 @@ pub struct App {
     pub(crate) view: View,
     /// What a press does.
     pub(crate) tool: Tool,
-    /// The colour of the first and of the second press; `None` is an empty
-    /// place.
-    pub(crate) colours: [Option<usize>; 2],
+    /// The colour in hand; `None` is an empty place.
+    pub(crate) colour: Option<usize>,
     /// The steps to undo and redo.
     pub(crate) history: History,
     /// A line for the user: what was saved, what failed.
@@ -81,7 +80,7 @@ impl App {
             path,
             view,
             tool: Tool::Pencil,
-            colours: [Some(0), None],
+            colour: Some(0),
             history: History::default(),
             message,
             menu: plate_menu::PlateMenu::new(),
@@ -142,22 +141,21 @@ impl App {
         });
     }
 
-    /// Does what the tool does to a bead pressed on.
+    /// Does what the tool does to a bead pressed on. The second button does
+    /// nothing.
     fn press(&mut self, cell: Cell, press: Press) {
-        let which = match press {
-            Press::Primary => 0,
-            Press::Secondary => 1,
-        };
-        let colour = self.colours[which];
+        if press != Press::Primary {
+            return;
+        }
         match self.tool {
             Tool::Pencil => {
                 let switched = match self.pattern.get(cell) {
-                    present if present == colour => None,
-                    _ => colour,
+                    present if present == self.colour => None,
+                    _ => self.colour,
                 };
                 self.history.paint(&mut self.pattern, &[cell], switched);
             }
-            Tool::Pick => self.colours[which] = self.pattern.get(cell),
+            Tool::Pick => self.colour = self.pattern.get(cell),
         }
     }
 

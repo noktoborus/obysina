@@ -1,5 +1,5 @@
-//! The floating panel of beads: the colours of the pattern and the two in
-//! hand.
+//! The floating panel of beads: the colours of the pattern, the one in hand
+//! marked.
 
 use egui::{Color32, vec2};
 use rust_i18n::t;
@@ -7,7 +7,6 @@ use rust_i18n::t;
 use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
 
 use crate::app::App;
-use crate::ui::tools::gap;
 use crate::ui::{button, icons};
 
 /// The name the place of the panel is kept by.
@@ -18,11 +17,6 @@ const SPACING: egui::Vec2 = vec2(4.0, 4.0);
 const ROW: usize = 8;
 /// Swatches in one line of a column, when the window is tall enough.
 const COLUMN: usize = 2;
-/// The buttons after the swatches: the two colours in hand and the swap.
-const IN_HAND: usize = 3;
-/// The item spacings between the swatches and the buttons in hand: the one
-/// after the swatches and the two of the gap.
-const GAP_SPACES: f32 = 3.0;
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
@@ -34,10 +28,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
         .placement(placement)
         .show(context, |ui, room| {
             let count = app.pattern.palette().len() + 1;
-            let spacing = ui.spacing().item_spacing;
-            swatches(app, ui, per_line(room, count, spacing));
-            gap(ui, room.orientation);
-            in_hand(app, ui);
+            swatches(app, ui, per_line(room, count));
         });
     if shown.changed {
         app.keep_panel(NAME, shown.placement);
@@ -45,19 +36,14 @@ pub fn show(app: &mut App, context: &egui::Context) {
 }
 
 /// How many of `count` swatches stand in one line, so the block of swatches
-/// and the colours in hand after it fit the length of `room`.
+/// fits the length of `room`.
 ///
 /// In a row a line runs along the panel: it holds [`ROW`], or fewer when the
 /// window is narrow. In a column the lines are stacked along the panel: a
 /// line holds [`COLUMN`], or more when the window is too short for the lines.
-fn per_line(room: Room, count: usize, spacing: egui::Vec2) -> usize {
+fn per_line(room: Room, count: usize) -> usize {
     let step = button::SIZE + SPACING;
-    let (button, space) = match room.orientation {
-        Orientation::Horizontal => (button::SIZE.x, spacing.x),
-        Orientation::Vertical => (button::SIZE.y, spacing.y),
-    };
-    let in_hand = IN_HAND as f32 * (button + space) + GAP_SPACES * space;
-    let length = room.length - in_hand;
+    let length = room.length;
     match room.orientation {
         Orientation::Horizontal => {
             let fit = ((length + SPACING.x) / step.x).floor() as usize;
@@ -97,28 +83,13 @@ fn swatches(app: &mut App, ui: &mut egui::Ui, per_line: usize) {
                         .to_string(),
                         None => t!("palette.empty").to_string(),
                     };
-                    let response = swatch(app, ui, colour, app.colours[0] == colour, &name);
-                    if response.clicked() {
-                        app.colours[0] = colour;
-                    }
-                    if response.secondary_clicked() {
-                        app.colours[1] = colour;
+                    if swatch(app, ui, colour, app.colour == colour, &name).clicked() {
+                        app.colour = colour;
                     }
                 }
             });
         }
     });
-}
-
-/// The two colours in hand and the button that swaps them, which is the way
-/// to the second colour by touch (`RULE ui.touch`).
-fn in_hand(app: &mut App, ui: &mut egui::Ui) {
-    let [first, second] = app.colours;
-    swatch(app, ui, first, false, &t!("palette.first"));
-    swatch(app, ui, second, false, &t!("palette.second"));
-    if button::icon(ui, icons::SWAP, &t!("palette.swap"), true).clicked() {
-        app.colours.swap(0, 1);
-    }
 }
 
 /// The swatch of a colour of the palette, or of an empty place.
