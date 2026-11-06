@@ -7,7 +7,7 @@
 
 use egui_kittest::kittest::Queryable;
 use egui_kittest::{Harness, SnapshotOptions};
-use plate_menu::{MenuItem, PlateMenu};
+use plate_menu::{Detail, MenuItem, PlateMenu};
 
 /// Where the pictures are kept: beside the README, which shows them.
 const PICTURES: &str = "img";
@@ -179,6 +179,39 @@ fn entries_with_a_zone_that_steps_in() {
     // Near its lower left corner, so the pointer leaves the mark in it seen.
     harness.hover_at(zone.left_bottom() + egui::vec2(4.0, -4.0));
     picture(&mut harness, "split");
+}
+
+/// A widget of the caller right of a label, a swatch of a colour, beside
+/// details that are texts.
+#[test]
+fn a_widget_right_of_a_label() {
+    let swatch = |colour: egui::Color32| {
+        Detail::widget(40.0, move |ui: &mut egui::Ui| {
+            let (rect, _) = ui.allocate_exact_size(
+                egui::vec2(40.0, ui.available_height()),
+                egui::Sense::hover(),
+            );
+            ui.painter().rect_filled(rect, 3.0, colour);
+            ui.painter().rect_stroke(
+                rect,
+                3.0,
+                ui.visuals().widgets.noninteractive.bg_stroke,
+                egui::StrokeKind::Inside,
+            );
+        })
+    };
+    let menu = opened(vec![
+        MenuItem::new("grid", "Grid").detail("Loom").children(vec![
+            MenuItem::new("loom", "Loom"),
+            MenuItem::new("peyote", "Peyote"),
+        ]),
+        MenuItem::new("paper", "Colour of the paper")
+            .detail(swatch(egui::Color32::from_rgb(0xd6, 0xd4, 0xce))),
+        MenuItem::new("ink", "Colour of the ink")
+            .detail(swatch(egui::Color32::from_rgb(0x2f, 0x5f, 0xb3))),
+    ]);
+    let mut harness = harness(menu, egui::vec2(480.0, 260.0));
+    picture(&mut harness, "detail-widget");
 }
 
 /// A drag up by three plates: the rows followed the pointer, the selection

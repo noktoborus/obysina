@@ -14,7 +14,17 @@
 //!             │                          "Undo" puts it back
 //!             │       select: a mark on the cards; a tap marks or unmarks;
 //!             │               a bar on top: the count, export, to the trash, ✖
-//!             └──the plate of the trash, after the cards ──► the trash
+//!             └──one row after the cards, two plates sharing it evenly:
+//!                 the trash ──► the trash
+//!                 "Export all" ──► one .obusiny, tar.xz, of every pattern of
+//!                         the list, with no picture and no history
+//! import ──► a .obusina, one pattern, or a .obusiny, many; each pattern:
+//!             an id the list has not ──────────────► kept with its id
+//!             an id of a pattern the same ─────────► not imported
+//!             an id of a pattern that differs ────► kept as a copy, a new id
+//!           the same: every field that means something but the name;
+//!           a bar at the bottom: "Imported new: <n>, copies: <n>, already
+//!           there: <names>"; it never says "id"
 //! the trash ──► the plate "Back";
 //!               its cards, each with the days it has left;
 //!               the plate "Empty the trash…" after them
@@ -29,9 +39,9 @@
 //! of a card keeps the sides of its sheet, with margins where it is narrower
 //! than the card.
 //!
-//! The plate of the trash, and in the trash the plate that empties it, stand
-//! at the bottom edge of the screen while the cards leave room above them;
-//! with more cards they come after them.
+//! The row of the trash and the export, and in the trash the plate that
+//! empties it, stand at the bottom edge of the screen while the cards leave
+//! room above them; with more cards they come after them.
 //!
 //! The search line shows only when the cards do not fit the screen; it
 //! scrolls with them, above the first. The cards fill the width: as many
@@ -136,6 +146,8 @@ pub struct Projects {
     undo: Option<(String, f64)>,
     /// The cards chosen, while cards are being chosen.
     chosen: Option<BTreeSet<usize>>,
+    /// A bar at the bottom that tells what was done, and the time it goes.
+    told: Option<(String, f64)>,
     /// What the last tap did, said under the screen.
     done: String,
 }
@@ -183,6 +195,7 @@ impl Projects {
             renaming: Arc::new(Mutex::new(String::new())),
             undo: None,
             chosen: None,
+            told: None,
             done: String::new(),
         }
     }
@@ -366,6 +379,34 @@ impl Projects {
     /// trash, while its time lasts.
     fn undo_bar(&mut self, ui: &mut egui::Ui, lang: Lang, screen: Rect) {
         let time = ui.input(|input| input.time);
+        if self.undo.is_none()
+            && let Some((said, until)) = self.told.clone()
+        {
+            if time > until {
+                self.told = None;
+                return;
+            }
+            ui.ctx().request_repaint();
+            let painter = ui.painter();
+            let galley = painter.layout(
+                said,
+                egui::FontId::proportional(13.0),
+                ui.visuals().panel_fill,
+                screen.width() - 48.0,
+            );
+            let height = PLATE.max(galley.size().y + 24.0);
+            let bar = Rect::from_min_max(
+                pos2(screen.left() + 8.0, screen.bottom() - 8.0 - height),
+                pos2(screen.right() - 8.0, screen.bottom() - 8.0),
+            );
+            painter.rect_filled(bar, 6.0, ui.visuals().strong_text_color());
+            painter.galley(
+                bar.left_center() + vec2(16.0, -galley.size().y / 2.0),
+                galley,
+                ui.visuals().panel_fill,
+            );
+            return;
+        }
         let Some((said, until)) = self.undo.clone() else {
             return;
         };
@@ -582,17 +623,24 @@ impl Projects {
         painter.rect_filled(rect, 6.0, ui.visuals().faint_bg_color);
         painter.rect_stroke(rect, 6.0, visuals.bg_stroke, egui::StrokeKind::Inside);
         painter.text(
-            rect.left_center() + vec2(16.0, 0.0),
+            rect.left_center() + vec2(12.0, 0.0),
             egui::Align2::LEFT_CENTER,
             icon,
             egui::FontId::proportional(24.0),
             visuals.fg_stroke.color,
         );
-        painter.text(
-            rect.left_center() + vec2(56.0, 0.0),
-            egui::Align2::LEFT_CENTER,
-            words,
-            egui::FontId::proportional(14.0),
+        // A plate too narrow for its words on one line puts what follows
+        // " · ", a count, on a line of its own, never cutting a word.
+        let room = rect.width() - 48.0 - 8.0;
+        let font = egui::FontId::proportional(14.0);
+        let colour = visuals.fg_stroke.color;
+        let mut galley = painter.layout_no_wrap(words.to_owned(), font.clone(), colour);
+        if galley.size().x > room {
+            galley = painter.layout(words.replacen(" \u{b7} ", "\n", 1), font, colour, room);
+        }
+        painter.galley(
+            rect.left_center() + vec2(48.0, -galley.size().y / 2.0),
+            galley,
             visuals.fg_stroke.color,
         );
         named(ui.ctx(), response.clone(), words);
@@ -637,8 +685,20 @@ impl Projects {
                             let words = lang.tr("Import", "Импортировать");
                             if Self::action_card(ui, card, IMPORT, words) {
                                 self.done = lang
-                                    .tr("import: the choice of a file", "импорт: выбор файла")
+                                    .tr(
+                                        "import: the choice of a file, .obusina or .obusiny",
+                                        "импорт: выбор файла, .obusina или .obusiny",
+                                    )
                                     .to_owned();
+                                let time = ui.input(|input| input.time);
+                                self.told = Some((
+                                    lang.tr(
+                                        "Imported new: 2, copies: 1, already there: \u{ab}Daisies\u{bb}",
+                                        "Импортировано новых: 2, копий: 1, уже есть: \u{ab}Ромашки\u{bb}",
+                                    )
+                                    .to_owned(),
+                                    time + UNDO_SECONDS,
+                                ));
                             }
                         }
                         Some(index) => {
@@ -669,22 +729,56 @@ impl Projects {
                 }
             });
         }
-        if !self.trash.is_empty() {
-            to_the_bottom(ui, top, visible);
-            let count = self.trash.len();
-            let words = format!(
-                "{} · {count} {}",
-                lang.tr("Trash", "Корзина"),
-                lang.tr(
-                    if count == 1 { "pattern" } else { "patterns" },
-                    russian(count, ["схема", "схемы", "схем"]),
-                ),
-            );
-            if Self::plate(ui, width, TRASH, &words) {
-                self.view = View::Trash;
-                self.query.clear();
-            }
+        let export = self.count > 0;
+        let trash = !self.trash.is_empty();
+        if !export && !trash {
+            return;
         }
+        to_the_bottom(ui, top, visible);
+        // One row: the trash, then the export; each its share of the width.
+        let shares = usize::from(export) + usize::from(trash);
+        let share = (width - (shares - 1) as f32 * GAP) / shares as f32;
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = GAP;
+            if trash {
+                let count = self.trash.len();
+                let words = format!(
+                    "{} · {count} {}",
+                    lang.tr("Trash", "Корзина"),
+                    lang.tr(
+                        if count == 1 { "pattern" } else { "patterns" },
+                        russian(count, ["схема", "схемы", "схем"]),
+                    ),
+                );
+                if Self::plate(ui, share, TRASH, &words) {
+                    self.view = View::Trash;
+                    self.query.clear();
+                }
+            }
+            if export {
+                let words = format!(
+                    "{} · {} {}",
+                    lang.tr("Export all", "Экспортировать всё"),
+                    self.count,
+                    lang.tr(
+                        if self.count == 1 {
+                            "pattern"
+                        } else {
+                            "patterns"
+                        },
+                        russian(self.count, ["схема", "схемы", "схем"]),
+                    ),
+                );
+                if Self::plate(ui, share, EXPORT, &words) {
+                    self.done = lang
+                        .tr(
+                            "the choice of a file: obusina-2026-11-06.obusiny",
+                            "выбор файла: obusina-2026-11-06.obusiny",
+                        )
+                        .to_owned();
+                }
+            }
+        });
     }
 
     /// The trash: the plate back to the list; its patterns, each with the
@@ -781,8 +875,9 @@ impl Projects {
     }
 }
 
-/// Leaves room before a plate, so that it stands at the bottom edge of the
-/// screen, `visible` high, when what came since `top` leaves room for it.
+/// Leaves room before a row of plates, so that it stands at the bottom edge
+/// of the screen, `visible` high, when what came since `top` leaves room for
+/// it.
 fn to_the_bottom(ui: &mut egui::Ui, top: f32, visible: f32) {
     let room = visible - (ui.cursor().top() - top) - PLATE;
     if room > 0.0 {

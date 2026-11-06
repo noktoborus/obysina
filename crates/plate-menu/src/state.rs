@@ -3,6 +3,7 @@
 //! The state is a value of its own, without a toolkit in it, so walking the
 //! tree, searching it and moving the selection are tested without a window.
 
+use crate::detail::Detail;
 use crate::item::MenuItem;
 use crate::search::{item_at, level, path_of, search};
 
@@ -21,8 +22,8 @@ pub struct Row {
     pub matched_parents: Vec<usize>,
     /// Characters of the label the query matched, by index.
     pub matched_label: Vec<usize>,
-    /// Text shown right of the label.
-    pub detail: String,
+    /// What stands right of the label.
+    pub detail: Detail,
     /// Text shown while the pointer rests on the row.
     pub hint: String,
     /// The whole of what the label was cut from, empty when the label is the
@@ -483,7 +484,7 @@ fn back_row(label: &str) -> Row {
         parents: String::new(),
         matched_parents: Vec::new(),
         matched_label: Vec::new(),
-        detail: String::new(),
+        detail: Detail::default(),
         hint: String::new(),
         full: String::new(),
         enabled: true,

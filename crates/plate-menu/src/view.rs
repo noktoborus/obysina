@@ -2,6 +2,7 @@
 
 mod whole;
 
+use crate::detail::Detail;
 use crate::error::{MenuError, Result};
 use crate::item::MenuItem;
 use crate::notice::Notice;
@@ -940,14 +941,27 @@ fn plate(
             .text(right, Align2::RIGHT_CENTER, INTO, font.clone(), color);
         right.x -= drawn.width() + PADDING.x;
     }
-    if !row.detail.is_empty() {
-        ui.painter().text(
-            right,
-            Align2::RIGHT_CENTER,
-            &row.detail,
-            font,
-            visuals.weak_text_color(),
-        );
+    match &row.detail {
+        Detail::Text(text) => {
+            ui.painter().text(
+                right,
+                Align2::RIGHT_CENTER,
+                text,
+                font,
+                visuals.weak_text_color(),
+            );
+        }
+        Detail::Widget { width, show } => {
+            let size = Vec2::new(*width, ui.text_style_height(&egui::TextStyle::Body));
+            let place = Rect::from_min_size(right - Vec2::new(size.x, size.y / 2.0), size);
+            let mut child = ui.new_child(
+                egui::UiBuilder::new()
+                    .id_salt(("detail", &row.path))
+                    .max_rect(place)
+                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
+            );
+            show(&mut child);
+        }
     }
 
     let response = if row.hint.is_empty() {
@@ -1010,8 +1024,16 @@ fn plate_width(context: &Context, rows: &[Row]) -> f32 {
         .iter()
         .map(|row| {
             let mut text = row.label.clone();
-            if !row.detail.is_empty() {
-                text = format!("{text}    {}", row.detail);
+            let mut widget = 0.0;
+            match &row.detail {
+                Detail::Text(detail) if !detail.is_empty() => {
+                    text = format!("{text}    {detail}");
+                }
+                Detail::Text(_) => {}
+                Detail::Widget { width, .. } => {
+                    text.push_str("    ");
+                    widget = *width;
+                }
             }
             if row.has_children && !row.is_split() {
                 text = format!("{text}  {INTO}");
@@ -1030,6 +1052,7 @@ fn plate_width(context: &Context, rows: &[Row]) -> f32 {
                     .size()
                     .x
             }) + zone
+                + widget
         })
         .fold(0.0_f32, f32::max);
 

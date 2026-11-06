@@ -2,6 +2,7 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+mod detail;
 mod error;
 mod item;
 mod notice;
@@ -9,6 +10,7 @@ mod search;
 mod state;
 mod view;
 
+pub use detail::Detail;
 pub use error::{MenuError, Result};
 pub use item::MenuItem;
 pub use notice::Notice;

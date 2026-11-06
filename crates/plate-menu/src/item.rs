@@ -1,5 +1,7 @@
 //! Entries of a menu.
 
+use crate::detail::Detail;
+
 /// One entry of a menu.
 ///
 /// An entry is either something that can be chosen, a parent carrying more
@@ -10,9 +12,9 @@ pub struct MenuItem {
     pub id: String,
     /// Text of the entry.
     pub label: String,
-    /// Text shown right of the label — a key sequence, a value, a count —
-    /// empty when there is none.
-    pub detail: String,
+    /// What stands right of the label — a key sequence, a value, a count, a
+    /// widget — an empty text when there is none.
+    pub detail: Detail,
     /// Text shown while the pointer rests on the entry, empty when there is
     /// none.
     pub hint: String,
@@ -43,7 +45,7 @@ impl MenuItem {
         Self {
             id: id.into(),
             label: label.into(),
-            detail: String::new(),
+            detail: Detail::default(),
             hint: String::new(),
             search: String::new(),
             searchable: true,
@@ -65,9 +67,10 @@ impl MenuItem {
         }
     }
 
-    /// Text shown right of the label, which is where a key sequence, a value or
-    /// a count belongs.
-    pub fn detail(mut self, detail: impl Into<String>) -> Self {
+    /// What stands right of the label, which is where a key sequence, a value
+    /// or a count belongs: a text, or a widget of the caller, a swatch of a
+    /// colour say.
+    pub fn detail(mut self, detail: impl Into<Detail>) -> Self {
         self.detail = detail.into();
         self
     }

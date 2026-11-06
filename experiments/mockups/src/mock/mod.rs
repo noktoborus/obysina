@@ -1,13 +1,22 @@
 //! The mockups of obusina, one module each, shown by the gallery of
 //! `showcase`. A mockup goes when the window has what it drew.
 
+mod glow;
 mod projects;
+mod settings;
 
 pub use showcase::{Lang, Mockup, named};
 
+/// The size of a button of a panel, `button::SIZE` of the window.
+pub const BUTTON: egui::Vec2 = egui::vec2(44.0, 36.0);
+
 /// Every mockup, in the order of the gallery.
 pub fn all() -> Vec<Box<dyn Mockup>> {
-    vec![Box::new(projects::Projects::new())]
+    vec![
+        Box::new(projects::Projects::new()),
+        Box::new(settings::Settings::new()),
+        Box::new(glow::Glow::new()),
+    ]
 }
 
 #[cfg(test)]

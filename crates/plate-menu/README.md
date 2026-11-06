@@ -56,7 +56,7 @@ and never read: what `Shift+Enter` means is the caller's.
 | --- | --- |
 | `new(id, label)` | an entry |
 | `separator()` | a line |
-| `detail(text)` | right of the label: a key, a value, a count |
+| `detail(text)`, `detail(Detail::widget(width, f))` | right of the label: a key, a value, a count, or a widget of the caller |
 | `hint(text)` | under the pointer |
 | `search(text)` | more text the query matches, drawn nowhere |
 | `searchable(false)` | no query finds it; reached through its parent |
@@ -75,7 +75,7 @@ and never read: what `Shift+Enter` means is the caller's.
 | notice | `notice(text)`, wrapped, or a widget of the caller, above everything |
 | query | while typing, under the notice, with its caret |
 | `›` | the entry has children |
-| detail | right of the label, weak |
+| detail | right of the label: a text, weak, or a widget of the caller |
 | line | `separator()` |
 | weak label | `enabled(false)` |
 | strips | only while not all plates fit: a wave above and below, with the number of entries hidden on that side |
@@ -144,6 +144,15 @@ screen; a mouse drag does the same.
 | wheel | walks the selection, as `Down` and `Up` do |
 
 ![A drag of three plates][picture-drag]
+
+### A widget right of the label
+
+`Detail::widget(width, f)` draws `f` in a box `width` wide and as high as
+the text of the plate, right of the label, on every frame the entry is shown.
+It shows a value, a colour say. A click on it is a click on the plate, so it
+holds nothing that takes one. The width of the menu counts the box.
+
+![A swatch right of a label][picture-detail-widget]
 
 ## Levels
 
@@ -340,3 +349,4 @@ uses `layer_id`.
 [picture-search-empty]: img/search-empty.png
 [picture-split]: img/split.png
 [picture-drag]: img/drag.png
+[picture-detail-widget]: img/detail-widget.png
