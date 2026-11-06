@@ -1,12 +1,13 @@
 //! The mockups of obusina, one module each, shown by the gallery of
-//! `showcase`. A mockup goes when the window has what it drew; none waits
-//! now.
+//! `showcase`. A mockup goes when the window has what it drew.
 
-pub use showcase::Mockup;
+mod projects;
+
+pub use showcase::{Lang, Mockup, named};
 
 /// Every mockup, in the order of the gallery.
 pub fn all() -> Vec<Box<dyn Mockup>> {
-    Vec::new()
+    vec![Box::new(projects::Projects::new())]
 }
 
 #[cfg(test)]
