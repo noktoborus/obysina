@@ -36,9 +36,12 @@ pub struct Lines<'a> {
     pub size: String,
     /// When it changed, or the days it has left in the trash.
     pub last: String,
+    /// The paper of the pattern, the ground of its picture.
+    pub paper: Color32,
 }
 
-/// One card: its picture, its name, its size and `last`; the mark of a
+/// One card: its picture on the paper of the pattern, which fills the
+/// place of the picture; its name, its size and `last`; the mark of a
 /// choice when `mark` is given; the frame of the keys when `focused`.
 pub fn card(
     ui: &mut egui::Ui,
@@ -62,6 +65,7 @@ pub fn card(
         rect.min + Vec2::splat(CARD_MARGIN),
         vec2(inner, inner * THUMB_RATIO),
     );
+    painter.rect_filled(frame, 4.0, lines.paper);
     if let Some((texture, sides)) = picture {
         let scale = (frame.width() / sides.x).min(frame.height() / sides.y);
         let shown = Rect::from_center_size(frame.center(), sides * scale);
@@ -237,6 +241,7 @@ fn thumb(pattern: &Pattern) -> Option<(ColorImage, Vec2)> {
     Some((ColorImage::new([columns, height], pixels), sides))
 }
 
-fn colour(Rgb([red, green, blue]): Rgb) -> Color32 {
+/// A colour of the pattern as the toolkit draws it.
+pub fn colour(Rgb([red, green, blue]): Rgb) -> Color32 {
     Color32::from_rgb(red, green, blue)
 }

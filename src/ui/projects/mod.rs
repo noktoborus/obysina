@@ -314,7 +314,7 @@ fn take_answers(app: &mut App, context: &egui::Context) {
     match app.projects.saver.take() {
         Some(Saved::Done) => app.projects.tell(t!("projects.exported").to_string()),
         Some(Saved::Failed) => app.projects.tell(t!("error.export").to_string()),
-        Some(Saved::GivenUp) | None => {}
+        Some(Saved::Downloaded | Saved::GivenUp) | None => {}
     }
     let _ = context;
 }
@@ -538,6 +538,7 @@ fn list(
                             name: entry.pattern.name(),
                             size: size_words(&entry.pattern),
                             last: when(entry.changed, today),
+                            paper: cards::colour(entry.pattern.paper()),
                         };
                         let mark = app
                             .projects
@@ -655,6 +656,7 @@ fn trash(
                         days = plural(days as usize, DAYS)
                     )
                     .to_string(),
+                    paper: cards::colour(trashed.pattern.paper()),
                 };
                 let focused = app.projects.focus == Some(row * columns + place);
                 let picture = app
