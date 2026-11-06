@@ -22,14 +22,33 @@ build-android:
 	cargo ndk -t arm64-v8a build --release -p obusina-android
 
 # The package of android, built by gradle, which builds the library of every
-# ABI itself. It needs ANDROID_HOME and ANDROID_NDK_HOME. `apk` is a release
-# never signed, whatever the environment: target/obusina-unsigned.apk.
-# `apk-release` is signed when OBUSINA_KEYSTORE names a keystore
-# (android/README.md), else unsigned: target/obusina-release.apk.
-apk:
+# ABI itself. It needs ANDROID_HOME and ANDROID_NDK_HOME.
+#
+# `apk` is a release signed with the debug key DEBUG_KEY, made by keytool when
+# it is missing: target/obusina.apk, installable by hand, not for a store.
+# The key lives outside the repositories (android/README.md).
+# `apk-release` is signed when OBUSINA_KEYSTORE names a keystore, else
+# unsigned: target/obusina-release.apk.
+DEBUG_KEY ?= $(abspath ../android-key/debug.keystore)
+# The build tools of /opt/packages.sh, which the Android Gradle plugin uses.
+BUILD_TOOLS = $(ANDROID_HOME)/build-tools/36.0.0
+
+apk: $(DEBUG_KEY)
 	cd android && env -u OBUSINA_KEYSTORE ./gradlew --no-daemon assembleRelease
 	mkdir -p target
-	cp android/app/build/outputs/apk/release/app-release-unsigned.apk target/obusina-unsigned.apk
+	$(BUILD_TOOLS)/zipalign -c -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk
+	$(BUILD_TOOLS)/apksigner sign --ks $(DEBUG_KEY) --ks-pass pass:android \
+		--ks-key-alias androiddebugkey --key-pass pass:android \
+		--out target/obusina.apk android/app/build/outputs/apk/release/app-release-unsigned.apk
+	rm -f target/obusina.apk.idsig
+	$(BUILD_TOOLS)/apksigner verify target/obusina.apk
+
+# The debug key: the one the Android Gradle plugin makes, with its passwords.
+$(DEBUG_KEY):
+	mkdir -p $(dir $(DEBUG_KEY))
+	keytool -genkeypair -keystore $(DEBUG_KEY) -storepass android \
+		-alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 \
+		-validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
 apk-release:
 	cd android && ./gradlew --no-daemon assembleRelease

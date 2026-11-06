@@ -38,11 +38,18 @@ gradle assemble<Variant> ──► cargoDebug | cargoRelease
 
 | Command | Result |
 | --- | --- |
-| `make apk` | `target/obusina-unsigned.apk` of the workspace, a release never signed |
+| `make apk` | `target/obusina.apk` of the workspace, a release signed with the debug key |
 | `make apk-release` | `target/obusina-release.apk` of the workspace, signed or not, see below |
 | `make aab` | `app/build/outputs/bundle/release/app-release.aab` |
 
-A release is signed when `OBUSINA_KEYSTORE` names a keystore;
+`make apk` signs with the debug key `DEBUG_KEY` of the Makefile,
+`/workspace/android-key/debug.keystore`, beside the repositories so it
+outlives the container and no repository holds it; `keytool` makes it when
+it is missing. Its passwords are those of the debug key of the Android
+Gradle plugin. A package signed with it installs by hand; one signed with
+another key does not install over it.
+
+`make apk-release` is signed when `OBUSINA_KEYSTORE` names a keystore;
 `OBUSINA_KEYSTORE_PASSWORD`, `OBUSINA_KEY_ALIAS` and `OBUSINA_KEY_PASSWORD`
 give the rest. Without it the release is unsigned. No key lives in the
 repository.
