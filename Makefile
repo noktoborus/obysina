@@ -22,13 +22,14 @@ build-android:
 	cargo ndk -t arm64-v8a build --release -p obusina-android
 
 # The package of android, built by gradle, which builds the library of every
-# ABI itself. It needs ANDROID_HOME and ANDROID_NDK_HOME. A release is signed
-# when OBUSINA_KEYSTORE names a keystore (android/README.md), else unsigned.
-# The package is copied to target/obusina-debug.apk, target/obusina-release.apk.
+# ABI itself. It needs ANDROID_HOME and ANDROID_NDK_HOME. `apk` is a release
+# never signed, whatever the environment: target/obusina-unsigned.apk.
+# `apk-release` is signed when OBUSINA_KEYSTORE names a keystore
+# (android/README.md), else unsigned: target/obusina-release.apk.
 apk:
-	cd android && ./gradlew --no-daemon assembleDebug
+	cd android && env -u OBUSINA_KEYSTORE ./gradlew --no-daemon assembleRelease
 	mkdir -p target
-	cp android/app/build/outputs/apk/debug/app-debug.apk target/obusina-debug.apk
+	cp android/app/build/outputs/apk/release/app-release-unsigned.apk target/obusina-unsigned.apk
 
 apk-release:
 	cd android && ./gradlew --no-daemon assembleRelease

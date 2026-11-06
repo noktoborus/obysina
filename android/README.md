@@ -38,7 +38,7 @@ gradle assemble<Variant> ──► cargoDebug | cargoRelease
 
 | Command | Result |
 | --- | --- |
-| `make apk` | `target/obusina-debug.apk` of the workspace, signed with the debug key |
+| `make apk` | `target/obusina-unsigned.apk` of the workspace, a release never signed |
 | `make apk-release` | `target/obusina-release.apk` of the workspace, signed or not, see below |
 | `make aab` | `app/build/outputs/bundle/release/app-release.aab` |
 
