@@ -679,25 +679,44 @@ fn a_new_size_of_the_window_keeps_the_middle() {
     );
 }
 
-/// When the work area is off the screen after a new size of the window, the
-/// field is centred on it.
+/// How many columns of the field stand left of the right side of the
+/// screen, counted by the middles of the beads of a row of the sheet.
+fn columns_on_screen(window: &Window) -> i32 {
+    let app = window.harness.state();
+    let screen = window.harness.get_by_label(&t!("field")).rect();
+    let sheet = app.pattern.sheet().expect("a sheet");
+    let field = app
+        .pattern
+        .bounds()
+        .map_or(sheet, |beads| sheet.union(beads))
+        .doubled();
+    let row = (sheet.min.row + sheet.max.row) / 2;
+    (field.min.column..=field.max.column)
+        .filter(|column| {
+            let cell = Cell {
+                column: *column,
+                row,
+            };
+            let centre = obusina_canvas::bead_centre(&app.pattern, &app.view, screen, cell);
+            screen.x_range().contains(centre.x)
+        })
+        .count() as i32
+}
+
+/// The field dragged far to the right keeps `KEEP_BEADS` columns on the
+/// screen, at its right side; a new size of the window keeps it at that
+/// side, not in the middle.
 #[test]
-fn a_new_size_that_hides_the_work_area_centres_it() {
+fn a_field_dragged_away_stays_at_the_side() {
+    let keep = obusina_canvas::KEEP_BEADS as i32;
     let mut window = window();
-    window.harness.state_mut().view.offset.x += 3000.0;
-    window.harness.run();
+
+    window.drag_field(FREE, egui::vec2(3000.0, 0.0));
+    assert_eq!(columns_on_screen(&window), keep);
 
     window.harness.set_size(egui::vec2(600.0, 450.0));
     window.harness.run();
-
-    let app = window.harness.state();
-    let field = window.harness.get_by_label(&t!("field")).rect();
-    let centre = obusina_canvas::bead_centre(&app.pattern, &app.view, field, Cell::default());
-    assert!(
-        (centre - field.center()).length() < app.view.bead,
-        "{centre:?} != {:?}",
-        field.center()
-    );
+    assert_eq!(columns_on_screen(&window), keep);
 }
 
 /// A bead put left of and above cell (0, 0) is saved and opens where it

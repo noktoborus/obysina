@@ -14,6 +14,9 @@ An editor of bead patterns, for Linux, Windows and Android.
   place has no outline: only near the middle of the screen and under the
   pointer it shows the faint shadow of a bead, at every zoom. A button of
   the tools hides the shadows. A new pattern is an empty sheet.
+- The field cannot be moved off the screen: at least ten beads of it stay
+  on it, at the side it was moved to, also when the window changes its
+  size.
 - A ruling to count the beads by: every few columns and rows the shadows
   are darker. The step and the offset from cell (0, 0) are set in the menu
   of the grid and kept in the pattern.

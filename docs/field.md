@@ -128,16 +128,19 @@ on the field, columns 1 2 3       the file
       square would lie the other way.
 19. **A change of the size of the window keeps the middle of the field.**
     What is in the middle of the field stays there, at the same size of a
-    bead. When after the change no cell of the work area is on the screen,
-    the field is centred on the work area, as when a pattern opens. A frame
-    where the field has no size is skipped.
+    bead, as far as decision 23 lets it. A frame where the field has no size
+    is skipped.
     - Why: the place of the pattern was counted from the top left corner of
       the field, so a narrower window, a phone turned or the keyboard of
       android carried the pattern off the screen.
     - The place and the zoom of the view are not written to the file: they
       belong to the window, not to the work.
+    - Was: when no cell of the work area was on the screen after the change,
+      the field was centred on it. Decision 23 replaces it: the field stays
+      at the side it was moved to.
 20. **An empty place shows the shadow of a bead only near the middle of the
-    screen and the pointer,** on the paper and in the shade alike, each
+    screen and the pointer,** on the paper, in the shade and past the field
+    alike, each
     fading to its edge. A shadow is a bead of faint black: `SHADOW` on a line
     of the ruling (decision 21), the lighter `SHADOW_CELL` elsewhere. The
     rules are in `crates/obusina-canvas/src/shadow.rs`.
@@ -146,7 +149,7 @@ on the field, columns 1 2 3       the file
       field one screen at zoom 1 holds. At zoom 1 and in, it is the screen
       or more, and every empty place on the screen has a shadow.
     - The round is `NEAR_RADIUS` cells around the pointer.
-    - Both end at the edge of the field.
+    - Neither ends at the edge of the field: a shadow stands past it too.
     - Why the frame: android gives no pointer while a stylus hovers. winit
       0.30 drops the events of a hover (`MotionAction::HoverMove`), so the
       round alone shows nothing under a finger or a stylus.
@@ -183,3 +186,11 @@ on the field, columns 1 2 3       the file
     stands beside the button of the grid. Whether they show is a setting of
     the program (`src/settings.rs`), not of the pattern: it is how the
     window shows, not part of the work.
+23. **The field never leaves the screen.** At least `KEEP_BEADS` beads of
+    it stand on the screen along each axis, or the whole field when it is
+    smaller. A drag, a wheel, a zoom, a turn or a new size of the window
+    that would take more away moves the field back as little as it takes,
+    so it stays at the side it was moved to (`Canvas::keep_on_screen`).
+    - Why: a field moved off the screen was lost, and found again only by
+      a new size of the window, which put it in the middle.
+    - Why not the middle: the field stays where the person put it.

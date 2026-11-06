@@ -29,6 +29,10 @@ const SHADOW: Color32 = Color32::from_black_alpha(36);
 /// lines of the ruling stand out.
 const SHADOW_CELL: Color32 = Color32::from_black_alpha(18);
 
+/// The beads of the field that stay on the screen along each axis, however
+/// far the field is moved; all of it when it is smaller.
+pub const KEEP_BEADS: f32 = 10.0;
+
 /// The colour of the hatch of a bead of a removed or hidden colour.
 const HATCH: Color32 = Color32::from_gray(0x40);
 
@@ -87,25 +91,23 @@ impl<'a> Canvas<'a> {
     /// Draws the field over all the space left in `ui`.
     pub fn show(mut self, ui: &mut Ui) -> CanvasResponse {
         let (rect, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
-        let resized = self.resize(rect);
+        self.resize(rect);
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
         if self.view.sheet.is_none() && rect.is_positive() {
             self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
         }
-        if resized && self.work_area_hidden(rect) {
-            self.view.centre(rect.size(), self.middle());
-        }
         self.navigate(ui, &response);
+        self.keep_on_screen(rect);
 
         let painter = ui.painter_at(rect);
         let origin = rect.min + self.view.offset;
         let visible = self.cells_under(origin, rect);
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
-        let pointer = response.hover_pos();
         if self.shadows {
+            let pointer = response.hover_pos();
             self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
         }
         self.draw_beads(ui, &painter, origin, visible);
@@ -235,10 +237,10 @@ impl<'a> Canvas<'a> {
 
     /// Keeps the middle of the field where it is when the field changes its
     /// size. A field of no size, as when the window is folded away, is
-    /// skipped. True when the size changed.
-    fn resize(&mut self, rect: Rect) -> bool {
+    /// skipped.
+    fn resize(&mut self, rect: Rect) {
         if !rect.is_positive() {
-            return false;
+            return;
         }
         let before = self.view.field;
         self.view.field = rect.size();
@@ -246,14 +248,33 @@ impl<'a> Canvas<'a> {
         if resized {
             self.view.offset += (rect.size() - before) / 2.0;
         }
-        resized
     }
 
-    /// True when no cell of the work area is on the screen.
-    fn work_area_hidden(&self, screen: Rect) -> bool {
-        let visible = self.cells_under(screen.min + self.view.offset, screen);
-        self.work_area()
-            .is_some_and(|area| area.intersection(visible).is_none())
+    /// Moves the field as little as it takes so that `KEEP_BEADS` of it
+    /// stand on the screen `rect` along each axis, or all of it when it is
+    /// smaller. A field moved off a side stays at that side.
+    fn keep_on_screen(&mut self, rect: Rect) {
+        let Some(field) = self.field() else {
+            return;
+        };
+        if !rect.is_positive() {
+            return;
+        }
+        let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
+        let bead = self.view.bead;
+        let ((left, top), (right, bottom)) = grid.span(field, ratio);
+        let origin = rect.min + self.view.offset;
+        let shown = Rect::from_two_pos(
+            origin + self.view.to_shown(vec2(left, top) * bead),
+            origin + self.view.to_shown(vec2(right, bottom) * bead),
+        );
+        let cell = self.view.to_shown(vec2(ratio, 1.0) * bead).abs();
+        let keep = (cell * KEEP_BEADS).min(shown.size());
+        let shift = vec2(
+            keep_shift(shown.x_range(), rect.x_range(), keep.x),
+            keep_shift(shown.y_range(), rect.y_range(), keep.y),
+        );
+        self.view.offset += shift;
     }
 
     /// The point of the pattern shown in the middle of the field: the middle
@@ -335,4 +356,63 @@ fn bead_rect(pattern: &Pattern, view: &View, origin: Pos2, cell: Cell) -> Rect {
 /// on it.
 pub fn bead_centre(pattern: &Pattern, view: &View, field: Rect, cell: Cell) -> Pos2 {
     bead_rect(pattern, view, field.min + view.offset, cell).center()
+}
+
+/// How far a field shown over `shown` along one axis moves so that `keep`
+/// of it stands on the `screen`: as little as it takes, 0 when it does.
+/// When the screen is too short for that, the field is put in its middle.
+fn keep_shift(shown: egui::Rangef, screen: egui::Rangef, keep: f32) -> f32 {
+    let least = screen.min + keep - shown.max;
+    let most = screen.max - keep - shown.min;
+    if least > most {
+        (least + most) / 2.0
+    } else {
+        0.0_f32.clamp(least, most)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SCREEN: egui::Rangef = egui::Rangef {
+        min: 0.0,
+        max: 100.0,
+    };
+
+    #[test]
+    fn a_field_on_the_screen_stays() {
+        assert_eq!(
+            keep_shift(egui::Rangef::new(-50.0, 150.0), SCREEN, 10.0),
+            0.0
+        );
+    }
+
+    #[test]
+    fn a_field_moved_off_a_side_comes_back_to_that_side() {
+        assert_eq!(
+            keep_shift(egui::Rangef::new(-300.0, -50.0), SCREEN, 10.0),
+            60.0
+        );
+        assert_eq!(
+            keep_shift(egui::Rangef::new(200.0, 400.0), SCREEN, 10.0),
+            -110.0
+        );
+    }
+
+    #[test]
+    fn a_field_larger_than_the_screen_may_cover_it() {
+        assert_eq!(
+            keep_shift(egui::Rangef::new(-500.0, 500.0), SCREEN, 10.0),
+            0.0
+        );
+    }
+
+    #[test]
+    fn a_screen_too_short_puts_the_field_in_its_middle() {
+        assert_eq!(
+            keep_shift(egui::Rangef::new(0.0, 300.0), SCREEN, 300.0),
+            -100.0
+        );
+    }
 }

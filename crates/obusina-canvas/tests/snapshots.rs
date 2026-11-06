@@ -147,6 +147,32 @@ fn shadows_zoomed_out() {
     );
 }
 
+/// The field moved far off to the left: ten beads of it stay at the left
+/// side of the screen.
+#[test]
+fn kept_at_the_side() {
+    let pattern = pattern(Grid::Peyote);
+    let mut view = View::default();
+    view.bead = 10.0;
+    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(400.0, 300.0))
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.state_mut().1.offset.x -= 2000.0;
+    harness.run();
+    harness.snapshot_options(
+        "kept-at-the-side",
+        &SnapshotOptions::new().output_path(PICTURES),
+    );
+}
+
 /// Loom with a line every ten columns and four rows, the first at column 2
 /// and row 1: the shadows on a line are darker than the rest.
 #[test]

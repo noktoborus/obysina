@@ -1,7 +1,7 @@
 //! Which empty places show a shadow, and how strong each one is.
 //!
 //! An empty place shows the shadow of a bead only near two places, on the
-//! paper and in the shade alike, each fading to its edge:
+//! paper, in the shade and past the field alike, each fading to its edge:
 //!
 //! ```text
 //! ┌──────────────── the screen ────────────────┐
@@ -39,9 +39,10 @@ const ROUND_FADE: f32 = 0.5;
 const FRAME_CORNER: f32 = 1.0 / 8.0;
 
 impl Canvas<'_> {
-    /// The empty places of the field on the screen with a shadow, each with
-    /// its strength, more than 0 and at most 1. The pattern stands at `origin` of
-    /// the field `rect`; `pointer` is where the pointer is over it.
+    /// The empty places on the screen with a shadow, in the field or past it,
+    /// each with its strength, more than 0 and at most 1. The pattern stands
+    /// at `origin` of the field `rect`; `pointer` is where the pointer is
+    /// over it.
     pub(crate) fn shadowed(
         &self,
         origin: Pos2,
@@ -49,15 +50,9 @@ impl Canvas<'_> {
         visible: Bounds,
         pointer: Option<Pos2>,
     ) -> Vec<(Cell, f32)> {
-        let Some(field) = self.field() else {
-            return Vec::new();
-        };
-        let Some(shown) = field.intersection(visible) else {
-            return Vec::new();
-        };
         let at = pointer.map(|point| self.view.to_pattern(point - origin) / self.view.bead);
-        let frame_box = self.frame_box(origin, rect, shown);
-        let round_box = at.and_then(|at| self.round_box(at, shown));
+        let frame_box = self.frame_box(origin, rect, visible);
+        let round_box = at.and_then(|at| self.round_box(at, visible));
         let in_frame_box = |cell: Cell| frame_box.is_some_and(|cells| cells.contains(cell));
         let frame_cells = frame_box.into_iter().flat_map(Bounds::cells);
         let round_cells = round_box
@@ -90,22 +85,22 @@ impl Canvas<'_> {
         Rect::from_center_size(rect.center(), rect.size() * self.view.bead / DEFAULT_BEAD)
     }
 
-    /// The cells under the frame, of those `shown`.
-    fn frame_box(&self, origin: Pos2, rect: Rect, shown: Bounds) -> Option<Bounds> {
+    /// The cells under the frame, of those `visible`.
+    fn frame_box(&self, origin: Pos2, rect: Rect, visible: Bounds) -> Option<Bounds> {
         let frame = self.frame_rect(rect).intersect(rect);
         if !frame.is_positive() {
             return None;
         }
-        self.cells_under(origin, frame).intersection(shown)
+        self.cells_under(origin, frame).intersection(visible)
     }
 
-    /// The cells around the round at `at`, of those `shown`.
-    fn round_box(&self, at: Vec2, shown: Bounds) -> Option<Bounds> {
+    /// The cells around the round at `at`, of those `visible`.
+    fn round_box(&self, at: Vec2, visible: Bounds) -> Option<Bounds> {
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let reach = vec2(ratio, 1.0) * (NEAR_RADIUS + 1.0);
         let (min, max) = (at - reach, at + reach);
         grid.cells_in((min.x, min.y), (max.x, max.y), ratio)
-            .intersection(shown)
+            .intersection(visible)
     }
 
     /// How strong the frame is at `middle`, in bead units: 1 deep inside,
