@@ -108,3 +108,40 @@ fn hatched() {
     harness.run();
     harness.snapshot_options("hatched", &SnapshotOptions::new().output_path(PICTURES));
 }
+
+/// Zoomed out, the field moved so the middle of the screen is at the top
+/// left corner of the paper, the pointer in the shade at the bottom left: the frame of the
+/// screen at zoom 1 and the round under the pointer, each fading to its edge.
+#[test]
+fn shade_zoomed_out() {
+    let pattern = pattern(Grid::Peyote);
+    let mut view = View::default();
+    view.bead = 6.0;
+    view.sheet = Some(Bounds {
+        min: Cell {
+            column: -20,
+            row: -15,
+        },
+        max: Cell {
+            column: 28,
+            row: 21,
+        },
+    });
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(400.0, 300.0))
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.state_mut().1.offset += egui::vec2(150.0, 130.0);
+    harness.hover_at(egui::pos2(170.0, 240.0));
+    harness.run();
+    harness.snapshot_options(
+        "shade-zoomed-out",
+        &SnapshotOptions::new().output_path(PICTURES),
+    );
+}

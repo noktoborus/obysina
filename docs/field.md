@@ -42,7 +42,7 @@ on the field, columns 1 2 3       the file
 7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
 8. **The ground is in shade outside the work area** (decision 13). The
    paper of the work area is lighter. An empty cell is the same faint outline
-   everywhere in the field; where the outlines end, the field ends.
+   on the paper; in the shade, decision 20.
    - Replaces the pale outlines outside the active area: one tile, one
      colour, and the active area is seen as a whole.
 9. **The active area is the box itself,** with no margin around it. A bead
@@ -132,3 +132,23 @@ on the field, columns 1 2 3       the file
       android carried the pattern off the screen.
     - The place and the zoom of the view are not written to the file: they
       belong to the window, not to the work.
+20. **In the shade the outlines stand only near the middle of the screen and
+    the pointer,** each fading to its edge. The rules are in
+    `crates/obusina-canvas/src/shade.rs`.
+    - The frame is the screen at zoom 1 (`DEFAULT_BEAD`), in the middle of
+      the screen, its corners rounded. Zoomed out it shows how much of the
+      field one screen at zoom 1 holds. At zoom 1 and in, it is the screen
+      or more, and the whole shade on the screen has outlines.
+    - The round is `NEAR_RADIUS` cells around the pointer.
+    - Both end at the edge of the field. On the paper every outline stands.
+    - Why the frame: android gives no pointer while a stylus hovers. winit
+      0.30 drops the events of a hover (`MotionAction::HoverMove`), so the
+      round alone shows nothing under a finger or a stylus.
+    - Why the round stays: zoomed out, it shows the outlines past the frame
+      under a mouse.
+    - Why the fade: a hard edge reads as a hole in the shade.
+    - An outline in the shade is a quad of its own from the tile of
+      decision 15, as strong as the fade says. Zoomed out the frame holds
+      as many cells as the screen at zoom 1, a few thousand quads.
+    - Was: the outlines over the whole field; then a round of ten cells
+      under the pointer alone.

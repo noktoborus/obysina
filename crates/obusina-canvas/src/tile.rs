@@ -82,6 +82,26 @@ pub fn add_columns(
     }
 }
 
+/// Adds to `mesh` one quad over the bead of `cell`, tinted `colour`: its
+/// outline alone. The pattern stands at `origin`, shown by `view`.
+pub fn add_cell(
+    mesh: &mut Mesh,
+    grid: Grid,
+    ratio: f32,
+    view: &View,
+    origin: Pos2,
+    cell: Cell,
+    colour: Color32,
+) {
+    let tile = size(grid, ratio);
+    let (left, top) = grid.origin(cell, ratio);
+    let min = vec2(left, top);
+    let bead = (min, min + vec2(ratio, 1.0));
+    add_quad(mesh, view, origin, bead, colour, |corner| {
+        Pos2::new(corner.x / tile.x, corner.y / tile.y)
+    });
+}
+
 /// Draws a tile: white outlines on nothing.
 fn draw(key: Key) -> ColorImage {
     let tile = size(key.grid, key.ratio);

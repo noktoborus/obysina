@@ -11,7 +11,9 @@ An editor of bead patterns, for Linux, Windows and Android.
   past it. A bead put in the shade around grows the work area; when it
   goes, the work area is the sheet again. The shade reaches half the work
   area past it on every side. An empty place is a faint outline at every
-  zoom. A new pattern is an empty sheet.
+  zoom: on the paper everywhere; in the shade only in a frame of the
+  screen at zoom 1 in its middle and in a round under the pointer, both
+  fading to the edge. A new pattern is an empty sheet.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a

@@ -7,6 +7,8 @@ use obusina_pattern::Bounds;
 pub const MIN_BEAD: f32 = 4.0;
 /// The largest height of a bead, in points.
 pub const MAX_BEAD: f32 = 120.0;
+/// The height of a bead at zoom 1, in points: a new view starts at it.
+pub const DEFAULT_BEAD: f32 = 20.0;
 
 /// Quarter turns in a whole turn.
 const QUARTERS: u8 = 4;
@@ -48,7 +50,7 @@ impl Default for View {
     fn default() -> Self {
         View {
             offset: Vec2::ZERO,
-            bead: 20.0,
+            bead: DEFAULT_BEAD,
             centred: false,
             sheet: None,
             quarters: 0,

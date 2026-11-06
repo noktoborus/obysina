@@ -2,12 +2,14 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+mod shade;
 mod sprite;
 mod texture;
 mod tile;
 mod view;
 
-pub use view::{MAX_BEAD, MIN_BEAD, Turn, View};
+pub use shade::{FRAME_FADE, NEAR_RADIUS};
+pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
 use obusina_pattern::{Bounds, Cell, Colour, Pattern, Rgb};
@@ -91,7 +93,8 @@ impl<'a> Canvas<'a> {
         let visible = self.cells_under(origin, rect);
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
-        self.draw_outlines(ui, &painter, origin, visible);
+        let pointer = response.hover_pos();
+        self.draw_outlines(ui, &painter, (origin, rect), visible, pointer);
         self.draw_beads(ui, &painter, origin, visible);
 
         let hovered = response
@@ -165,14 +168,20 @@ impl<'a> Canvas<'a> {
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The outlines of the empty places of the field on the screen, as
-    /// quads of the repeating tile, one look on the paper and in the shade.
+    /// The outlines of the empty places on the screen, from the repeating
+    /// tile: every one on the paper, a column of the work area one quad; in
+    /// the shade those [`shade`] gives, one quad each, as strong as it says.
     /// They are drawn at every size of a bead. A bead is drawn over its
-    /// outline, which lies inside it.
-    fn draw_outlines(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
-        let Some(cells) = self.field().and_then(|field| field.intersection(visible)) else {
-            return;
-        };
+    /// outline, which lies inside it. The pattern stands at `origin` of the
+    /// field `rect`.
+    fn draw_outlines(
+        &self,
+        ui: &Ui,
+        painter: &egui::Painter,
+        (origin, rect): (Pos2, Rect),
+        visible: Bounds,
+        pointer: Option<Pos2>,
+    ) {
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let texture = tile::texture(
             ui.ctx(),
@@ -184,15 +193,21 @@ impl<'a> Canvas<'a> {
             OUTLINE,
         );
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        tile::add_columns(
-            &mut mesh,
-            grid,
-            ratio,
-            self.view,
-            origin,
-            cells,
-            OUTLINE_COLOUR,
-        );
+        if let Some(cells) = self.work_area().and_then(|area| area.intersection(visible)) {
+            tile::add_columns(
+                &mut mesh,
+                grid,
+                ratio,
+                self.view,
+                origin,
+                cells,
+                OUTLINE_COLOUR,
+            );
+        }
+        for (cell, strength) in self.shade_outlines(origin, rect, visible, pointer) {
+            let colour = OUTLINE_COLOUR.gamma_multiply(strength);
+            tile::add_cell(&mut mesh, grid, ratio, self.view, origin, cell, colour);
+        }
         painter.add(egui::Shape::mesh(mesh));
     }
 

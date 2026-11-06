@@ -15,7 +15,11 @@ The field of beads: an egui widget that draws an
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is paper, `PAPER`, which a new colour is told from; the rest
   of the field is in shade. An empty place is
-  a faint outline, the same on both, at every size of a bead.
+  a faint outline, at every size of a bead: every one on the paper; in the
+  shade only those in a frame of the screen at zoom 1 (`DEFAULT_BEAD`) in
+  its middle and within `NEAR_RADIUS` cells of the pointer, each fading
+  over its edge (`FRAME_FADE`). With no pointer over the field, as under a
+  finger, there is no round. `shade.rs` holds the rules.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Keeps the middle of the field where it is when the field changes its
@@ -25,7 +29,8 @@ The field of beads: an egui widget that draws an
 - Nothing is tessellated. Two textures are drawn by the distance to a
   rounded box, again only when the size of a bead or the grid changes:
   - a tile of outlines that repeats (`tile.rs`): loom every cell, peyote
-    every two columns; a column of the field on the screen is one quad of it;
+    every two columns; a column of the work area on the screen is one quad
+    of it, an outline in the shade one quad of its own;
   - one white bead (`sprite.rs`); a bead on the screen is one quad of it,
     tinted its colour. A bead of a colour not seen, removed or hidden
     (`Colour::seen`), is a quad of a second texture: its outline and
@@ -54,11 +59,13 @@ The field of beads: an egui widget that draws an
 | Peyote | ![Peyote][picture-peyote] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 | A colour removed, its beads hatched | ![Hatched][picture-hatched] |
+| Zoomed out: the frame of the screen at zoom 1, the round under the pointer | ![Shade][picture-shade-zoomed-out] |
 
 [picture-loom]: img/loom.png
 [picture-peyote]: img/peyote.png
 [picture-peyote-turned]: img/peyote-turned.png
 [picture-hatched]: img/hatched.png
+[picture-shade-zoomed-out]: img/shade-zoomed-out.png
 
 ## Boundaries
 
