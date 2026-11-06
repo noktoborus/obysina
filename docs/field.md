@@ -73,12 +73,19 @@ on the field, columns 1 2 3       the file
     - The sheet is the start size of the work area: the numbers of the
       tools, the cells of the screen when the pattern is first shown.
     - A bead put past the sheet, in the shade, grows the sheet to hold it,
-      and the field with it, in the same step of undo as the bead. When
-      that bead goes, the sheet stays as it grew; undo takes it back.
+      and the field with it, in the same step of undo as the bead.
+    - A bead taken away shrinks the sheet to the box of the beads left, in
+      the same step of undo. It never shrinks below the first screen
+      (`View::sheet`) and never grows: a sheet set smaller in the tools
+      stays. It moves as little as it takes to hold the beads
+      (`Bounds::resized_over`). `History::fit_sheet` does both.
+    - Why the first screen: an empty sheet is still a place to work on.
+    - Was: the sheet stayed as it grew when the bead went.
     - The work area is still the box around the sheet and the beads: the
       beads of a file can lie past its sheet.
-    - Was: the sheet stayed, and only the work area grew; it was the sheet
-      again when the bead went. One undo took the bead, not the size.
+    - Was before that: the sheet stayed, and only the work area grew; it was
+      the sheet again when the bead went. One undo took the bead, not the
+      size.
     - The field is the work area grown by half its width on each side and
       half its height above and below. Past the field the ground is bare,
       and a press does nothing.

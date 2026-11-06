@@ -80,7 +80,7 @@ impl<'a> Canvas<'a> {
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
-        if self.pattern.sheet().is_none() && self.view.sheet.is_none() && rect.is_positive() {
+        if self.view.sheet.is_none() && rect.is_positive() {
             self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
         }
         if resized && self.work_area_hidden(rect) {

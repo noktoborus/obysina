@@ -792,28 +792,61 @@ fn a_bead_in_the_shade_grows_the_work_area() {
     assert_eq!(window.harness.state().pattern.get(further), Some(id_at(0)));
 }
 
-/// The sheet grown by a bead stays grown when the bead goes: taking a bead
-/// away is a step of its own. Undo gives the sheet back with the bead.
+/// The sheet grown by a bead shrinks when the bead goes, to the first screen
+/// when no bead is past it, in the same step. Undo gives the bead and the
+/// grown sheet back.
 #[test]
-fn a_bead_taken_away_leaves_the_sheet_grown() {
+fn a_bead_taken_away_shrinks_the_sheet_to_the_first_screen() {
     let mut window = window();
-    let sheet = window.harness.state().pattern.sheet();
+    let first = window.harness.state().view.sheet.expect("the first screen");
     window.harness.state_mut().view.offset.x -= 600.0;
     window.harness.run();
     let shade = Cell { column: 40, row: 0 };
     window.press(shade, PointerButton::Primary);
+    let grown = window.harness.state().pattern.sheet();
     window.press(shade, PointerButton::Primary);
 
     let app = window.harness.state_mut();
     assert_eq!(app.pattern.get(shade), None);
-    assert!(
-        app.pattern
-            .sheet()
-            .is_some_and(|grown| grown.contains(shade))
+    let sheet = app.pattern.sheet().expect("a sheet");
+    assert_eq!(
+        (sheet.width(), sheet.height()),
+        (first.width(), first.height())
     );
     app.history.undo(&mut app.pattern);
-    app.history.undo(&mut app.pattern);
-    assert_eq!(app.pattern.sheet(), sheet);
+    assert_eq!(app.pattern.get(shade), Some(id_at(0)));
+    assert_eq!(app.pattern.sheet(), grown);
+}
+
+/// The sheet shrinks to the box of the beads left when it is larger than
+/// the first screen.
+#[test]
+fn a_bead_taken_away_shrinks_the_sheet_to_the_beads() {
+    let mut window = window();
+    let first = window.harness.state().view.sheet.expect("the first screen");
+    let left = Cell {
+        column: first.min.column,
+        row: 0,
+    };
+    window.press(left, PointerButton::Primary);
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let near = Cell { column: 40, row: 0 };
+    window.press(near, PointerButton::Primary);
+    window.harness.state_mut().view.offset.x -= 600.0;
+    window.harness.run();
+    let far = Cell { column: 70, row: 0 };
+    window.press(far, PointerButton::Primary);
+    window.press(far, PointerButton::Primary);
+
+    let app = window.harness.state();
+    let sheet = app.pattern.sheet().expect("a sheet");
+    assert!(sheet.contains(near) && !sheet.contains(far), "{sheet:?}");
+    assert_eq!(
+        (sheet.min.column, sheet.max.column),
+        (left.column, near.column)
+    );
+    assert_eq!(sheet.height(), first.height());
 }
 
 /// A new size of the window keeps the middle of the field where it is: the

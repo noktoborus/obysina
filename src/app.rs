@@ -243,12 +243,14 @@ impl App {
     /// The field of beads over the whole window.
     ///
     /// A pattern with no sheet takes the cells of the first screen as its
-    /// sheet: the start value, no step of undo.
+    /// sheet: the start value, no step of undo. The size of the first screen
+    /// is the least a sheet shrinks to when a bead goes.
     fn field(&mut self, ui: &mut egui::Ui) {
         let field = Canvas::new(&self.pattern, &mut self.view).show(ui);
         if self.pattern.sheet().is_none() {
             self.pattern.set_sheet(self.view.sheet);
         }
+        self.history.least_sheet = self.view.sheet.map(|first| (first.width(), first.height()));
         field.response.named(&t!("field"));
         if let Some((cell, press)) = field.pressed {
             self.press(cell, press);
