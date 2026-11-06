@@ -39,7 +39,9 @@ on the field, columns 1 2 3       the file
    `Grid::neighbours`, which only the fill asked.
    - Why: the empty space of an endless field has no end to fill to.
 
-7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
+7. **The grid is chosen in a `PlateMenu`** (`RULE ui.menu`): the two kinds,
+   then "Ruling…" (decision 21). While it is open nothing else of the
+   window answers (`src/ui/blocker.rs`).
 8. **The ground is in shade outside the work area** (decision 13). The
    paper of the work area is lighter. An empty cell has no outline; near the
    middle of the screen and the pointer it shows a shadow (decision 20).
@@ -136,7 +138,8 @@ on the field, columns 1 2 3       the file
       belong to the window, not to the work.
 20. **An empty place shows the shadow of a bead only near the middle of the
     screen and the pointer,** on the paper and in the shade alike, each
-    fading to its edge. A shadow is a bead of faint black (`SHADOW`). The
+    fading to its edge. A shadow is a bead of faint black: `SHADOW` on a line
+    of the ruling (decision 21), the lighter `SHADOW_CELL` elsewhere. The
     rules are in `crates/obusina-canvas/src/shadow.rs`.
     - The frame is the screen at zoom 1 (`DEFAULT_BEAD`), in the middle of
       the screen, its corners rounded. Zoomed out it shows how much of the
@@ -155,3 +158,28 @@ on the field, columns 1 2 3       the file
     - Was: outlines over the whole field; then outlines over the paper,
       and in the shade only in the frame and the round. A soft spot with no
       cells was weighed and left: it does not show where a bead goes.
+21. **The ruling: every few columns and rows the shadows are darker,** to
+    count the beads by. `Ruling` of `obusina-pattern` holds the step, the
+    columns and rows from one line to the next, and the offset of a line
+    from cell (0, 0). A step of 0 draws no line along its axis. On peyote a
+    row of lines goes up and down with the columns, as the beads of a row
+    do.
+    - The ruling is part of the pattern and its file (`ruling`), so a
+      pattern opens with the lines it was counted by. A change is a step of
+      undo. Format 1 changes itself (`EXC` of `RULE pattern.version`).
+    - "Ruling…" of the menu of the grid opens a menu with the four numbers
+      on top, then "Accept" and "Cancel", as the picker of a colour
+      (`src/ui/grid_menu.rs`). A number shows on the field at once; only
+      "Accept" keeps it. Cancel, Escape or a press beside the menu put it
+      back.
+    - Why from cell (0, 0): it does not move. The middle of the sheet moves
+      when a bead grows or shrinks it, and the lines would jump while
+      drawing; the middle of the screen moves with the field.
+    - Why darker shadows: they mark the beads that are counted. Lines
+      between the cells were weighed and left; on peyote a line across a
+      row is a stair.
+    - Was: every shadow of one strength, `SHADOW`.
+22. **A button of the tools hides the shadows,** and shows them again. It
+    stands beside the button of the grid. Whether they show is a setting of
+    the program (`src/settings.rs`), not of the pattern: it is how the
+    window shows, not part of the work.

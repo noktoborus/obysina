@@ -77,6 +77,8 @@ pub struct App {
     pub(crate) bead_menu: plate_menu::PlateMenu,
     /// What that menu is of: a colour, or the empty place.
     pub(crate) bead_menu_of: Option<Option<ColourId>>,
+    /// The ruling being changed in the menu of grids, while it is.
+    pub(crate) ruling_edit: Option<crate::ui::grid_menu::RulingEdit>,
 }
 
 impl App {
@@ -111,12 +113,21 @@ impl App {
             palette_window: Default::default(),
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
+            ruling_edit: None,
         }
     }
 
     /// Keeps how the places of a palette stand for the next start.
     pub(crate) fn keep_palette_view(&mut self, view: crate::settings::PaletteView) {
         if let Err(error) = self.settings.keep_palette_view(view) {
+            self.message = Some(say(&error));
+        }
+    }
+
+    /// Shows or hides the shadows of the empty places, and keeps that for the
+    /// next start.
+    pub(crate) fn keep_shadows(&mut self, shadows: bool) {
+        if let Err(error) = self.settings.keep_shadows(shadows) {
             self.message = Some(say(&error));
         }
     }
@@ -246,7 +257,9 @@ impl App {
     /// sheet: the start value, no step of undo. The size of the first screen
     /// is the least a sheet shrinks to when a bead goes.
     fn field(&mut self, ui: &mut egui::Ui) {
-        let field = Canvas::new(&self.pattern, &mut self.view).show(ui);
+        let field = Canvas::new(&self.pattern, &mut self.view)
+            .shadows(self.settings.shadows())
+            .show(ui);
         if self.pattern.sheet().is_none() {
             self.pattern.set_sheet(self.view.sheet);
         }

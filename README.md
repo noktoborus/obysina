@@ -12,8 +12,11 @@ An editor of bead patterns, for Linux, Windows and Android.
   away shrinks it to the box of the beads, never below the first screen.
   The shade reaches half the work area past it on every side. An empty
   place has no outline: only near the middle of the screen and under the
-  pointer it shows the faint shadow of a bead, at every zoom. A new pattern
-  is an empty sheet.
+  pointer it shows the faint shadow of a bead, at every zoom. A button of
+  the tools hides the shadows. A new pattern is an empty sheet.
+- A ruling to count the beads by: every few columns and rows the shadows
+  are darker. The step and the offset from cell (0, 0) are set in the menu
+  of the grid and kept in the pattern.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a

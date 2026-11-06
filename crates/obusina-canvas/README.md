@@ -15,11 +15,13 @@ The field of beads: an egui widget that draws an
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is paper, `PAPER`, which a new colour is told from; the rest
   of the field is in shade. An empty place has no outline. It shows the
-  shadow of a bead, `SHADOW`, only in a frame of the screen at zoom 1
-  (`DEFAULT_BEAD`) in its middle and within `NEAR_RADIUS` cells of the
-  pointer, on the paper and in the shade alike, each fading over its edge
-  (`FRAME_FADE`). With no pointer over the field, as under a finger, there
-  is no round. `shadow.rs` holds the rules.
+  shadow of a bead only in a frame of the screen at zoom 1 (`DEFAULT_BEAD`)
+  in its middle and within `NEAR_RADIUS` cells of the pointer, on the paper
+  and in the shade alike, each fading over its edge (`FRAME_FADE`). With no
+  pointer over the field, as under a finger, there is no round.
+  `shadow.rs` holds the rules. A shadow on a line of the ruling of the
+  pattern (`Pattern::ruling`) is `SHADOW`, any other the lighter
+  `SHADOW_CELL`. `Canvas::shadows(false)` shows none.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Keeps the middle of the field where it is when the field changes its
@@ -29,7 +31,7 @@ The field of beads: an egui widget that draws an
 - Nothing is tessellated. One white bead is drawn into a texture by the
   distance to a rounded box, again only when the size of a bead changes
   (`sprite.rs`). A bead on the screen is one quad of it, tinted its colour;
-  so is a shadow, tinted `SHADOW`. A bead of a colour not seen, removed or
+  so is a shadow, tinted `SHADOW` or `SHADOW_CELL`. A bead of a colour not seen, removed or
   hidden (`Colour::seen`), is a quad of a second texture: its outline and
   diagonal lines.
 
@@ -57,6 +59,7 @@ The field of beads: an egui widget that draws an
 | Peyote | ![Peyote][picture-peyote] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 | A colour removed, its beads hatched | ![Hatched][picture-hatched] |
+| Loom, a line every 10 columns and 4 rows from (2, 1) | ![Ruling][picture-ruling] |
 | Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
 
 [picture-loom]: img/loom.png
@@ -64,6 +67,7 @@ The field of beads: an egui widget that draws an
 [picture-peyote-turned]: img/peyote-turned.png
 [picture-hatched]: img/hatched.png
 [picture-shadows-zoomed-out]: img/shadows-zoomed-out.png
+[picture-ruling]: img/ruling.png
 
 ## Boundaries
 

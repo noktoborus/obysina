@@ -21,6 +21,10 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
   there are none. `Bounds` grows, meets, joins and doubles.
 - `Pattern::revision`: changes with every change of the pattern; no other
   pattern has it unless it is a clone. A drawing of the pattern is kept by it.
+- `Ruling`: a line every `step` columns and rows, `offset` from cell (0, 0),
+  to count the beads by; `Ruling::marks` says whether a cell is on one.
+  `Pattern::ruling` and `set_ruling`; a new pattern has
+  `DEFAULT_RULING_STEP`.
 - `Grid`: where a bead stands, which bead is under a point, which cells lie
   under a span (`Grid::cells_in`) and the span of a box (`Grid::span`).
 - `read`, `write`, `Pattern::to_json`, `Pattern::from_json`: the file.
@@ -48,6 +52,7 @@ an empty place.
     "origin": [-4, 1],
     "size": [8, 4]
   },
+  "ruling": { "step": [10, 4], "offset": [2, -1] },
   "bead_ratio": 1.0,
   "palettes": [
     [
@@ -75,6 +80,9 @@ beads on one line; the example keeps them all on one.
 | `sheet` | the size of the work area set by hand; left out when none is set |
 | `sheet.origin` | column and row of the field of its top left cell |
 | `sheet.size` | columns and rows, at least one each |
+| `ruling` | the lines to count the beads by (`Ruling`); `DEFAULT_RULING_STEP` and no offset when left out |
+| `ruling.step` | columns and rows from one line to the next; `0` draws no line along that axis |
+| `ruling.offset` | column and row of a line, counted from cell (0, 0) |
 | `bead_ratio` | the width of a bead to its height |
 | `palettes` | one array or more, each of at most `MAX_COLOURS` places; the index is the place, `null` an empty one; empty places at the end are left out |
 | `palettes[][].id` | a number, unique in the file, never `0` |

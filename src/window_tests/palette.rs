@@ -486,7 +486,7 @@ fn the_panel_fits_its_content_again() {
 }
 
 /// The first button pressed and let go at a point, as a mouse does.
-fn press_at(window: &mut super::Window, at: egui::Pos2) {
+pub(super) fn press_at(window: &mut super::Window, at: egui::Pos2) {
     window.harness.event(egui::Event::PointerMoved(at));
     for pressed in [true, false] {
         window.harness.event(egui::Event::PointerButton {

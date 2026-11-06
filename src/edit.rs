@@ -1,6 +1,6 @@
 //! Every change to a pattern, so that it can be undone (`RULE ui.undo`).
 
-use obusina_pattern::{Bounds, Cell, ColourId, Grid, Palette, Pattern};
+use obusina_pattern::{Bounds, Cell, ColourId, Grid, Palette, Pattern, Ruling};
 
 /// One bead changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -40,6 +40,13 @@ pub enum Edit {
         /// The sheet after.
         after: Option<Bounds>,
     },
+    /// The lines to count the beads by changed.
+    Ruling {
+        /// The ruling before.
+        before: Ruling,
+        /// The ruling after.
+        after: Ruling,
+    },
     /// Edits done as one step: done in order, undone in reverse.
     Many(Vec<Edit>),
 }
@@ -56,6 +63,7 @@ impl Edit {
             Edit::Grid { after, .. } => pattern.set_grid(*after),
             Edit::Palettes { after, .. } => put_back(pattern, after),
             Edit::Sheet { after, .. } => pattern.set_sheet(*after),
+            Edit::Ruling { after, .. } => pattern.set_ruling(*after),
             Edit::Many(edits) => edits.iter().for_each(|edit| edit.apply(pattern)),
         }
     }
@@ -71,6 +79,7 @@ impl Edit {
             Edit::Grid { before, .. } => pattern.set_grid(*before),
             Edit::Palettes { before, .. } => put_back(pattern, before),
             Edit::Sheet { before, .. } => pattern.set_sheet(*before),
+            Edit::Ruling { before, .. } => pattern.set_ruling(*before),
             Edit::Many(edits) => edits.iter().rev().for_each(|edit| edit.revert(pattern)),
         }
     }
@@ -207,6 +216,16 @@ impl History {
         let after = pattern.palettes().to_vec();
         if after != before {
             self.keep(Edit::Palettes { before, after });
+        }
+    }
+
+    /// Keeps as one step the change of the ruling since `before`, made past
+    /// the history while it was shown: the numbers of the menu of the ruling
+    /// before "Accept".
+    pub fn keep_ruling(&mut self, pattern: &Pattern, before: Ruling) {
+        let after = pattern.ruling();
+        if after != before {
+            self.keep(Edit::Ruling { before, after });
         }
     }
 

@@ -22,9 +22,12 @@ const ROUNDING: f32 = 0.3;
 pub const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
 /// The ground outside the active area: the paper in shade.
 const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
-/// The shadow of an empty place at its strongest: a bead of faint black,
-/// seen on the paper and in the shade alike.
+/// The shadow of an empty place on a line of the ruling, at its strongest: a
+/// bead of faint black, seen on the paper and in the shade alike.
 const SHADOW: Color32 = Color32::from_black_alpha(36);
+/// The shadow of any other empty place, at its strongest: lighter, so the
+/// lines of the ruling stand out.
+const SHADOW_CELL: Color32 = Color32::from_black_alpha(18);
 
 /// The colour of the hatch of a bead of a removed or hidden colour.
 const HATCH: Color32 = Color32::from_gray(0x40);
@@ -62,12 +65,23 @@ pub struct CanvasResponse {
 pub struct Canvas<'a> {
     pattern: &'a Pattern,
     view: &'a mut View,
+    shadows: bool,
 }
 
 impl<'a> Canvas<'a> {
     /// A field over `pattern`, moved and zoomed by `view`.
     pub fn new(pattern: &'a Pattern, view: &'a mut View) -> Self {
-        Canvas { pattern, view }
+        Canvas {
+            pattern,
+            view,
+            shadows: true,
+        }
+    }
+
+    /// Whether the empty places show their shadows; they do by default.
+    pub fn shadows(mut self, shadows: bool) -> Self {
+        self.shadows = shadows;
+        self
     }
 
     /// Draws the field over all the space left in `ui`.
@@ -91,7 +105,9 @@ impl<'a> Canvas<'a> {
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
         let pointer = response.hover_pos();
-        self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
+        if self.shadows {
+            self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
+        }
         self.draw_beads(ui, &painter, origin, visible);
 
         let hovered = response
@@ -166,8 +182,9 @@ impl<'a> Canvas<'a> {
     }
 
     /// The shadows of the empty places that [`shadow`] gives, each a sprite
-    /// of a bead tinted `SHADOW` as strong as it says. The pattern stands at
-    /// `origin` of the field `rect`.
+    /// of a bead as strong as it says: tinted `SHADOW` on a line of the
+    /// ruling, `SHADOW_CELL` elsewhere. The pattern stands at `origin` of the
+    /// field `rect`.
     fn draw_shadows(
         &self,
         ui: &Ui,
@@ -179,8 +196,14 @@ impl<'a> Canvas<'a> {
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        for (cell, strength) in self.shadows(origin, rect, visible, pointer) {
-            let colour = SHADOW.gamma_multiply(strength);
+        let ruling = self.pattern.ruling();
+        for (cell, strength) in self.shadowed(origin, rect, visible, pointer) {
+            let shadow = if ruling.marks(cell) {
+                SHADOW
+            } else {
+                SHADOW_CELL
+            };
+            let colour = shadow.gamma_multiply(strength);
             sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
         }
         painter.add(egui::Shape::mesh(mesh));

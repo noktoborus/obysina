@@ -48,7 +48,7 @@ fn row(app: &mut App, ui: &mut egui::Ui) {
 }
 
 /// The tools in a column two buttons wide, like the swatches of the beads:
-/// a group of two on a line, the kind of grid and save on the last one.
+/// a group of two on a line, save alone on the last one.
 ///
 /// The lines are one block, so the block stands in the middle across the
 /// panel.
@@ -63,10 +63,9 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
         gap(ui, orientation);
         ui.horizontal(|ui| crate::ui::sheet::show(app, ui));
         gap(ui, orientation);
-        ui.horizontal(|ui| {
-            grid(app, ui);
-            save(app, ui);
-        });
+        ui.horizontal(|ui| grid(app, ui));
+        gap(ui, orientation);
+        ui.horizontal(|ui| save(app, ui));
     });
 }
 
@@ -118,11 +117,16 @@ fn tools(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// The kind of grid: a button that opens the menu of kinds
-/// ([`crate::ui::grid_menu`]).
+/// The kind of grid: a button that opens the menu of kinds and of the
+/// ruling ([`crate::ui::grid_menu`]); and whether the empty places show
+/// their shadows.
 fn grid(app: &mut App, ui: &mut egui::Ui) {
     if button::icon(ui, icons::GRID, &t!("grid.kind"), true).clicked() {
         crate::ui::grid_menu::open(app);
+    }
+    let shadows = app.settings.shadows();
+    if button::toggle(ui, shadows, icons::SHADOW, &t!("view.shadows")).clicked() {
+        app.keep_shadows(!shadows);
     }
 }
 

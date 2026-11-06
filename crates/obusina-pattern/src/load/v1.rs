@@ -6,6 +6,7 @@ use crate::error::{PatternError, Result};
 use crate::grid::{Bounds, Cell, Grid};
 use crate::palette::{Colour as Bead, ColourId, Palette, Rgb};
 use crate::pattern::Pattern;
+use crate::ruling::Ruling as Lines;
 
 /// A file of format 1.
 #[derive(Deserialize)]
@@ -18,6 +19,8 @@ struct Document {
     turn: u16,
     #[serde(default)]
     sheet: Option<Sheet>,
+    #[serde(default)]
+    ruling: Option<Ruling>,
     bead_ratio: f32,
     palettes: Vec<Vec<Option<Colour>>>,
     rows_origin: [i32; 2],
@@ -30,6 +33,14 @@ struct Document {
 struct Sheet {
     origin: [i32; 2],
     size: [usize; 2],
+}
+
+/// The ruling of format 1; left out, the default one.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Ruling {
+    step: [u32; 2],
+    offset: [i32; 2],
 }
 
 /// A colour of format 1.
@@ -65,6 +76,9 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
     if let Some(sheet) = document.sheet {
         pattern.set_sheet(Some(sheet.bounds()?));
+    }
+    if let Some(Ruling { step, offset }) = document.ruling {
+        pattern.set_ruling(Lines { step, offset });
     }
     Ok(pattern)
 }

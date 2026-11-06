@@ -42,7 +42,7 @@ impl Canvas<'_> {
     /// The empty places of the field on the screen with a shadow, each with
     /// its strength, more than 0 and at most 1. The pattern stands at `origin` of
     /// the field `rect`; `pointer` is where the pointer is over it.
-    pub(crate) fn shadows(
+    pub(crate) fn shadowed(
         &self,
         origin: Pos2,
         rect: Rect,

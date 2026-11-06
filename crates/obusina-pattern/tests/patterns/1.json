@@ -12,6 +12,16 @@
       4
     ]
   },
+  "ruling": {
+    "step": [
+      10,
+      4
+    ],
+    "offset": [
+      2,
+      -1
+    ]
+  },
   "bead_ratio": 1.0,
   "palettes": [
     [

@@ -25,6 +25,7 @@ struct Document<'a> {
     turn: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
     sheet: Option<Sheet>,
+    ruling: WrittenRuling,
     bead_ratio: f32,
     palettes: Vec<Vec<Option<Written<'a>>>>,
     rows_origin: [i32; 2],
@@ -36,6 +37,14 @@ struct Document<'a> {
 struct Sheet {
     origin: [i32; 2],
     size: [usize; 2],
+}
+
+/// The ruling as it is written: the columns and rows between two lines,
+/// and where a line stands.
+#[derive(Serialize)]
+struct WrittenRuling {
+    step: [u32; 2],
+    offset: [i32; 2],
 }
 
 /// One colour as it is written.
@@ -95,6 +104,10 @@ impl Pattern {
                 origin: [sheet.min.column, sheet.min.row],
                 size: [sheet.width(), sheet.height()],
             }),
+            ruling: WrittenRuling {
+                step: self.ruling().step,
+                offset: self.ruling().offset,
+            },
             bead_ratio: self.ratio(),
             palettes: self
                 .palettes()

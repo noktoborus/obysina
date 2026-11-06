@@ -3,7 +3,7 @@
 //! `tests/patterns/<format>.json` is a file of that format. It is never
 //! changed once the format is replaced.
 
-use obusina_pattern::{Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError};
+use obusina_pattern::{Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError, Ruling};
 
 /// The file of a format, as text.
 fn file(format: u64) -> String {
@@ -186,7 +186,7 @@ fn a_pattern_with_no_beads_has_no_rows() {
 #[test]
 fn a_file_with_no_sheet_reads_with_none() {
     let start = file(1).find("  \"sheet\"").expect("the file has a sheet");
-    let end = file(1).find("  \"bead_ratio\"").expect("and a bead ratio");
+    let end = file(1).find("  \"ruling\"").expect("and a ruling");
     let mut text = file(1);
     text.replace_range(start..end, "");
 
@@ -236,4 +236,30 @@ fn a_write_leaves_a_whole_file() {
 
     assert_eq!(obusina_pattern::read(&path).expect("it reads"), pattern);
     assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+}
+
+#[test]
+fn format_1_reads_its_ruling() {
+    let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+
+    assert_eq!(
+        pattern.ruling(),
+        Ruling {
+            step: [10, 4],
+            offset: [2, -1],
+        }
+    );
+}
+
+/// A file written before the ruling reads with the default one.
+#[test]
+fn a_file_with_no_ruling_reads_with_the_default() {
+    let start = file(1).find("  \"ruling\"").expect("the file has a ruling");
+    let end = file(1).find("  \"bead_ratio\"").expect("and a bead ratio");
+    let mut text = file(1);
+    text.replace_range(start..end, "");
+
+    let pattern = Pattern::from_json(&text).expect("it reads");
+
+    assert_eq!(pattern.ruling(), Ruling::default());
 }

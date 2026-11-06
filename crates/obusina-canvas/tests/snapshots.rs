@@ -4,7 +4,7 @@
 
 use egui_kittest::{Harness, SnapshotOptions};
 use obusina_canvas::{Canvas, Turn, View};
-use obusina_pattern::{Bounds, Cell, Colour, ColourId, Grid, Pattern, Rgb};
+use obusina_pattern::{Bounds, Cell, Colour, ColourId, Grid, Pattern, Rgb, Ruling};
 
 /// Where the pictures are kept: beside the README, which shows them.
 const PICTURES: &str = "img";
@@ -145,4 +145,28 @@ fn shadows_zoomed_out() {
         "shadows-zoomed-out",
         &SnapshotOptions::new().output_path(PICTURES),
     );
+}
+
+/// Loom with a line every ten columns and four rows, the first at column 2
+/// and row 1: the shadows on a line are darker than the rest.
+#[test]
+fn ruling() {
+    let mut pattern = pattern(Grid::Loom);
+    pattern.set_ruling(Ruling {
+        step: [10, 4],
+        offset: [2, 1],
+    });
+    let mut view = View::default();
+    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let mut harness = Harness::builder()
+        .with_size(SIZE)
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.snapshot_options("ruling", &SnapshotOptions::new().output_path(PICTURES));
 }

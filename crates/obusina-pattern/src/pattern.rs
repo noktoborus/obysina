@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::error::{PatternError, Result};
 use crate::grid::{Bounds, Cell, Grid};
 use crate::palette::{Colour, ColourId, NO_BEAD, Palette, Rgb};
+use crate::ruling::Ruling;
 
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
@@ -25,8 +26,8 @@ fn next_revision() -> u64 {
 /// A bead pattern.
 ///
 /// Only the cells that hold a bead are kept; every other cell of the field
-/// is empty. Two patterns are equal when they hold the same beads and the
-/// same sheet; the revision is not compared.
+/// is empty. Two patterns are equal when they hold the same beads, the same
+/// sheet and the same ruling; the revision is not compared.
 #[derive(Debug, Clone)]
 pub struct Pattern {
     grid: Grid,
@@ -34,6 +35,7 @@ pub struct Pattern {
     palettes: Vec<Palette>,
     beads: BTreeMap<Cell, ColourId>,
     sheet: Option<Bounds>,
+    ruling: Ruling,
     turn: u16,
     revision: u64,
 }
@@ -45,6 +47,7 @@ impl PartialEq for Pattern {
             && self.palettes == other.palettes
             && self.beads == other.beads
             && self.sheet == other.sheet
+            && self.ruling == other.ruling
             && self.turn == other.turn
     }
 }
@@ -68,6 +71,7 @@ impl Pattern {
             palettes,
             beads: BTreeMap::new(),
             sheet: None,
+            ruling: Ruling::default(),
             turn: 0,
             revision: next_revision(),
         })
@@ -122,6 +126,19 @@ impl Pattern {
     pub fn set_sheet(&mut self, sheet: Option<Bounds>) {
         if self.sheet != sheet {
             self.sheet = sheet;
+            self.revision = next_revision();
+        }
+    }
+
+    /// The lines to count the beads by.
+    pub fn ruling(&self) -> Ruling {
+        self.ruling
+    }
+
+    /// Sets the lines to count the beads by.
+    pub fn set_ruling(&mut self, ruling: Ruling) {
+        if self.ruling != ruling {
+            self.ruling = ruling;
             self.revision = next_revision();
         }
     }

@@ -1,6 +1,7 @@
 //! The settings of the program: `settings.yaml` in the configuration
-//! directory (`RULE config.dir`). They keep the place of each panel and how
-//! the places of a palette stand.
+//! directory (`RULE config.dir`). They keep the place of each panel, how the
+//! places of a palette stand and whether the empty places show their
+//! shadows.
 //!
 //! A file this version cannot read is renamed to [`UNREADABLE`] beside it,
 //! and the program starts from the defaults (`RULE config.legacy`).
@@ -22,7 +23,7 @@ pub const UNREADABLE: &str = "settings.yaml.unreadable";
 const PARTIAL: &str = "settings.yaml.partial";
 
 /// The settings, and the file they are kept in.
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// The file; `None` when the settings are not kept.
@@ -32,6 +33,19 @@ pub struct Settings {
     panels: BTreeMap<String, Panel>,
     /// How the places of a palette stand.
     palette_view: PaletteView,
+    /// Whether the empty places of the field show their shadows.
+    shadows: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Settings {
+            path: None,
+            panels: BTreeMap::new(),
+            palette_view: PaletteView::default(),
+            shadows: true,
+        }
+    }
 }
 
 /// How the places of a palette stand, on the panel of beads and in the
@@ -101,6 +115,21 @@ impl Settings {
             return Ok(());
         }
         self.palette_view = view;
+        self.write()
+    }
+
+    /// Whether the empty places of the field show their shadows.
+    pub fn shadows(&self) -> bool {
+        self.shadows
+    }
+
+    /// Keeps whether the empty places show their shadows and writes the
+    /// file.
+    pub fn keep_shadows(&mut self, shadows: bool) -> Result<()> {
+        if shadows == self.shadows {
+            return Ok(());
+        }
+        self.shadows = shadows;
         self.write()
     }
 
