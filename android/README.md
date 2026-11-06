@@ -16,6 +16,9 @@ activity of `app/src/main/java`, calls `android_main`, which calls
   (`docs/backdrop.md`). The program calls it on the activity of its
   `AndroidApp` (`src/activity.rs`), not on the context of `ndk-context`,
   which is the application.
+- The window is light or dark as the night mode of the system is: winit
+  gives egui no theme on android, so `raw_input_hook` reads it from the
+  configuration of the activity (`src/activity.rs`).
 - The log of the program goes to logcat under the tag `obusina`:
   `adb logcat -s obusina`.
 

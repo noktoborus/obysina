@@ -14,6 +14,9 @@ An editor of bead patterns, for Linux, Windows and Android.
   place has no outline: only near the middle of the screen and under the
   pointer it shows the faint shadow of a bead, at every zoom. A button of
   the tools hides the shadows. A new pattern is an empty sheet.
+- The panels and menus are light or dark as the system is, on Windows, on
+  Android (its night mode) and in a browser. On Linux the system does not
+  tell winit, and they are dark. The field keeps one paper in both.
 - The field cannot be moved off the screen: at least ten beads of it stay
   on it, at the side it was moved to, also when the window changes its
   size.

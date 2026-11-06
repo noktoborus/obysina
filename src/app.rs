@@ -311,14 +311,20 @@ impl eframe::App for App {
     /// number, and the device is asked for the largest texture it grants.
     /// On android, gives egui the part of the window the system bars and the
     /// cut out of the camera leave free, which egui-winit gives only on iOS:
-    /// the panels stand inside it.
+    /// the panels stand inside it; and the theme of the system, which winit
+    /// gives on no android, so the window follows the night mode.
     fn raw_input_hook(&mut self, _context: &egui::Context, raw_input: &mut egui::RawInput) {
         if let Some(side) = raw_input.max_texture_side.as_mut() {
             *side = (*side).min(crate::render::ATLAS_SIDE);
         }
         #[cfg(target_os = "android")]
-        if let Some(insets) = crate::activity::safe_area(raw_input) {
-            raw_input.safe_area_insets = Some(insets);
+        {
+            if let Some(insets) = crate::activity::safe_area(raw_input) {
+                raw_input.safe_area_insets = Some(insets);
+            }
+            if let Some(theme) = crate::activity::theme() {
+                raw_input.system_theme = Some(theme);
+            }
         }
     }
 

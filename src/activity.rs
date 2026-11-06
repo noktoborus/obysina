@@ -1,6 +1,6 @@
 //! The activity of android, kept for what needs it: the choice of a file,
-//! and the part of the window the system bars and the cut out of the camera
-//! leave free.
+//! the part of the window the system bars and the cut out of the camera
+//! leave free, and the theme of the system.
 //!
 //! `android_main` may run more than once in the life of the program, each time
 //! with a new `AndroidApp`; the last one is kept.
@@ -40,4 +40,15 @@ pub fn safe_area(raw_input: &egui::RawInput) -> Option<egui::SafeAreaInsets> {
         right: inset(window.x - free.right as f32),
         bottom: inset(window.y - free.bottom as f32),
     }))
+}
+
+/// The theme of the system: dark in the night mode, light out of it; `None`
+/// when the system does not say. winit gives egui none on android.
+pub fn theme() -> Option<egui::Theme> {
+    use winit::platform::android::activity::ndk::configuration::UiModeNight;
+    match with(|app| app.config().ui_mode_night())? {
+        UiModeNight::Yes => Some(egui::Theme::Dark),
+        UiModeNight::No => Some(egui::Theme::Light),
+        _ => None,
+    }
 }
