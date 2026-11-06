@@ -1,0 +1,21 @@
+[package]
+name = "egui-notify"
+description = "Simple notifications library for egui; a copy of 0.24.0 with a button of an action"
+# The version of the crate it is a copy of, so that `[patch.crates-io]` of the
+# workspace takes it in place of that crate.
+version = "0.24.0"
+authors = ["ItsEthra"]
+edition.workspace = true
+rust-version.workspace = true
+license = "MIT"
+repository = "https://github.com/ItsEthra/egui-notify"
+
+[dependencies]
+egui.workspace = true
+
+[build-dependencies]
+base64.workspace = true
+
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest.workspace = true

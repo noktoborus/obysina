@@ -18,6 +18,8 @@ obusina (binary and library)
  ├── obusina-panel
  ├── obusina-pattern
  └── plate-menu         (a copy of the crate of zyterm)
+egui-notify            (a copy of egui-notify 0.24.0, by [patch.crates-io];
+                        nothing depends on it yet: the list of patterns will)
 experiments/glyphs     (nothing depends on it)
 experiments/mockups    (nothing depends on it) ──► ../showcase
 ```
@@ -30,6 +32,7 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
 | `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
+| `egui-notify` | toasts, with a button of an action; a copy of the crate of crates.io |
 | `obusina` | the window, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 

@@ -15,6 +15,7 @@ clap = { version = "4.6", features = ["derive"] }
 eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"] }
 embed-resource = "3.0"
+egui-notify = "0.24"
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 env_logger = "0.11"
 futures = { version = "0.3", default-features = false, features = ["std", "async-await", "executor"] }
@@ -112,3 +113,8 @@ winit.workspace = true
 embed-resource = "3.0"
 egui_kittest = { workspace = true, features = ["eframe"] }
 tempfile.workspace = true
+
+# A copy of egui-notify 0.24.0 with an action button, in place of the one of
+# crates.io (`RULE notify.patch` of AGENTS.md).
+[patch.crates-io]
+egui-notify = { path = "crates/egui-notify" }

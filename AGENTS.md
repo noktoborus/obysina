@@ -79,7 +79,8 @@ RULE crate.deps : a library crate depends on no other library crate of this
 WHY  a crate that needs a sibling is not one purpose any more
 THEN move the shared part into the binary, or make it its own crate both use
 EX+  obusina-canvas -> obusina-pattern    the one allowed exception, it draws it
-EX+  obusina-panel, obusina-button, plate-menu, which know egui only
+EX+  obusina-panel, obusina-button, plate-menu, egui-notify, which know egui
+     only
 EX-  obusina-pattern -> obusina-config
 REF  ARCHITECTURE.md
 
@@ -98,6 +99,18 @@ THEN the copy goes once both share one crate on one egui
 EXC  the copy, by the user's word, until then
 EXC  work on obusina touches no other project, by the user's word: a change
      of this copy is not carried to zyterm, and the two drift apart
+
+RULE notify.patch : `crates/egui-notify` is a copy of egui-notify 0.24.0 of
+     crates.io with a button of an action; `[patch.crates-io]` of the
+     workspace puts it in place of that crate
+WHY  the toasts of egui-notify have no button; "undo" needs one
+THEN depend on `egui-notify = "0.24"`, as on crates.io; the changes are
+     listed in its README
+THEN the copy goes once egui-notify of crates.io has an action
+EXC  by the user's word: its version is the one of the crate it copies, its
+     licence is its own MIT with the notice of its author (`LICENSE`), and
+     its code keeps the shape of the original, `clippy::collapsible_if`
+     allowed
 
 RULE crate.readme : every crate has a README.md naming its scope, boundaries
      and errors
