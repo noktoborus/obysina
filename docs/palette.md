@@ -24,8 +24,11 @@ model (`crates/obusina-pattern/README.md`). Its tests are
    remove, and "Cancel" at the very bottom, which puts back what the place
    held, as Escape does.
    No button stands under a colour. While a menu is open nothing else of
-   the window answers, and a press beside it does nothing: an entry or
-   Escape leaves it (`src/ui/blocker.rs`). A "+" adds a colour in its place and opens its menu.
+   the window answers. A press beside it closes it, as Escape does, and
+   reaches nothing under it (`src/ui/blocker.rs`). A "+" adds a colour in
+   its place and opens its menu.
+   - Was: a press beside it did nothing; the menu of `0` in hand then
+     held the field, and a bead was not taken away.
    - Was: a "-" under each colour, which doubled the line and was read as
      a colour of its own.
 4. **The picker is the notice of the menu,** as wide as the menu: a
@@ -148,7 +151,7 @@ tap a colour ──► PlateMenu: the picker of the colour on top, then
                     │──remove──────────► its place and its beads hatched
                     └──cancel──────────► the colour goes back to what it was
 tap a hatched place ──► the same, with "delete <n> beads" for "remove"
-      closed with no entry ──► the colour goes back to what it was
+      closed with no entry, Escape or a press beside ──► the colour goes back to what it was
 drag a colour ──► the place under the pointer is lit and shows it ──let go──► it stays,
                   what stood there takes the place it left
 tap a "+" ──► the colour farthest from the others and the paper, its menu open

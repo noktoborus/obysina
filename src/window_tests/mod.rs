@@ -979,3 +979,16 @@ fn a_moved_field_draws_its_beads_where_they_are_pressed() {
 
     assert_eq!(&pixel.0[..3], &[0x1b, 0x1b, 0x1b], "the bead at {point:?}");
 }
+
+#[test]
+fn the_empty_place_in_hand_takes_a_bead_away() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(0)));
+    window.click(&t!("palette.empty"));
+    assert_eq!(window.harness.state().colour, None);
+
+    window.press(FREE, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(FREE), None);
+}

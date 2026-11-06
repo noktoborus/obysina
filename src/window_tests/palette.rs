@@ -501,10 +501,10 @@ fn press_at(window: &mut super::Window, at: egui::Pos2) {
 }
 
 /// While the picker of a colour is open, a press on the window of the
-/// palettes where the picker does not cover it changes nothing, and the
-/// picker stays on top.
+/// palettes where the picker does not cover it closes the picker and reaches
+/// nothing under it.
 #[test]
-fn the_window_under_the_picker_does_not_answer() {
+fn a_press_beside_the_picker_closes_it_and_nothing_else() {
     let mut window = opened();
     let first = window.harness.get_by_label(&colour(1)).rect();
     window.click(&colour(2));
@@ -514,28 +514,24 @@ fn the_window_under_the_picker_does_not_answer() {
         uncovered.x < picker.left(),
         "the press is beside the picker"
     );
-    let menu = window.harness.state().palette_window.menu_layer();
 
     press_at(&mut window, uncovered);
 
-    let top = window
-        .harness
-        .ctx
-        .memory(|memory| memory.areas().top_layer_id(egui::Order::Foreground));
-    assert_eq!(top, Some(menu), "the picker stays on top");
+    assert!(!window.harness.state().palette_window.menu_is_open());
     assert!(
         window
             .harness
             .query_by_label(&t!("palette.accept"))
-            .is_some()
+            .is_none()
     );
     let places = window.harness.state().pattern.palettes()[0].places();
     assert!(places[0].is_some(), "colour 1 was not tapped");
 }
 
-/// While the menu of the colour in hand is open, the panels do not answer.
+/// A press beside the menu of the colour in hand closes it; the panel under
+/// it does not answer.
 #[test]
-fn the_panels_under_the_menu_of_the_colour_in_hand_do_not_answer() {
+fn a_press_beside_the_menu_of_the_colour_in_hand_closes_it() {
     let mut window = window();
     let first = swatch(window.harness.state(), 0);
     let third = window
@@ -548,5 +544,23 @@ fn the_panels_under_the_menu_of_the_colour_in_hand_do_not_answer() {
 
     press_at(&mut window, third);
 
+    assert!(!window.harness.state().bead_menu.is_open());
     assert_eq!(window.harness.state().colour, Some(id_at(0)));
+}
+
+/// The empty place tapped twice opens its menu; a press on the field closes
+/// it, and the next press takes the bead away.
+#[test]
+fn the_field_takes_a_bead_away_after_the_menu_of_the_empty_place() {
+    let mut window = window();
+    window.press(super::FREE, PointerButton::Primary);
+    window.click(&t!("palette.empty"));
+    window.click(&t!("palette.empty"));
+    assert!(window.harness.state().bead_menu.is_open());
+
+    window.press(super::FREE, PointerButton::Primary);
+    assert!(!window.harness.state().bead_menu.is_open());
+    window.press(super::FREE, PointerButton::Primary);
+
+    assert_eq!(window.harness.state().pattern.get(super::FREE), None);
 }

@@ -282,7 +282,7 @@ fn open_menu(app: &mut App, colour: Option<ColourId>) {
 pub fn menu(app: &mut App, context: &egui::Context) {
     app.bead_menu.nothing_found(t!("menu.nothing_found"));
     if app.bead_menu.is_open() {
-        crate::ui::blocker::under(context, "bead-menu", &mut app.bead_menu);
+        crate::ui::blocker::under(context, "bead-menu", &app.bead_menu);
     }
     let Some(chosen) = app.bead_menu.show(context) else {
         return;

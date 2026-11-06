@@ -62,9 +62,9 @@ pub struct PaletteWindow {
 
 #[cfg(test)]
 impl PaletteWindow {
-    /// The layer of its menu.
-    pub fn menu_layer(&self) -> egui::LayerId {
-        self.menu.layer_id()
+    /// Whether its menu is open.
+    pub fn menu_is_open(&self) -> bool {
+        self.menu.is_open()
     }
 }
 
@@ -493,7 +493,7 @@ fn menu(app: &mut App, context: &egui::Context) {
         .menu
         .nothing_found(t!("menu.nothing_found"));
     if app.palette_window.menu.is_open() {
-        crate::ui::blocker::under(context, "palette-window", &mut app.palette_window.menu);
+        crate::ui::blocker::under(context, "palette-window", &app.palette_window.menu);
     }
     let chosen = app.palette_window.menu.show(context);
     if let Some(MenuOf::Place { place, .. }) = app.palette_window.menu_of {
