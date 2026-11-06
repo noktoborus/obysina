@@ -20,6 +20,7 @@ use plate_menu::{MenuItem, Notice};
 use rust_i18n::t;
 
 use crate::app::App;
+use crate::pick::Choice;
 use crate::ui::access::Named;
 use crate::ui::{button, icons};
 
@@ -104,10 +105,10 @@ fn ask_remove(app: &mut App) {
 /// Draws the menu while it is open, does what is chosen, and takes the answer
 /// of a choice of a file once it has come.
 pub fn show(app: &mut App, context: &egui::Context) {
-    if let Some(answer) = app.picker.take()
-        && let Some(picked) = answer
-    {
-        app.take_picture(context, picked);
+    match app.picker.take() {
+        Some(Choice::Picked(picked)) => app.take_picture(context, picked),
+        Some(Choice::Failed) => app.message = Some(t!("error.pick").to_string()),
+        Some(Choice::GivenUp) | None => {}
     }
     app.backdrop_menu.nothing_found(t!("menu.nothing_found"));
     let was_open = app.backdrop_menu.is_open();

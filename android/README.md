@@ -13,7 +13,11 @@ activity of `app/src/main/java`, calls `android_main`, which calls
 - `MainActivity.pickPicture` opens the choice of a document of the system
   for a picture; its answer comes back through the native method
   `picturePicked`, exported here, to `obusina::android_picked`
-  (`docs/backdrop.md`).
+  (`docs/backdrop.md`). The program calls it on the activity of its
+  `AndroidApp` (`src/activity.rs`), not on the context of `ndk-context`,
+  which is the application.
+- The log of the program goes to logcat under the tag `obusina`:
+  `adb logcat -s obusina`.
 
 ## Boundaries
 

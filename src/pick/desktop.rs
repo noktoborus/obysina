@@ -6,18 +6,20 @@ use std::sync::mpsc::Sender;
 
 use obusina_backdrop::Kind;
 
-use super::{Answer, Picked};
+use super::{Answer, Choice, Picked};
 
 /// Opens the dialog in a thread; its answer goes to `sender`.
 pub fn start(context: egui::Context, title: String, sender: Sender<Answer>) {
     std::thread::spawn(move || {
         let dialog = rfd::AsyncFileDialog::new().add_filter(title, &Kind::EXTENSIONS);
         let answer = pollster::block_on(async {
-            let file = dialog.pick_file().await?;
-            Some(Picked {
-                name: Some(file.file_name()),
-                bytes: file.read().await,
-            })
+            match dialog.pick_file().await {
+                Some(file) => Choice::Picked(Picked {
+                    name: Some(file.file_name()),
+                    bytes: file.read().await,
+                }),
+                None => Choice::GivenUp,
+            }
         });
         if sender.send(answer).is_err() {
             log::warn!("a picture was chosen after the window went");

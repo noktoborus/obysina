@@ -44,6 +44,15 @@ rules themselves are `crates/obusina-panel/README.md`.
    panel is let go or folded. A turn made because the window changed its
    size is not written.
 
+9. **On android the panels stand in the part of the window the system
+   leaves free.** egui-winit gives egui the insets of the system bars and
+   of the cut out of the camera on iOS only; on android `raw_input_hook`
+   takes them from the content rectangle of the activity
+   (`src/activity.rs`). egui lays the panels out in `Context::content_rect`,
+   which leaves them out.
+   - Why: on a phone with a cut out, a panel at the top stood under the
+     status bar, and its grip could not be taken.
+
 ## Open questions
 
 - Two panels at two edges that meet can overlap in the corner. They do not

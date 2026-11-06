@@ -3,6 +3,8 @@
 //! The program is a library with two entries: [`desktop`], which
 //! `src/main.rs` calls, and `android`, which the `cdylib` of `android/` calls.
 
+#[cfg(target_os = "android")]
+mod activity;
 mod app;
 mod backdrop;
 mod edit;
@@ -69,6 +71,12 @@ pub fn desktop() -> std::process::ExitCode {
 /// program.
 #[cfg(target_os = "android")]
 pub fn android(android: winit::platform::android::activity::AndroidApp) {
+    android_logger::init_once(
+        android_logger::Config::default()
+            .with_max_level(log::LevelFilter::Info)
+            .with_tag("obusina"),
+    );
+    activity::keep(android.clone());
     choose_locale();
     let data = android.internal_data_path();
     let path = data.as_ref().map(|directory| directory.join(DEFAULT_FILE));

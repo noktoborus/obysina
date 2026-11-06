@@ -23,8 +23,19 @@ pub struct Picked {
     pub bytes: Vec<u8>,
 }
 
-/// The answer of a choice: a file, or nothing when it was given up.
-type Answer = Option<Picked>;
+/// The answer of a choice of a file.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Choice {
+    /// The file the person chose.
+    Picked(Picked),
+    /// The person gave the choice up.
+    GivenUp,
+    /// The choice could not be asked of the platform.
+    Failed,
+}
+
+/// What a choice answers by.
+type Answer = Choice;
 
 /// A choice of a file under way.
 #[derive(Default)]
@@ -65,8 +76,8 @@ impl Picker {
         self.answer.is_some()
     }
 
-    /// The answer, once it has come: a file, or `None` when the choice was
-    /// given up. `None` while it is under way, or when none was asked.
+    /// The answer, once it has come; `None` while the choice is under way, or
+    /// when none was asked.
     pub fn take(&mut self) -> Option<Answer> {
         let answer = self.answer.as_ref()?.try_recv();
         match answer {
@@ -77,7 +88,7 @@ impl Picker {
             Err(std::sync::mpsc::TryRecvError::Empty) => None,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                 self.answer = None;
-                Some(None)
+                Some(Choice::Failed)
             }
         }
     }

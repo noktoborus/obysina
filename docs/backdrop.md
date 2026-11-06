@@ -106,5 +106,6 @@ Picker::start ──► the platform asks ──► Sender ──► Picker::tak
                                                     ──► App::take_picture
 ```
 
-The answer is bytes and, when the platform gives one, a name. The window
-keeps drawing while it waits.
+The answer is the bytes and, when the platform gives one, a name; or that
+the person gave the choice up; or that the choice could not be asked, which
+the window says. The window keeps drawing while it waits.

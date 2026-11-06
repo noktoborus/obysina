@@ -54,8 +54,8 @@ backdrop.remove:
   en: "Remove the picture…"
   ru: "Убрать картинку…"
 backdrop.remove_question:
-  en: "Remove the picture? Its copy is deleted."
-  ru: "Убрать картинку? Её копия будет удалена."
+  en: "Remove the picture?"
+  ru: "Убрать картинку?"
 backdrop.remove_yes:
   en: "Remove"
   ru: "Убрать"
@@ -244,6 +244,9 @@ error.backdrop.kind:
 error.backdrop.picture:
   en: "The picture could not be read"
   ru: "Не удалось прочитать картинку"
+error.pick:
+  en: "The choice of a file could not be opened"
+  ru: "Не удалось открыть выбор файла"
 error.settings.read:
   en: "The settings cannot be read; the program started from the defaults"
   ru: "Настройки не читаются; программа запущена с настройками по умолчанию"
