@@ -3,7 +3,7 @@
 A picture to trace a design from: chosen by the person, laid under the beads
 over four corners, kept apart from the pattern. The store is the crate
 `obusina-backdrop` (`crates/obusina-backdrop/README.md`); the window side is
-`src/backdrop.rs`, `src/pick/` and `src/ui/backdrop_menu.rs`. Its tests are
+`src/backdrop.rs`, `src/task.rs`, `src/pick/` and `src/ui/backdrop_menu.rs`. Its tests are
 `src/window_tests/backdrop.rs`.
 
 ## Decisions
@@ -46,10 +46,37 @@ over four corners, kept apart from the pattern. The store is the crate
 11. **The corners are edited on the field.** A drag that begins on the
     handle of a corner moves that corner; one inside the picture moves all
     of it; one outside moves the field, so a corner off the screen is
-    reached. A press puts no bead while the corners are edited.
+    reached. Where it begins is where the button went down, so a quick drag
+    still takes its handle. A press puts no bead while the corners are
+    edited.
+12. **A corner never turns the picture inside out.** It moves only as far
+    as the four stay convex and turn the same way at each corner, by at
+    least `LEAST_TURN`; dragged further, it stops at the last place that
+    keeps them so. Corners already wrong, from a file written by hand, move
+    freely, so they can be mended.
+13. **The store works away from the frame.** Its calls are `async`, so the
+    store of the browser (OPFS), whose files answer in futures, stands
+    behind the same calls. The window runs them one after another on a
+    thread of its own, on the web as futures of the browser (`Tasks`); the
+    picture is decoded there too. The answers come in a later frame.
+    - Why one after another: a write of the corners must not pass the put of
+      the picture it belongs to.
+    - A test does each job at once, or holds them back to see the window
+      while they wait.
+14. **While a picture loads, a panel shimmers in its place.** Over its
+    corners once the description is read; over a square in the middle of
+    the work area while a new picture is decoded, for its sides are not
+    known yet. Until the store answers whether there is a picture at all,
+    nothing stands.
+
+15. **The button of the picture does what is next.** With no picture it
+    asks for a file at once; with a hidden one it shows it again; with one
+    shown, or one that loads, it opens the menu.
 
 ```text
-picture ──► PlateMenu: the opacity on top, then
+picture, none ──────────► the choice of a file of the platform
+picture, hidden ────────► shown again
+picture, shown or loads ► PlateMenu: the opacity on top, then
               │──choose a picture…─► the choice of the platform
               │──edit the corners──► handles; ✔ keeps and writes, ✖ puts back
               │──hide / show───────► kept, not drawn
@@ -63,6 +90,12 @@ picture ──► PlateMenu: the opacity on top, then
 | Linux, Windows | the dialog of the desktop (`rfd`), in a thread of its own | `src/pick/desktop.rs` |
 | Android | `ACTION_OPEN_DOCUMENT` of `MainActivity`, read to bytes in Java, given to Rust by JNI | `src/pick/android.rs`, `android/` |
 | Browser | the file input (`rfd`) | `src/pick/web.rs` |
+
+```text
+open ──► find ──► none ──────────────────────────► no picture
+             └─► description: shimmer over its corners ──► read, decode ──► picture
+choose ──► shimmer over a square ──► decode: corners over the work area ──► put ──► picture
+```
 
 ```text
 Picker::start ──► the platform asks ──► Sender ──► Picker::take, in a later frame

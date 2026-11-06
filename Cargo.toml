@@ -16,6 +16,7 @@ egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"
 embed-resource = "3.0"
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 env_logger = "0.11"
+futures = { version = "0.3", default-features = false, features = ["std", "async-await", "executor"] }
 ico = "0.6"
 jni = "0.22"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
@@ -73,6 +74,7 @@ license.workspace = true
 eframe.workspace = true
 egui.workspace = true
 env_logger.workspace = true
+futures.workspace = true
 log.workspace = true
 image.workspace = true
 obusina-backdrop.workspace = true

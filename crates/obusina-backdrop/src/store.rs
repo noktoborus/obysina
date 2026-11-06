@@ -35,13 +35,17 @@ pub struct Backdrop {
 pub struct Kept {
     /// Its number in the store.
     pub number: u64,
-    /// The file of the picture.
-    pub picture: PathBuf,
+    /// The name of the file of the picture in the store: `<number>.<ext>`.
+    pub file: String,
     /// How it lies.
     pub backdrop: Backdrop,
 }
 
 /// The directory of pictures. It is made when the first picture is put.
+///
+/// Every call is `async`, so a store of the browser, whose files answer in
+/// futures, stands behind the same calls. Here a call does its work on the
+/// files at once; the caller runs it away from the frame.
 #[derive(Debug, Clone)]
 pub struct Store {
     dir: PathBuf,
@@ -62,7 +66,7 @@ impl Store {
     /// are several. A description this version cannot read is passed over:
     /// what an older version wrote is lost. A directory that is not there
     /// holds nothing.
-    pub fn find(&self, pattern: &str) -> Result<Option<Kept>> {
+    pub async fn find(&self, pattern: &str) -> Result<Option<Kept>> {
         let found = self
             .described()?
             .into_iter()
@@ -71,33 +75,39 @@ impl Store {
         Ok(found)
     }
 
+    /// The bytes of a picture of the store.
+    pub async fn read(&self, kept: &Kept) -> Result<Vec<u8>> {
+        let path = self.dir.join(&kept.file);
+        std::fs::read(&path).map_err(|source| BackdropError::Read { path, source })
+    }
+
     /// Puts a picture under a pattern, with a number no picture of the store
     /// has, and takes away the one the pattern had. `bytes` are kept as they
     /// are.
-    pub fn put(&self, bytes: &[u8], backdrop: Backdrop) -> Result<Kept> {
+    pub async fn put(&self, bytes: &[u8], backdrop: Backdrop) -> Result<Kept> {
         let kind = Kind::of(bytes).ok_or(BackdropError::Kind)?;
         std::fs::create_dir_all(&self.dir).map_err(|source| BackdropError::Write {
             path: self.dir.clone(),
             source,
         })?;
-        let old = self.find(&backdrop.pattern)?;
+        let old = self.find(&backdrop.pattern).await?;
         let number = self.numbers()?.into_iter().max().unwrap_or(0) + 1;
-        let picture = self.dir.join(format!("{number}.{}", kind.extension()));
-        write(&picture, bytes)?;
+        let file = format!("{number}.{}", kind.extension());
+        write(&self.dir.join(&file), bytes)?;
         let kept = Kept {
             number,
-            picture,
+            file,
             backdrop,
         };
-        self.save(&kept)?;
+        self.save(&kept).await?;
         if let Some(old) = old {
-            self.remove(&old)?;
+            self.remove(&old).await?;
         }
         Ok(kept)
     }
 
     /// Writes how a picture lies.
-    pub fn save(&self, kept: &Kept) -> Result<()> {
+    pub async fn save(&self, kept: &Kept) -> Result<()> {
         let text =
             serde_yaml_ng::to_string(&kept.backdrop).map_err(|source| BackdropError::Yaml {
                 number: kept.number,
@@ -107,8 +117,8 @@ impl Store {
     }
 
     /// Takes a picture and its description away.
-    pub fn remove(&self, kept: &Kept) -> Result<()> {
-        for path in [self.description(kept.number), kept.picture.clone()] {
+    pub async fn remove(&self, kept: &Kept) -> Result<()> {
+        for path in [self.description(kept.number), self.dir.join(&kept.file)] {
             match std::fs::remove_file(&path) {
                 Ok(()) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
@@ -160,7 +170,7 @@ impl Store {
                 let number: u64 = path.file_stem()?.to_str()?.parse().ok()?;
                 let text = std::fs::read_to_string(path).ok()?;
                 let backdrop: Backdrop = serde_yaml_ng::from_str(&text).ok()?;
-                let picture = files
+                let file = files
                     .iter()
                     .find(|other| {
                         other.file_stem().and_then(|stem| stem.to_str())
@@ -169,10 +179,12 @@ impl Store {
                                 Kind::EXTENSIONS.iter().any(|known| ext == *known)
                             })
                     })?
-                    .clone();
+                    .file_name()?
+                    .to_str()?
+                    .to_owned();
                 Some(Kept {
                     number,
-                    picture,
+                    file,
                     backdrop,
                 })
             })
@@ -195,6 +207,7 @@ fn write(path: &Path, bytes: &[u8]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pollster::block_on;
 
     const PNG: &[u8] = b"\x89PNG\r\n\x1a\nnot really a picture";
     const JPEG: &[u8] = &[0xff, 0xd8, 0xff, 0xe0, 1, 2, 3];
@@ -218,20 +231,19 @@ mod tests {
     #[test]
     fn a_picture_put_is_found_by_its_pattern() {
         let (_dir, store) = store();
-        assert_eq!(store.find("a").expect("it reads"), None);
+        assert_eq!(block_on(store.find("a")).expect("it reads"), None);
 
-        let kept = store.put(PNG, backdrop("a")).expect("it is put");
-        store.put(JPEG, backdrop("b")).expect("it is put");
+        let kept = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
+        block_on(store.put(JPEG, backdrop("b"))).expect("it is put");
 
         assert_eq!(kept.number, 1);
+        assert_eq!(kept.file, "1.png");
+        assert_eq!(block_on(store.read(&kept)).expect("the copy"), PNG);
+        assert_eq!(block_on(store.find("a")).expect("it reads"), Some(kept));
         assert_eq!(
-            kept.picture.extension().and_then(|ext| ext.to_str()),
-            Some("png")
-        );
-        assert_eq!(std::fs::read(&kept.picture).expect("the copy"), PNG);
-        assert_eq!(store.find("a").expect("it reads"), Some(kept));
-        assert_eq!(
-            store.find("b").expect("it reads").map(|kept| kept.number),
+            block_on(store.find("b"))
+                .expect("it reads")
+                .map(|kept| kept.number),
             Some(2)
         );
     }
@@ -239,35 +251,35 @@ mod tests {
     #[test]
     fn a_second_picture_takes_the_place_of_the_first() {
         let (_dir, store) = store();
-        let first = store.put(PNG, backdrop("a")).expect("it is put");
+        let first = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
 
-        let second = store.put(JPEG, backdrop("a")).expect("it is put");
+        let second = block_on(store.put(JPEG, backdrop("a"))).expect("it is put");
 
         assert_eq!(second.number, 2);
-        assert!(!first.picture.exists());
-        assert_eq!(store.find("a").expect("it reads"), Some(second));
+        assert!(!store.dir().join(&first.file).exists());
+        assert_eq!(block_on(store.find("a")).expect("it reads"), Some(second));
     }
 
     #[test]
     fn a_saved_description_is_read_back() {
         let (_dir, store) = store();
-        let mut kept = store.put(PNG, backdrop("a")).expect("it is put");
+        let mut kept = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
 
         kept.backdrop.corners[2] = [10.5, 7.25];
         kept.backdrop.hidden = true;
-        store.save(&kept).expect("it is saved");
+        block_on(store.save(&kept)).expect("it is saved");
 
-        assert_eq!(store.find("a").expect("it reads"), Some(kept));
+        assert_eq!(block_on(store.find("a")).expect("it reads"), Some(kept));
     }
 
     #[test]
     fn a_removed_picture_leaves_nothing() {
         let (_dir, store) = store();
-        let kept = store.put(PNG, backdrop("a")).expect("it is put");
+        let kept = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
 
-        store.remove(&kept).expect("it is removed");
+        block_on(store.remove(&kept)).expect("it is removed");
 
-        assert_eq!(store.find("a").expect("it reads"), None);
+        assert_eq!(block_on(store.find("a")).expect("it reads"), None);
         assert_eq!(std::fs::read_dir(store.dir()).expect("the dir").count(), 0);
     }
 
@@ -275,11 +287,11 @@ mod tests {
     #[test]
     fn a_description_of_another_shape_is_passed_over() {
         let (_dir, store) = store();
-        let kept = store.put(PNG, backdrop("a")).expect("it is put");
+        let kept = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
         std::fs::write(store.dir().join("1.yaml"), "pattern: a\nzoom: 3\n").expect("written");
 
-        assert_eq!(store.find("a").expect("it reads"), None);
-        let next = store.put(PNG, backdrop("a")).expect("it is put");
+        assert_eq!(block_on(store.find("a")).expect("it reads"), None);
+        let next = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
         assert_eq!(
             next.number,
             kept.number + 1,
@@ -292,9 +304,9 @@ mod tests {
         let (_dir, store) = store();
 
         assert!(matches!(
-            store.put(b"GIF89a", backdrop("a")),
+            block_on(store.put(b"GIF89a", backdrop("a"))),
             Err(BackdropError::Kind)
         ));
-        assert_eq!(store.find("a").expect("it reads"), None);
+        assert_eq!(block_on(store.find("a")).expect("it reads"), None);
     }
 }

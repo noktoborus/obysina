@@ -9,7 +9,12 @@ pattern, kept in a directory of their own.
 - `Store::put(bytes, backdrop)`: copies a picture as it is under the next
   free number, writes its description and takes away the picture the pattern
   had. A pattern has one picture.
-- `Store::find(pattern)`, `Store::save(kept)`, `Store::remove(kept)`.
+- `Store::find(pattern)`, `Store::read(kept)`, `Store::save(kept)`,
+  `Store::remove(kept)`.
+- Every call is `async`, so a store of the browser (OPFS), whose files
+  answer in futures, stands behind the same calls. Here a call does its
+  work on the files at once; the caller runs it away from the frame. A
+  picture is named by its file in the store, `Kept::file`, not by a path.
 - `Kind::of(bytes)`: PNG, JPEG or WebP, told by the first bytes, not by the
   name of the file. `Kind::EXTENSIONS` for a dialog of files.
 

@@ -30,6 +30,10 @@ type Answer = Option<Picked>;
 #[derive(Default)]
 pub struct Picker {
     answer: Option<Receiver<Answer>>,
+    /// A test asks for no dialog: a choice is only noted, and its answer
+    /// never comes.
+    #[cfg(test)]
+    held: Option<Option<Sender<Answer>>>,
 }
 
 impl Picker {
@@ -41,7 +45,24 @@ impl Picker {
         }
         let (sender, receiver) = channel();
         self.answer = Some(receiver);
+        #[cfg(test)]
+        if let Some(held) = &mut self.held {
+            *held = Some(sender);
+            return;
+        }
         start(context.clone(), title.to_owned(), sender);
+    }
+
+    /// Opens no dialog from now on: a test notes the choice only.
+    #[cfg(test)]
+    pub fn hold(&mut self) {
+        self.held = Some(None);
+    }
+
+    /// True while a choice is under way.
+    #[cfg(test)]
+    pub fn asked(&self) -> bool {
+        self.answer.is_some()
     }
 
     /// The answer, once it has come: a file, or `None` when the choice was

@@ -11,6 +11,7 @@ mod new_colour;
 mod pick;
 mod render;
 mod settings;
+mod task;
 mod ui;
 mod window_icon;
 

@@ -19,13 +19,18 @@ fn png(width: u32, height: u32) -> Vec<u8> {
 }
 
 /// Puts a picture of 40 by 20 pixels under the pattern, as a choice of the
-/// person would.
+/// person would. A few frames, not until the window settles: a picture that
+/// loads shimmers, and the window draws all along.
 fn choose(window: &mut Window) {
-    window.harness.state_mut().take_picture(Picked {
-        name: Some("photo.png".to_owned()),
-        bytes: png(40, 20),
-    });
-    window.harness.run();
+    let context = window.harness.ctx.clone();
+    window.harness.state_mut().take_picture(
+        &context,
+        Picked {
+            name: Some("photo.png".to_owned()),
+            bytes: png(40, 20),
+        },
+    );
+    window.harness.run_steps(4);
 }
 
 /// Lays the picture in the middle of the field, away from the panels.
@@ -173,15 +178,13 @@ fn a_drag_inside_moves_the_whole_picture() {
     assert_eq!(after[2] - before[2], moved);
 }
 
-/// Hidden, the picture is kept and written so; the opacity of the slider is
-/// written when the menu closes.
+/// The opacity of the slider is written when the menu closes. Hidden, the
+/// picture is kept and written so, and a tap on the button shows it again.
 #[test]
 fn hidden_and_opacity_are_written() {
     let mut window = window();
     choose(&mut window);
 
-    menu(&mut window, &t!("backdrop.hide"));
-    assert!(window.harness.state().backdrop.hidden());
     window.click(&t!("backdrop.button"));
     *window
         .harness
@@ -201,10 +204,37 @@ fn hidden_and_opacity_are_written() {
             .join("1.yaml"),
     )
     .expect("the description");
-    assert!(text.contains("hidden: true"), "{text}");
     assert!(text.contains("opacity: 0.3"), "{text}");
-    menu(&mut window, &t!("backdrop.show"));
-    assert!(!window.harness.state().backdrop.hidden());
+
+    menu(&mut window, &t!("backdrop.hide"));
+    assert!(window.harness.state().backdrop.hidden());
+    let text = std::fs::read_to_string(
+        window
+            .directory
+            .path()
+            .join(crate::backdrop::DIRECTORY)
+            .join("1.yaml"),
+    )
+    .expect("the description");
+    assert!(text.contains("hidden: true"), "{text}");
+
+    window.click(&t!("backdrop.button"));
+    assert!(!window.harness.state().backdrop.hidden(), "a tap shows it");
+    assert!(!window.harness.state().backdrop_menu.is_open(), "no menu");
+}
+
+/// With no picture, a tap on the button opens the choice of a file, not the
+/// menu.
+#[test]
+fn with_no_picture_the_button_asks_for_a_file() {
+    let mut window = window();
+    window.harness.state_mut().picker.hold();
+
+    window.click(&t!("backdrop.button"));
+
+    let app = window.harness.state();
+    assert!(app.picker.asked(), "a file is asked for");
+    assert!(!app.backdrop_menu.is_open());
 }
 
 /// "Remove" asks first; "keep" keeps it, "remove" takes it and its copy away.
@@ -228,14 +258,99 @@ fn a_removed_picture_leaves_nothing() {
 fn a_picture_of_another_kind_is_refused() {
     let mut window = window();
 
-    window.harness.state_mut().take_picture(Picked {
-        name: Some("cat.gif".to_owned()),
-        bytes: b"GIF89a....".to_vec(),
-    });
+    let context = window.harness.ctx.clone();
+    window.harness.state_mut().take_picture(
+        &context,
+        Picked {
+            name: Some("cat.gif".to_owned()),
+            bytes: b"GIF89a....".to_vec(),
+        },
+    );
     window.harness.run();
 
     let app = window.harness.state();
     assert!(!app.backdrop.has());
     assert_eq!(app.message.as_deref(), Some(&*t!("error.backdrop.kind")));
     assert!(stored(&window).is_empty());
+}
+
+/// While a new picture is decoded, a square stands for it in the middle of
+/// the work area, with no texture: the panel that shimmers. Then the picture
+/// takes its own sides.
+#[test]
+fn a_new_picture_is_a_square_until_it_is_decoded() {
+    let mut window = window();
+    window.harness.state_mut().backdrop.tasks().hold();
+
+    choose(&mut window);
+
+    let context = window.harness.ctx.clone();
+    let app = window.harness.state_mut();
+    assert!(app.backdrop.loading());
+    let picture = app.backdrop.picture(&context).expect("a panel stands");
+    assert!(picture.texture.is_none());
+    let [top_left, _, bottom_right, _] = *picture.corners;
+    let side = bottom_right - top_left;
+    assert!((side.x - side.y).abs() < 1e-3, "a square: {side:?}");
+
+    app.backdrop.tasks().release();
+    window.harness.run_steps(4);
+    let app = window.harness.state();
+    assert!(app.backdrop.has());
+    let [top_left, _, bottom_right, _] = app.backdrop.corners;
+    let size = bottom_right - top_left;
+    assert!((size.x / size.y - 2.0).abs() < 1e-3, "its sides: {size:?}");
+}
+
+/// When the pattern opens, the panel that shimmers stands over the corners
+/// of the description while the picture is read.
+#[test]
+fn a_kept_picture_shimmers_over_its_corners_while_it_is_read() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    window.click(&t!("backdrop.button"));
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
+    let corners = window.harness.state().backdrop.corners;
+    window.click(&t!("file.save"));
+    let Window { harness, directory } = window;
+    drop(harness);
+
+    let path = directory.path().join("pattern.json");
+    let pictures = directory.path().join(crate::backdrop::DIRECTORY);
+    let mut app = crate::app::App::open(Some(path), None, Some(pictures));
+    app.backdrop.tasks().hold();
+    let context = egui::Context::default();
+    let pattern = app.pattern.clone();
+    assert!(app.backdrop.update(&context, &pattern).is_none());
+    assert!(app.backdrop.loading());
+    assert!(app.backdrop.picture(&context).is_none(), "not placed yet");
+
+    app.backdrop.tasks().release();
+    let _ = app.backdrop.update(&context, &pattern);
+    assert!(!app.backdrop.loading(), "read at once once released");
+    assert_eq!(app.backdrop.corners, corners);
+}
+
+/// The bottom right corner dragged past the top left one stops before the
+/// picture would turn inside out.
+#[test]
+fn a_corner_never_turns_the_picture_inside_out() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let before = window.harness.state().backdrop.corners;
+
+    let corner = handle(&window, 2);
+    let far = handle(&window, 0) - corner - egui::vec2(60.0, 60.0);
+    drag(&mut window, corner, far);
+
+    let after = window.harness.state().backdrop.corners;
+    assert!(
+        after[2].x > after[0].x && after[2].y > after[0].y,
+        "{after:?}"
+    );
+    assert_eq!(after[0], before[0]);
 }

@@ -8,7 +8,7 @@ mod sprite;
 mod texture;
 mod view;
 
-pub use picture::{HANDLE, Picture, handles};
+pub use picture::{HANDLE, Picture, SHIMMER_PERIOD, handles};
 pub use shadow::{FRAME_FADE, NEAR_RADIUS};
 pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
@@ -123,7 +123,7 @@ impl<'a> Canvas<'a> {
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
         if let Some(picture) = &picture {
-            self.draw_picture(&painter, origin, picture);
+            self.draw_picture(ui, &painter, origin, picture);
         }
         if self.shadows {
             let pointer = response.hover_pos();

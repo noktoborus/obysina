@@ -2,7 +2,9 @@
 //! buttons that end the editing of its corners (`docs/backdrop.md`).
 //!
 //! ```text
-//! picture ──► PlateMenu: the opacity on top, then
+//! picture, none ──────────► the choice of a file of the platform
+//! picture, hidden ────────► shown again
+//! picture, shown or loads ► PlateMenu: the opacity on top, then
 //!               │──choose a picture…─► the dialog of the platform; the
 //!               │                      picture takes the place of the old one
 //!               │                      and its corners
@@ -24,10 +26,19 @@ use crate::ui::{button, icons};
 /// The least opacity of the slider: a picture is never quite gone by it.
 const LEAST_OPACITY: f32 = 0.1;
 
-/// The button of the picture, which opens its menu.
+/// The button of the picture: with none, the choice of a file; hidden, it
+/// shows the picture again; shown, or while it loads, it opens its menu.
 pub fn button(app: &mut App, ui: &mut egui::Ui) {
-    let shown = app.backdrop.has() && !app.backdrop.hidden();
-    if button::toggle(ui, shown, icons::PICTURE, &t!("backdrop.button")).clicked() {
+    let present = app.backdrop.has() || app.backdrop.loading();
+    let shown = present && !app.backdrop.hidden();
+    if !button::toggle(ui, shown, icons::PICTURE, &t!("backdrop.button")).clicked() {
+        return;
+    }
+    if !present {
+        app.picker.start(ui.ctx(), &t!("backdrop.kinds"));
+    } else if app.backdrop.hidden() {
+        app.backdrop.set_hidden(ui.ctx(), false);
+    } else {
         open(app);
     }
 }
@@ -37,12 +48,10 @@ pub fn button(app: &mut App, ui: &mut egui::Ui) {
 pub fn editing(app: &mut App, ui: &mut egui::Ui) {
     if app.backdrop.editing() {
         if button::icon(ui, icons::DONE, &t!("backdrop.done"), true).clicked() {
-            let done = app.backdrop.end_editing(true);
-            app.say_backdrop(done);
+            app.backdrop.end_editing(ui.ctx(), true);
         }
         if button::icon(ui, icons::CANCEL, &t!("backdrop.cancel"), true).clicked() {
-            let done = app.backdrop.end_editing(false);
-            app.say_backdrop(done);
+            app.backdrop.end_editing(ui.ctx(), false);
         }
     }
 }
@@ -97,7 +106,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
     if let Some(answer) = app.picker.take()
         && let Some(picked) = answer
     {
-        app.take_picture(picked);
+        app.take_picture(context, picked);
     }
     app.backdrop_menu.nothing_found(t!("menu.nothing_found"));
     let was_open = app.backdrop_menu.is_open();
@@ -106,8 +115,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
     }
     let chosen = app.backdrop_menu.show(context);
     if was_open && !app.backdrop_menu.is_open() {
-        let done = app.backdrop.save();
-        app.say_backdrop(done);
+        app.backdrop.save(context);
     }
     let Some(chosen) = chosen else {
         return;
@@ -117,14 +125,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
         "edit" => app.backdrop.begin_editing(),
         "hide" => {
             let hidden = !app.backdrop.hidden();
-            let done = app.backdrop.set_hidden(hidden);
-            app.say_backdrop(done);
+            app.backdrop.set_hidden(context, hidden);
         }
         "remove" => ask_remove(app),
-        "remove-yes" => {
-            let done = app.backdrop.remove();
-            app.say_backdrop(done);
-        }
+        "remove-yes" => app.backdrop.remove(context),
         _ => {}
     }
 }

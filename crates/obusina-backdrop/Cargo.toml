@@ -12,4 +12,5 @@ serde_yaml_ng.workspace = true
 thiserror.workspace = true
 
 [dev-dependencies]
+pollster.workspace = true
 tempfile.workspace = true

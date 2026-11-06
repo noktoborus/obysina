@@ -46,15 +46,6 @@ pub enum AppError {
         #[source]
         source: obusina_backdrop::BackdropError,
     },
-    /// A picture of the store could not be read.
-    #[error("picture {} unreadable", path.display())]
-    PictureRead {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What went wrong.
-        #[source]
-        source: std::io::Error,
-    },
     /// A picture is no PNG, JPEG or WebP.
     #[error("picture of another kind")]
     PictureKind,
@@ -115,9 +106,7 @@ impl AppError {
                 "error.settings.read"
             }
             AppError::SettingsWrite { .. } => "error.settings.write",
-            AppError::Backdrop { .. } | AppError::PictureRead { .. } | AppError::NoCache => {
-                "error.backdrop.store"
-            }
+            AppError::Backdrop { .. } | AppError::NoCache => "error.backdrop.store",
             AppError::PictureKind => "error.backdrop.kind",
             AppError::Picture { .. } => "error.backdrop.picture",
         }

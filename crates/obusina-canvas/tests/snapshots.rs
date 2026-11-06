@@ -217,8 +217,9 @@ fn lines() -> egui::ColorImage {
 }
 
 /// A picture under the beads over corners that make no rectangle; while
-/// `editing`, with the handles of its corners.
-fn picture_shot(editing: bool, name: &str) {
+/// `editing`, with the handles of its corners; while `loading`, the panel
+/// that shimmers in its place.
+fn picture_shot(editing: bool, loading: bool, name: &str) {
     {
         let pattern = pattern(Grid::Loom);
         let mut view = View::default();
@@ -245,7 +246,7 @@ fn picture_shot(editing: bool, name: &str) {
                             .load_texture("lines", lines(), egui::TextureOptions::LINEAR)
                     });
                     let picture = Picture {
-                        texture: texture.id(),
+                        texture: (!loading).then(|| texture.id()),
                         corners,
                         opacity: 0.7,
                         editing,
@@ -254,19 +255,26 @@ fn picture_shot(editing: bool, name: &str) {
                 },
                 (pattern, view, None, corners),
             );
-        harness.run();
+        harness.run_steps(4);
         harness.snapshot_options(name, &SnapshotOptions::new().output_path(PICTURES));
     }
 }
 
 #[test]
 fn a_picture_under_the_beads() {
-    picture_shot(false, "picture");
+    picture_shot(false, false, "picture");
 }
 
 /// The same picture while its corners are edited: a handle on each, over
 /// the beads.
 #[test]
 fn a_picture_edited() {
-    picture_shot(true, "picture-editing");
+    picture_shot(true, false, "picture-editing");
+}
+
+/// The same picture while it loads: a panel over its corners, a light band
+/// across it.
+#[test]
+fn a_picture_that_loads() {
+    picture_shot(false, true, "picture-loading");
 }

@@ -105,10 +105,8 @@ impl App {
             },
             other => (new_pattern(), other, None),
         };
-        let (backdrop, backdrop_error) = crate::backdrop::Backdrop::open(pictures, &pattern);
-        let message = message
-            .or_else(|| settings_error.map(|error| say(&error)))
-            .or_else(|| backdrop_error.map(|error| say(&error)));
+        let backdrop = crate::backdrop::Backdrop::new(pictures);
+        let message = message.or_else(|| settings_error.map(|error| say(&error)));
         let mut view = View::default();
         view.set_degrees(pattern.turn());
         let colour = first_colour(&pattern);
@@ -142,8 +140,8 @@ impl App {
     }
 
     /// Puts a picture chosen by the person under the pattern.
-    pub(crate) fn take_picture(&mut self, picked: crate::pick::Picked) {
-        let done = self.backdrop.put(&self.pattern, picked);
+    pub(crate) fn take_picture(&mut self, context: &egui::Context, picked: crate::pick::Picked) {
+        let done = self.backdrop.put(context, &self.pattern, picked);
         self.say_backdrop(done);
     }
 
@@ -287,6 +285,9 @@ impl App {
     /// sheet: the start value, no step of undo. The size of the first screen
     /// is the least a sheet shrinks to when a bead goes.
     fn field(&mut self, ui: &mut egui::Ui) {
+        if let Some(error) = self.backdrop.update(ui.ctx(), &self.pattern) {
+            self.say_backdrop(Err(error));
+        }
         let mut canvas =
             Canvas::new(&self.pattern, &mut self.view).shadows(self.settings.shadows());
         if let Some(picture) = self.backdrop.picture(ui.ctx()) {

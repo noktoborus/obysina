@@ -25,10 +25,14 @@ The field of beads: an egui widget that draws an
   `SHADOW_CELL`. `Canvas::shadows(false)` shows none.
 - `Canvas::picture(Picture)`: a picture under the beads, over the paper and
   under the shadows, laid over four corners in bead units through the
-  projection they give (`picture.rs`). While `editing`, a handle on each
-  corner moves it, a drag inside moves all of it, and a drag outside moves
-  the field; the handles are drawn over the beads. `handles` gives where
-  they are, for a test.
+  projection they give (`picture.rs`). With no texture, while it loads, a
+  panel over the same corners shimmers in its place, a light band across it
+  every `SHIMMER_PERIOD`; the window draws again all along. While
+  `editing`, a handle on each corner moves it, a drag inside moves all of
+  it, and a drag outside moves the field; the handles are drawn over the
+  beads. A corner moves only as far as the four stay convex and in their
+  turn: the picture never turns inside out. `handles` gives where they are,
+  for a test.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Keeps the middle of the field where it is when the field changes its
@@ -72,6 +76,7 @@ The field of beads: an egui widget that draws an
 | Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
 | A picture under the beads over four corners | ![Picture][picture-picture] |
 | The same, its corners edited | ![Picture edited][picture-picture-editing] |
+| The same while it loads | ![Picture that loads][picture-picture-loading] |
 | Moved far off to the left: ten beads stay on the screen | ![Kept at the side][picture-kept-at-the-side] |
 
 [picture-loom]: img/loom.png
@@ -82,6 +87,7 @@ The field of beads: an egui widget that draws an
 [picture-kept-at-the-side]: img/kept-at-the-side.png
 [picture-picture]: img/picture.png
 [picture-picture-editing]: img/picture-editing.png
+[picture-picture-loading]: img/picture-loading.png
 [picture-ruling]: img/ruling.png
 
 ## Boundaries

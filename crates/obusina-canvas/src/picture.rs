@@ -11,6 +11,13 @@
 //! The four corners need make no rectangle. The picture is drawn through the
 //! projection they give, a mesh of `STEPS` by `STEPS` cells, so a line of the
 //! picture stays straight: a photo taken at an angle comes out straight.
+//!
+//! A corner moves only as far as the four stay convex and in their turn, so
+//! the picture is never turned inside out: a corner dragged past that stops
+//! at the last place that keeps them so.
+//!
+//! A picture with no texture yet, while it loads, is a panel over the same
+//! corners with a light band running across it, `SHIMMER_PERIOD` a pass.
 
 use egui::{Color32, Id, Pos2, Rect, Response, TextureId, Ui, Vec2, pos2};
 
@@ -26,11 +33,25 @@ const HANDLE_REACH: f32 = 1.5;
 const EDGE: f32 = 2.0;
 /// The colour of the lines and the rings of the handles.
 const EDGE_COLOUR: Color32 = Color32::from_rgb(0x00, 0x5c, 0x80);
+/// The ground of the panel of a picture that loads.
+const SHIMMER_GROUND: Color32 = Color32::from_rgb(0xb0, 0xae, 0xa8);
+/// The light of the band that runs across it.
+const SHIMMER_LIGHT: Color32 = Color32::from_rgb(0xec, 0xea, 0xe4);
+/// The seconds the band takes to run across the panel once.
+pub const SHIMMER_PERIOD: f64 = 1.4;
+/// The width of the band, as a part of the diagonal of the panel.
+const SHIMMER_WIDTH: f32 = 0.18;
+/// The least of the turn at a corner, in bead units squared: a corner of
+/// nothing, its two sides in one line, is no corner.
+const LEAST_TURN: f32 = 0.05;
+/// The halvings that find how far a corner may move.
+const HALVINGS: usize = 12;
 
 /// A picture to draw under the beads.
 pub struct Picture<'a> {
-    /// The texture of the picture.
-    pub texture: TextureId,
+    /// The texture of the picture; `None` while it loads, and a panel that
+    /// shimmers stands in its place.
+    pub texture: Option<TextureId>,
     /// Its corners on the field, in bead units: top left, top right, bottom
     /// right, bottom left. The handles move them while `editing`.
     pub corners: &'a mut [Vec2; 4],
@@ -71,8 +92,9 @@ impl Canvas<'_> {
             return false;
         }
         let shown = self.shown_corners(picture.corners, origin);
+        let pressed_at = ui.input(|input| input.pointer.press_origin());
         if response.drag_started()
-            && let Some(at) = response.interact_pointer_pos()
+            && let Some(at) = pressed_at.or(response.interact_pointer_pos())
         {
             let grab = shown
                 .iter()
@@ -92,7 +114,7 @@ impl Canvas<'_> {
         if response.dragged() {
             let delta = self.view.to_pattern(response.drag_delta()) / self.view.bead;
             match grab {
-                Grab::Corner(index) => picture.corners[index] += delta,
+                Grab::Corner(index) => move_corner(picture.corners, index, delta),
                 Grab::Whole => picture
                     .corners
                     .iter_mut()
@@ -105,16 +127,30 @@ impl Canvas<'_> {
         true
     }
 
-    /// Draws the picture.
+    /// Draws the picture, or the panel that shimmers in its place while it
+    /// loads.
     pub(crate) fn draw_picture(
         &self,
+        ui: &Ui,
         painter: &egui::Painter,
         origin: Pos2,
         picture: &Picture<'_>,
     ) {
         let shown = self.shown_corners(picture.corners, origin);
-        let tint = Color32::WHITE.gamma_multiply(picture.opacity);
-        painter.add(mesh(picture.texture, shown, tint));
+        match picture.texture {
+            Some(texture) => {
+                let tint = Color32::WHITE.gamma_multiply(picture.opacity);
+                painter.add(mesh(texture, shown, |_, _| tint));
+            }
+            None => {
+                let time = ui.input(|input| input.time);
+                let phase = shimmer_phase(time);
+                painter.add(mesh(TextureId::default(), shown, |u, v| {
+                    shimmer(u, v, phase)
+                }));
+                ui.ctx().request_repaint();
+            }
+        }
     }
 
     /// Draws the edges of the picture and the handles of its corners, over
@@ -134,6 +170,45 @@ impl Canvas<'_> {
             painter.circle(corner, HANDLE, Color32::WHITE, line);
         }
     }
+}
+
+/// Moves corner `index` by `delta`, or as far along it as the corners stay
+/// convex and in their turn ([`convex`]). Corners that are not so already
+/// move freely, so a picture laid wrong is mended by hand.
+fn move_corner(corners: &mut [Vec2; 4], index: usize, delta: Vec2) {
+    let moved = |part: f32| {
+        let mut moved = *corners;
+        moved[index] += delta * part;
+        moved
+    };
+    if convex(&moved(1.0)) || !convex(corners) {
+        corners[index] += delta;
+        return;
+    }
+    let (mut kept, mut refused) = (0.0, 1.0);
+    for _ in 0..HALVINGS {
+        let middle = (kept + refused) / 2.0;
+        if convex(&moved(middle)) {
+            kept = middle;
+        } else {
+            refused = middle;
+        }
+    }
+    *corners = moved(kept);
+}
+
+/// True when the corners, top left, top right, bottom right, bottom left,
+/// turn the same way at each corner, by at least `LEAST_TURN`: the
+/// quadrilateral is convex and the picture is the right way round. On the
+/// field the rows grow down, so that way is clockwise on the screen.
+fn convex(corners: &[Vec2; 4]) -> bool {
+    (0..corners.len()).all(|index| {
+        let before = corners[index];
+        let at = corners[(index + 1) % corners.len()];
+        let after = corners[(index + 2) % corners.len()];
+        let turn = (at - before).x * (after - at).y - (at - before).y * (after - at).x;
+        turn >= LEAST_TURN
+    })
 }
 
 /// The handles of the corners on the screen, for a test that drags them.
@@ -173,17 +248,44 @@ fn projection(corners: [Pos2; 4]) -> impl Fn(f32, f32) -> Pos2 {
     }
 }
 
-/// The picture over the four `corners`, a mesh through their projection.
-fn mesh(texture: TextureId, corners: [Pos2; 4], tint: Color32) -> egui::Shape {
+/// Where the band of the shimmer stands at `time`, in seconds: from before
+/// the top left corner to past the bottom right one, along the diagonal.
+fn shimmer_phase(time: f64) -> f32 {
+    let pass = (time / SHIMMER_PERIOD).fract() as f32;
+    -SHIMMER_WIDTH + pass * (1.0 + 2.0 * SHIMMER_WIDTH)
+}
+
+/// The colour of the shimmer at the point `(u, v)` of the panel, the band at
+/// `phase`.
+fn shimmer(u: f32, v: f32, phase: f32) -> Color32 {
+    let along = (u + v) / 2.0;
+    let near = ((along - phase) / SHIMMER_WIDTH).powi(2);
+    let light = (-near).exp();
+    SHIMMER_GROUND.lerp_to_gamma(SHIMMER_LIGHT, light)
+}
+
+/// The picture over the four `corners`, a mesh through their projection,
+/// each point coloured by `colour` of its place in the picture. A texture
+/// of `TextureId::default()` is the white of egui: the colour alone shows.
+fn mesh(
+    texture: TextureId,
+    corners: [Pos2; 4],
+    colour: impl Fn(f32, f32) -> Color32,
+) -> egui::Shape {
     let mut mesh = egui::Mesh::with_texture(texture);
     let map = projection(corners);
     for row in 0..=STEPS {
         for column in 0..=STEPS {
             let (u, v) = (column as f32 / STEPS as f32, row as f32 / STEPS as f32);
+            let uv = if texture == TextureId::default() {
+                egui::epaint::WHITE_UV
+            } else {
+                pos2(u, v)
+            };
             mesh.vertices.push(egui::epaint::Vertex {
                 pos: map(u, v),
-                uv: pos2(u, v),
-                color: tint,
+                uv,
+                color: colour(u, v),
             });
         }
     }
@@ -231,6 +333,58 @@ mod tests {
         let map = projection(SQUARE);
 
         assert!(map(0.5, 0.25).distance(pos2(5.0, 2.5)) < 1e-4);
+    }
+
+    const BOX: [Vec2; 4] = [
+        Vec2::new(0.0, 0.0),
+        Vec2::new(4.0, 0.0),
+        Vec2::new(4.0, 3.0),
+        Vec2::new(0.0, 3.0),
+    ];
+
+    #[test]
+    fn a_box_is_convex_and_one_turned_inside_out_is_not() {
+        assert!(convex(&BOX));
+        let mut crossed = BOX;
+        crossed.swap(0, 1);
+        assert!(!convex(&crossed), "turned inside out");
+        let mut trapezoid = BOX;
+        trapezoid[0] = Vec2::new(-2.0, 0.0);
+        trapezoid[1] = Vec2::new(2.0, 0.0);
+        assert!(convex(&trapezoid));
+        let mut dent = BOX;
+        dent[2] = Vec2::new(1.0, 1.0);
+        assert!(!convex(&dent), "a dent is no convex corner");
+    }
+
+    #[test]
+    fn a_corner_moves_freely_while_the_box_stays_convex() {
+        let mut corners = BOX;
+
+        move_corner(&mut corners, 2, Vec2::new(1.0, 2.0));
+
+        assert_eq!(corners[2], Vec2::new(5.0, 5.0));
+    }
+
+    /// The bottom right corner dragged past the top left one stops before
+    /// the picture would turn inside out.
+    #[test]
+    fn a_corner_stops_before_the_picture_turns_inside_out() {
+        let mut corners = BOX;
+
+        move_corner(&mut corners, 2, Vec2::new(-10.0, -10.0));
+
+        assert!(convex(&corners), "{corners:?}");
+        assert!(corners[2].x > 0.0 && corners[2].y > 0.0, "{corners:?}");
+        assert_eq!(corners[0], BOX[0], "the other corners stay");
+    }
+
+    #[test]
+    fn the_band_of_the_shimmer_is_light_where_it_stands() {
+        let phase = shimmer_phase(SHIMMER_PERIOD / 2.0);
+
+        assert_eq!(shimmer(phase, phase, phase), SHIMMER_LIGHT);
+        assert_eq!(shimmer(1.0, 1.0, -SHIMMER_WIDTH * 4.0), SHIMMER_GROUND);
     }
 
     #[test]
