@@ -44,7 +44,8 @@ pub fn button(app: &mut App, ui: &mut egui::Ui) {
 }
 
 /// While the corners are edited, the buttons that keep them and put them
-/// back; nothing otherwise.
+/// back, which the panel of tools holds in place of its tools; nothing
+/// otherwise.
 pub fn editing(app: &mut App, ui: &mut egui::Ui) {
     if app.backdrop.editing() {
         if button::icon(ui, icons::DONE, &t!("backdrop.done"), true).clicked() {

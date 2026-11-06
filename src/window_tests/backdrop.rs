@@ -21,7 +21,7 @@ fn png(width: u32, height: u32) -> Vec<u8> {
 /// Puts a picture of 40 by 20 pixels under the pattern, as a choice of the
 /// person would. A few frames, not until the window settles: a picture that
 /// loads shimmers, and the window draws all along.
-fn choose(window: &mut Window) {
+fn put(window: &mut Window) {
     let context = window.harness.ctx.clone();
     window.harness.state_mut().take_picture(
         &context,
@@ -31,6 +31,12 @@ fn choose(window: &mut Window) {
         },
     );
     window.harness.run_steps(4);
+}
+
+/// Puts a picture, and keeps the corners its editing begins with.
+fn choose(window: &mut Window) {
+    put(window);
+    window.click(&t!("backdrop.done"));
 }
 
 /// Lays the picture in the middle of the field, away from the panels.
@@ -282,7 +288,7 @@ fn a_new_picture_is_a_square_until_it_is_decoded() {
     let mut window = window();
     window.harness.state_mut().backdrop.tasks().hold();
 
-    choose(&mut window);
+    put(&mut window);
 
     let context = window.harness.ctx.clone();
     let app = window.harness.state_mut();
@@ -353,4 +359,29 @@ fn a_corner_never_turns_the_picture_inside_out() {
         "{after:?}"
     );
     assert_eq!(after[0], before[0]);
+}
+
+/// A picture just chosen has its corners edited once it is decoded, and the
+/// panel of tools holds only "keep" and "put back" meanwhile. "Put back"
+/// puts the corners where the picture was laid; the picture stays.
+#[test]
+fn a_new_picture_is_edited_at_once() {
+    let mut window = window();
+
+    put(&mut window);
+
+    let app = window.harness.state();
+    assert!(app.backdrop.editing());
+    let laid = app.backdrop.corners;
+    assert!(window.harness.query_by_label(&t!("edit.undo")).is_none());
+    assert!(window.harness.query_by_label(&t!("file.save")).is_none());
+    window.harness.get_by_label(&t!("backdrop.done"));
+    let corner = handle(&window, 1);
+    drag(&mut window, corner, egui::vec2(-20.0, 15.0));
+    window.click(&t!("backdrop.cancel"));
+
+    let app = window.harness.state();
+    assert!(!app.backdrop.editing() && app.backdrop.has());
+    assert_eq!(app.backdrop.corners, laid);
+    window.harness.get_by_label(&t!("edit.undo"));
 }

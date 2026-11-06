@@ -28,6 +28,8 @@ over four corners, kept apart from the pattern. The store is the crate
 5. **The picture is no part of undo.** The editing of the corners has its
    own "keep" (✔) and "put back" (✖); a removal asks first, for it deletes
    the copy.
+   - While the corners are edited, the panel of tools holds these two
+     buttons and nothing else.
 6. **PNG, JPEG and WebP,** told by their first bytes, not by the name of the
    file. Another file is refused and nothing is kept. A picture with a side
    longer than `PICTURE_SIDE` is drawn smaller; the copy keeps all of it.
@@ -73,6 +75,8 @@ over four corners, kept apart from the pattern. The store is the crate
     asks for a file at once; with a hidden one it shows it again; with one
     shown, or one that loads, it opens the menu.
 
+16. **A picture just chosen has its corners edited at once,** when it is
+    decoded. "Put back" puts them where it was laid; the picture stays.
 ```text
 picture, none ──────────► the choice of a file of the platform
 picture, hidden ────────► shown again

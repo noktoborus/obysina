@@ -1,4 +1,5 @@
-//! The floating panel of tools.
+//! The floating panel of tools. While the corners of the picture under the
+//! pattern are edited, it holds only the two buttons that end the editing.
 
 use obusina_canvas::Turn;
 use obusina_panel::{FloatingPanel, Orientation, Placement};
@@ -16,12 +17,18 @@ pub fn show(app: &mut App, context: &egui::Context) {
         .settings
         .panel(NAME)
         .unwrap_or(Placement::new(egui::Vec2::ZERO, Orientation::Horizontal));
+    let editing = app.backdrop.editing();
     let shown = FloatingPanel::new(NAME, t!("panel.tools"))
         .placement(placement)
+        .content(editing)
         .show(context, |ui, room| {
-            match room.orientation {
-                Orientation::Horizontal => row(app, ui),
-                Orientation::Vertical => column(app, ui),
+            if editing {
+                crate::ui::backdrop_menu::editing(app, ui);
+            } else {
+                match room.orientation {
+                    Orientation::Horizontal => row(app, ui),
+                    Orientation::Vertical => column(app, ui),
+                }
             }
             if let Some(message) = &app.message {
                 ui.label(message);
@@ -45,14 +52,12 @@ fn row(app: &mut App, ui: &mut egui::Ui) {
     crate::ui::sheet::show(app, ui);
     gap(ui, orientation);
     crate::ui::backdrop_menu::button(app, ui);
-    crate::ui::backdrop_menu::editing(app, ui);
     gap(ui, orientation);
     save(app, ui);
 }
 
 /// The tools in a column two buttons wide, like the swatches of the beads:
-/// a group of two on a line, the picture and save on the last one, and under
-/// them the two that end the editing of the corners while it goes on.
+/// a group of two on a line, the picture and save on the last one.
 ///
 /// The lines are one block, so the block stands in the middle across the
 /// panel.
@@ -73,9 +78,6 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
             crate::ui::backdrop_menu::button(app, ui);
             save(app, ui);
         });
-        if app.backdrop.editing() {
-            ui.horizontal(|ui| crate::ui::backdrop_menu::editing(app, ui));
-        }
     });
 }
 

@@ -38,8 +38,8 @@ gradle assemble<Variant> ──► cargoDebug | cargoRelease
 
 | Command | Result |
 | --- | --- |
-| `make apk` | `app/build/outputs/apk/debug/app-debug.apk`, signed with the debug key |
-| `make apk-release` | `app/build/outputs/apk/release/`, signed or not, see below |
+| `make apk` | `target/obusina-debug.apk` of the workspace, signed with the debug key |
+| `make apk-release` | `target/obusina-release.apk` of the workspace, signed or not, see below |
 | `make aab` | `app/build/outputs/bundle/release/app-release.aab` |
 
 A release is signed when `OBUSINA_KEYSTORE` names a keystore;

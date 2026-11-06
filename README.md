@@ -85,7 +85,7 @@ program.
 | --- | --- | --- |
 | Linux | `make build`, then `make install` | `target/release/obusina` |
 | Windows | `make build-windows`, with mingw | `obusina.exe` |
-| Android | `make apk`, `make apk-release`, `make aab` | `android/app/build/outputs/` |
+| Android | `make apk`, `make apk-release`, `make aab` | `target/obusina-debug.apk`, `target/obusina-release.apk`; the bundle in `android/app/build/outputs/` |
 
 The icon is drawn from `assets/icon.svg` at build time. On Windows it is a
 resource of `obusina.exe`, built with `windres` of mingw.

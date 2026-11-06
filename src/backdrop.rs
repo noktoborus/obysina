@@ -73,6 +73,9 @@ pub struct Backdrop {
     pub(crate) corners: [Vec2; 4],
     /// The corners before the editing of the corners began, while it goes on.
     editing: Option<[Vec2; 4]>,
+    /// A picture chosen by the person loads: its corners are edited once it
+    /// is decoded.
+    edit_when_loaded: bool,
     /// How much of the picture shows; the slider of its menu changes it.
     pub(crate) opacity: Arc<Mutex<f32>>,
 }
@@ -93,6 +96,7 @@ impl Backdrop {
             texture: None,
             corners: [Vec2::ZERO; 4],
             editing: None,
+            edit_when_loaded: false,
             opacity: Arc::new(Mutex::new(DEFAULT_OPACITY)),
         }
     }
@@ -120,8 +124,12 @@ impl Backdrop {
                     self.image = Some(image);
                     self.texture = None;
                     self.loading = false;
+                    if std::mem::take(&mut self.edit_when_loaded) {
+                        self.begin_editing();
+                    }
                 }
                 Answer::Failed(error) => {
+                    self.edit_when_loaded = false;
                     if self.loading {
                         self.kept = None;
                         self.loading = false;
@@ -237,6 +245,8 @@ impl Backdrop {
     /// one it had, whose corners it takes. Until it is decoded a square
     /// stands for a first picture in the middle of the work area; it then
     /// lies over the work area, as large as fits it, its sides as they are.
+    /// Once it is decoded its corners are edited: "put back" puts them where
+    /// it was laid.
     pub fn put(
         &mut self,
         context: &egui::Context,
@@ -255,6 +265,7 @@ impl Backdrop {
             kept.backdrop.hidden = false;
         }
         self.editing = None;
+        self.edit_when_loaded = true;
         self.loading = true;
         self.placed = true;
         self.texture = None;
