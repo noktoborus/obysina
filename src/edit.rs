@@ -115,6 +115,8 @@ pub struct History {
     /// the first screen. `None` until it is known; a sheet then does not
     /// shrink.
     pub(crate) least_sheet: Option<(usize, usize)>,
+    /// The steps kept since the history began: what the autosave counts.
+    kept: u64,
 }
 
 impl History {
@@ -131,8 +133,34 @@ impl History {
             None => {
                 self.done.push(edit);
                 self.undone.clear();
+                self.kept += 1;
             }
         }
+    }
+
+    /// A history of the steps `done` and `undone`, as a file kept them: the
+    /// last of each is undone or redone first.
+    pub fn restored(done: Vec<Edit>, undone: Vec<Edit>) -> History {
+        History {
+            done,
+            undone,
+            ..History::default()
+        }
+    }
+
+    /// The steps to undo, the last one first undone.
+    pub fn done(&self) -> &[Edit] {
+        &self.done
+    }
+
+    /// The steps to redo, the last one first redone.
+    pub fn undone(&self) -> &[Edit] {
+        &self.undone
+    }
+
+    /// The steps kept since the history began, counted on and never back.
+    pub fn kept(&self) -> u64 {
+        self.kept
     }
 
     /// Opens a batch: the edits kept until it ends are one step. Nothing

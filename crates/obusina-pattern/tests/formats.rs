@@ -332,3 +332,24 @@ fn a_paper_that_is_no_colour_is_refused() {
         Err(PatternError::Colour { .. })
     ));
 }
+
+#[test]
+fn format_1_reads_its_name() {
+    assert_eq!(
+        Pattern::from_json(&file(1)).expect("it reads").name(),
+        "Ромашки"
+    );
+}
+
+/// A pattern renamed is the same work, and no longer equal.
+#[test]
+fn a_renamed_pattern_is_the_same_work() {
+    let pattern = Pattern::from_json(&file(1)).expect("it reads");
+    let mut renamed = pattern.clone();
+    renamed.set_name("Васильки");
+
+    assert!(renamed.same_work(&pattern));
+    assert_ne!(renamed, pattern);
+    renamed.set_paper(Rgb([0, 0, 0]));
+    assert!(!renamed.same_work(&pattern));
+}

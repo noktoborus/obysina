@@ -56,6 +56,34 @@ pub enum AppError {
         #[source]
         source: image::ImageError,
     },
+    /// A file of the patterns of the list could not be read.
+    #[error("file of the list unreadable: {path}")]
+    LibraryRead {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
+    /// A file of the patterns of the list could not be written.
+    #[error("file of the list not written: {path}")]
+    LibraryWrite {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
+    /// A file of patterns could not be packed or unpacked.
+    #[error("file of patterns not packed or unpacked")]
+    Archive {
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
+    /// A file that came in holds no pattern.
+    #[error("no pattern in the file")]
+    NoPatterns,
     /// The platform gives no cache to keep a picture in.
     #[error("no cache for pictures")]
     NoCache,
@@ -108,6 +136,9 @@ impl AppError {
             AppError::SettingsWrite { .. } => "error.settings.write",
             AppError::Backdrop { .. } | AppError::NoCache => "error.backdrop.store",
             AppError::PictureKind => "error.backdrop.kind",
+            AppError::LibraryRead { .. } => "error.pattern.read",
+            AppError::LibraryWrite { .. } => "error.pattern.write",
+            AppError::Archive { .. } | AppError::NoPatterns => "error.import",
             AppError::Picture { .. } => "error.backdrop.picture",
         }
     }

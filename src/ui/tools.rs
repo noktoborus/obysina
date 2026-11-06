@@ -53,11 +53,11 @@ fn row(app: &mut App, ui: &mut egui::Ui) {
     gap(ui, orientation);
     crate::ui::backdrop_menu::button(app, ui);
     gap(ui, orientation);
-    save(app, ui);
+    back(app, ui);
 }
 
 /// The tools in a column two buttons wide, like the swatches of the beads:
-/// a group of two on a line, the picture and save on the last one.
+/// a group of two on a line, the picture and the way back on the last one.
 ///
 /// The lines are one block, so the block stands in the middle across the
 /// panel.
@@ -76,7 +76,7 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
         gap(ui, orientation);
         ui.horizontal(|ui| {
             crate::ui::backdrop_menu::button(app, ui);
-            save(app, ui);
+            back(app, ui);
         });
     });
 }
@@ -142,13 +142,12 @@ fn grid(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// Save, when there is a file to save to.
-fn save(app: &mut App, ui: &mut egui::Ui) {
-    let hint = match app.path {
-        Some(_) => t!("file.save"),
-        None => t!("file.nowhere"),
-    };
-    if button::icon(ui, icons::SAVE, &hint, app.path.is_some()).clicked() {
-        app.save();
+/// The way back to the list of patterns, which saves the pattern; none
+/// when there is no list.
+fn back(app: &mut App, ui: &mut egui::Ui) {
+    let listed = app.library.is_some();
+    if button::icon(ui, icons::BACK, &t!("projects.back"), listed).clicked() {
+        let time = ui.input(|input| input.time);
+        app.back_to_list(ui.ctx(), time);
     }
 }

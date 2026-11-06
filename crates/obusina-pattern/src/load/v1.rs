@@ -16,6 +16,8 @@ struct Document {
     _format: u64,
     #[serde(default)]
     id: Option<String>,
+    #[serde(default)]
+    name: String,
     grid: Grid,
     #[serde(default)]
     turn: u16,
@@ -78,6 +80,7 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     if let Some(id) = document.id {
         pattern.set_id(id.parse()?);
     }
+    pattern.set_name(document.name);
     pattern.set_turn(document.turn)?;
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;

@@ -6,6 +6,7 @@
 | [docs/panels.md](docs/panels.md) | where a panel stands, how it is laid out, how its place is kept |
 | [docs/palette.md](docs/palette.md) | how the colours of a pattern are filled in |
 | [docs/backdrop.md](docs/backdrop.md) | the picture under the pattern, its store and the choice of its file |
+| [docs/projects.md](docs/projects.md) | the list of patterns, the trash, when a pattern is saved, the files of the export and the import |
 
 ## Crates
 
@@ -19,7 +20,7 @@ obusina (binary and library)
  ├── obusina-pattern
  └── plate-menu         (a copy of the crate of zyterm)
 egui-notify            (a copy of egui-notify 0.24.0, by [patch.crates-io];
-                        nothing depends on it yet: the list of patterns will)
+                        the toasts of the list of patterns)
 experiments/glyphs     (nothing depends on it)
 experiments/mockups    (nothing depends on it) ──► ../showcase
 ```
@@ -33,7 +34,7 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 | `plate-menu` | a menu of wide plates in the middle of the window; the settings are chosen in it |
 | `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
 | `egui-notify` | toasts, with a button of an action; a copy of the crate of crates.io |
-| `obusina` | the window, the panels, the history of edits, the settings, the text of the user |
+| `obusina` | the window, the list of patterns, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 
 `obusina-canvas -> obusina-pattern` is the one dependency between library
@@ -69,10 +70,12 @@ is nothing to undo or redo: its edits are no step yet.
 
 ## Start
 
-| Platform | Entry | Pattern |
+| Platform | Entry | Patterns |
 | --- | --- | --- |
-| Linux, Windows | `src/main.rs` → `obusina::desktop` | the file named on the command line |
-| Android | `android_main` of `android/` → `obusina::android` | `pattern.json` in the internal data path |
+| Linux, Windows | `src/main.rs` → `obusina::desktop` | the data directory of `APP_ID`; a file named on the command line is imported and opened |
+| Android | `android_main` of `android/` → `obusina::android` | the internal data path |
+
+The window opens on the list (`docs/projects.md`).
 
 The settings are `settings.yaml` in the configuration directory of `APP_ID`,
 on Android in the internal data path (`src/settings.rs`). The pictures under

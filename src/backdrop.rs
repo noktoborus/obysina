@@ -22,7 +22,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{ColorImage, TextureHandle, Vec2, vec2};
 use obusina_backdrop::{Backdrop as Description, Kept, Kind, Store};
-use obusina_pattern::{Bounds, Cell, Pattern};
+use obusina_pattern::{Bounds, Cell, Pattern, PatternId};
 
 use crate::error::{AppError, Result};
 use crate::pick::Picked;
@@ -339,6 +339,34 @@ impl Backdrop {
             context,
             move |store| async move { store.remove(&kept).await },
         );
+    }
+
+    /// Gives the pattern `to` a copy of the picture of `from`, if it has
+    /// one: the picture of a duplicate.
+    pub fn copy(&self, context: &egui::Context, from: PatternId, to: PatternId) {
+        self.write(context, move |store| async move {
+            let Some(kept) = store.find(&from.to_string()).await? else {
+                return Ok(());
+            };
+            let bytes = store.read(&kept).await?;
+            let description = Description {
+                pattern: to.to_string(),
+                ..kept.backdrop
+            };
+            store.put(&bytes, description).await.map(|_| ())
+        });
+    }
+
+    /// Takes away the pictures of patterns deleted for good.
+    pub fn forget(&self, context: &egui::Context, patterns: Vec<PatternId>) {
+        self.write(context, move |store| async move {
+            for pattern in patterns {
+                if let Some(kept) = store.find(&pattern.to_string()).await? {
+                    store.remove(&kept).await?;
+                }
+            }
+            Ok(())
+        });
     }
 
     /// Runs a write of the store; a failure comes back as an answer.

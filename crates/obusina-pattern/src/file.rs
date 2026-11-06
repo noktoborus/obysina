@@ -22,6 +22,8 @@ pub const FORMAT: u64 = 1;
 struct Document<'a> {
     format: u64,
     id: String,
+    #[serde(skip_serializing_if = "str::is_empty")]
+    name: &'a str,
     grid: Grid,
     turn: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -101,6 +103,7 @@ impl Pattern {
         let document = Document {
             format: FORMAT,
             id: self.id().to_string(),
+            name: self.name(),
             grid: self.grid(),
             turn: self.turn(),
             sheet: self.sheet().map(|sheet| Sheet {

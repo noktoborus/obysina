@@ -6,6 +6,9 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
 
 - `Pattern`: the beads put on a field with no end; every other cell is
   empty. A `Cell` has a signed column and row.
+- `Pattern::name` and `set_name`: what the person calls it.
+  `Pattern::same_work` compares all but the identifier and the name: a
+  pattern renamed elsewhere is the same work.
 - `PatternId`: a random identifier of a pattern, kept in its file; files
   kept apart from the pattern name it by. A copy of the file has the same
   one.
@@ -52,6 +55,7 @@ an empty place.
 {
   "format": 1,
   "id": "6f0d2c7e-9a41-4b8e-8d3a-2f5b1c9e7a10",
+  "name": "Daisies",
   "grid": "peyote",
   "turn": 90,
   "sheet": {
@@ -83,6 +87,7 @@ beads on one line; the example keeps them all on one.
 | --- | --- |
 | `format` | the format of the file, `FORMAT` when written |
 | `id` | the identifier of the pattern (`PatternId`), a UUID; a new one when left out |
+| `name` | the name the person gave it; left out when none was given |
 | `grid` | `loom` or `peyote` |
 | `turn` | how far the pattern is shown turned clockwise: 0, 90, 180 or 270; the beads do not move; 0 when left out |
 | `sheet` | the size of the work area set by hand; left out when none is set |

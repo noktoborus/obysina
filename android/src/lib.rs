@@ -1,6 +1,6 @@
 //! The library android loads. The activity calls `android_main`, which starts
-//! the window of `obusina`, and `picturePicked` of `MainActivity` when the
-//! person chose a picture.
+//! the window of `obusina`; `picturePicked` of `MainActivity` when the
+//! person chose a file; and `fileSaved` when a file was saved.
 //!
 //! On any other platform the library is empty: a `cdylib` of the whole
 //! program would export every symbol, and the linker of mingw refuses that
@@ -38,4 +38,20 @@ pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_picturePicked<'call
     });
     let answer = outcome.resolve::<jni::errors::ThrowRuntimeExAndDefault>();
     obusina::android_picked(answer);
+}
+
+/// The answer of the save of a file that `MainActivity.saveDocument`
+/// opened: 1 written, 0 not written, -1 given up.
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_fileSaved<'caller>(
+    _env: jni::EnvUnowned<'caller>,
+    _class: jni::objects::JClass<'caller>,
+    state: jni::sys::jint,
+) {
+    obusina::android_saved(match state {
+        1 => Some(true),
+        0 => Some(false),
+        _ => None,
+    });
 }

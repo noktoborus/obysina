@@ -20,8 +20,16 @@ pub const PENCIL: &str = "\u{270f}";
 pub const PICK: &str = "\u{1f4a7}";
 /// The other palette, of two: the arrow both ways.
 pub const SWITCH: &str = "\u{2194}";
-/// Save, the floppy disk.
-pub const SAVE: &str = "\u{1f4be}";
+/// The way back to the list of patterns, the arrow to the left.
+pub const BACK: &str = "\u{2b05}";
+/// A new pattern, the plus.
+pub const NEW: &str = "+";
+/// The import of a file of patterns, the inbox tray.
+pub const IMPORT: &str = "\u{1f4e5}";
+/// The export to a file, the outbox tray.
+pub const EXPORT: &str = "\u{1f4e4}";
+/// The trash, the wastebasket.
+pub const TRASH: &str = "\u{1f5d1}";
 /// The settings of the pattern and of the view, the gear.
 pub const SETTINGS: &str = "\u{2699}";
 
@@ -42,8 +50,8 @@ pub const EMPTY: &str = "\u{1f6ab}";
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, SETTINGS, SHADOW, PICTURE, DONE,
-    CANCEL, EMPTY,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH,
+    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY,
 ];
 
 #[cfg(test)]

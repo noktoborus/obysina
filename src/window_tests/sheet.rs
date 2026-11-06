@@ -7,7 +7,6 @@ use obusina_pattern::Cell;
 use rust_i18n::t;
 
 use super::{SIZE, id_at, window};
-use crate::app::App;
 
 /// The sheet starts as the cells of the screen, and the two fields of the
 /// tools show its size.
@@ -107,10 +106,7 @@ fn a_bead_past_the_sheet_grows_it_in_one_step() {
 fn the_sheet_is_saved_with_the_pattern() {
     let mut window = window();
     let sheet = window.harness.state().pattern.sheet().expect("a sheet");
-    window.click(&t!("file.save"));
-
-    let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None, None);
+    let again = super::reopened(&mut window);
 
     assert_eq!(again.pattern.sheet(), Some(sheet));
 }

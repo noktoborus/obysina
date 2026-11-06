@@ -12,6 +12,7 @@ use crate::app::App;
 mod backdrop;
 mod field;
 mod palette;
+mod projects;
 mod sheet;
 
 /// The size of the window in every test.
@@ -30,17 +31,39 @@ fn window() -> Window {
     window_in(tempfile::tempdir().expect("a scratch directory"), SIZE)
 }
 
-/// The window of `size` over the pattern and the settings kept in
-/// `directory`.
+/// Where the window of a test keeps what it keeps, in `directory`.
+fn places(directory: &std::path::Path) -> crate::app::Places {
+    crate::app::Places {
+        data: Some(directory.join("data")),
+        settings: Some(directory.join(crate::settings::FILE)),
+        pictures: Some(directory.join(crate::backdrop::DIRECTORY)),
+        file: None,
+    }
+}
+
+/// The window of `size` over a new pattern, opened from the list kept in
+/// `directory` with the settings kept there.
 fn window_in(directory: tempfile::TempDir, size: egui::Vec2) -> Window {
-    let path = directory.path().join("pattern.json");
-    let settings = directory.path().join(crate::settings::FILE);
-    let pictures = directory.path().join(crate::backdrop::DIRECTORY);
-    let mut harness = Harness::builder()
-        .with_size(size)
-        .build_eframe(move |_| App::open(Some(path), Some(settings), Some(pictures)));
+    let places = places(directory.path());
+    let mut harness = Harness::builder().with_size(size).build_eframe(move |_| {
+        let mut app = App::start(places);
+        app.create_pattern(0.0);
+        app
+    });
     harness.run();
     Window { harness, directory }
+}
+
+/// Goes back to the list, which saves the pattern, and opens it again in a
+/// window of its own, as the next start would.
+fn reopened(window: &mut Window) -> App {
+    let id = window.harness.state().pattern.id();
+    window.click(&t!("projects.back"));
+    assert_eq!(window.harness.state().screen, crate::session::Screen::List);
+    let mut again = App::start(places(window.directory.path()));
+    again.open_by_id(id, 0.0);
+    assert_eq!(again.screen, crate::session::Screen::Editor);
+    again
 }
 
 impl Window {
@@ -234,28 +257,29 @@ fn a_change_of_grid_is_undone() {
 fn a_saved_pattern_opens_again() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
+    let pattern = window.harness.state().pattern.clone();
 
-    window.click(&t!("file.save"));
+    let again = reopened(&mut window);
 
-    let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None, None);
-    assert_eq!(again.pattern, window.harness.state().pattern);
-    assert_eq!(
-        window.harness.state().message.as_deref(),
-        Some(&*t!("file.saved"))
-    );
+    assert_eq!(again.pattern, pattern);
+    assert!(again.history.can_undo(), "the history comes with it");
 }
 
+/// A file named on the command line that this version cannot read is told
+/// about, never written over, and the list shows.
 #[test]
 fn a_newer_file_is_never_written_over() {
     let directory = tempfile::tempdir().expect("a scratch directory");
     let path = directory.path().join("pattern.json");
     std::fs::write(&path, "{\"format\": 99}").expect("the file is written");
 
-    let app = App::open(Some(path.clone()), None, None);
+    let app = App::start(crate::app::Places {
+        file: Some(path.clone()),
+        ..places(directory.path())
+    });
 
-    assert_eq!(app.path, None);
-    assert_eq!(app.message.as_deref(), Some(&*t!("error.pattern.newer")));
+    assert_eq!(app.screen, crate::session::Screen::List);
+    assert_eq!(app.projects.told(), [t!("error.pattern.newer").to_string()]);
     assert_eq!(std::fs::read_to_string(&path).unwrap(), "{\"format\": 99}");
 }
 
@@ -270,7 +294,7 @@ fn every_widget_has_a_name() {
         t!("tool.pencil"),
         t!("tool.pick"),
         t!("settings.open"),
-        t!("file.save"),
+        t!("projects.back"),
         t!("palette.empty"),
     ] {
         window.harness.get_by_label(&name);
@@ -633,7 +657,7 @@ fn every_button_of_the_panels_has_one_size() {
         t!("settings.open"),
         t!("sheet.width"),
         t!("sheet.height"),
-        t!("file.save"),
+        t!("projects.back"),
         t!("palette.empty"),
         first.into(),
     ] {
@@ -729,10 +753,7 @@ fn a_bead_left_of_the_middle_opens_where_it_was() {
         row: -2,
     };
     window.press(cell, PointerButton::Primary);
-    window.click(&t!("file.save"));
-
-    let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None, None);
+    let again = reopened(&mut window);
 
     assert_eq!(again.pattern.get(cell), Some(id_at(0)));
     assert_eq!(again.pattern.count(id_at(0)), 1);
@@ -806,10 +827,7 @@ fn the_field_turns_both_ways_and_the_beads_stay() {
 fn a_turned_pattern_opens_turned() {
     let mut window = window();
     window.click(&t!("view.turn_right"));
-    window.click(&t!("file.save"));
-
-    let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None, None);
+    let again = reopened(&mut window);
 
     assert_eq!(again.pattern.turn(), 90);
     assert_eq!(again.view.degrees(), 90);

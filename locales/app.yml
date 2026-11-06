@@ -240,15 +240,6 @@ palette.show:
   en: "Show"
   ru: "Показать"
 
-file.save:
-  en: "Save"
-  ru: "Сохранить"
-file.nowhere:
-  en: "Name a file on the command line to save to it"
-  ru: "Чтобы сохранять, укажите файл в командной строке"
-file.saved:
-  en: "Saved"
-  ru: "Сохранено"
 
 error.pattern.read:
   en: "The pattern file cannot be read"
@@ -262,6 +253,9 @@ error.pattern.newer:
 error.pattern.invalid:
   en: "The pattern file is damaged"
   ru: "Файл схемы повреждён"
+error.import:
+  en: "The file holds no pattern this program reads"
+  ru: "В файле нет схем, которые читает программа"
 error.backdrop.store:
   en: "The picture under the pattern could not be kept"
   ru: "Не удалось сохранить картинку под узором"
@@ -280,3 +274,140 @@ error.settings.read:
 error.settings.write:
   en: "The settings cannot be saved"
   ru: "Настройки не сохраняются"
+
+projects.back:
+  en: "Back to the list of patterns"
+  ru: "К списку схем"
+projects.new:
+  en: "New pattern"
+  ru: "Новая схема"
+projects.import:
+  en: "Import"
+  ru: "Импортировать"
+projects.kinds:
+  en: "Patterns"
+  ru: "Схемы"
+projects.search:
+  en: "Search by name"
+  ru: "Поиск по имени"
+projects.trash:
+  en: "Trash"
+  ru: "Корзина"
+projects.export_all:
+  en: "Export all"
+  ru: "Экспортировать всё"
+projects.rename:
+  en: "Rename"
+  ru: "Переименовать"
+projects.duplicate:
+  en: "Duplicate"
+  ru: "Дублировать"
+projects.export:
+  en: "Export to a file…"
+  ru: "Экспорт в файл…"
+projects.select:
+  en: "Select"
+  ru: "Выбрать"
+projects.to_trash:
+  en: "Move to the trash"
+  ru: "Переместить в корзину"
+projects.copy:
+  en: "copy"
+  ru: "копия"
+projects.new_name:
+  en: "New name"
+  ru: "Новое имя"
+projects.accept:
+  en: "Accept"
+  ru: "Принять"
+projects.cancel:
+  en: "Cancel"
+  ru: "Отмена"
+projects.restore:
+  en: "Restore"
+  ru: "Восстановить"
+projects.purge:
+  en: "Delete for good…"
+  ru: "Удалить навсегда…"
+projects.purge_yes:
+  en: "Delete for good"
+  ru: "Удалить навсегда"
+projects.ask_purge:
+  en: "Delete «%{name}» for good?"
+  ru: "Удалить «%{name}» навсегда?"
+projects.keep:
+  en: "Keep"
+  ru: "Оставить"
+projects.empty:
+  en: "Empty the trash…"
+  ru: "Очистить корзину…"
+projects.empty_yes:
+  en: "Empty"
+  ru: "Очистить"
+projects.ask_empty:
+  en: "Delete for good the patterns of the trash: %{count}?"
+  ru: "Удалить навсегда схемы из корзины: %{count}?"
+projects.back_from_trash:
+  en: "Back"
+  ru: "Вернуться"
+projects.in_trash:
+  en: "%{what} in the trash"
+  ru: "%{what} в корзине"
+projects.undo:
+  en: "Undo"
+  ru: "Отменить"
+projects.gone_in:
+  en: "gone in %{count} %{days}"
+  ru: "удалится через %{count} %{days}"
+projects.today:
+  en: "today %{time}"
+  ru: "сегодня %{time}"
+projects.yesterday:
+  en: "yesterday %{time}"
+  ru: "вчера %{time}"
+projects.imported:
+  en: "Imported new: %{new}, copies: %{copies}"
+  ru: "Импортировано новых: %{new}, копий: %{copies}"
+projects.present:
+  en: "already there: %{names}"
+  ru: "уже есть: %{names}"
+projects.exported:
+  en: "Saved"
+  ru: "Сохранено"
+projects.chosen:
+  en: "Chosen: %{count}"
+  ru: "Выбрано: %{count}"
+projects.end_choice:
+  en: "End the choice"
+  ru: "Закончить выбор"
+error.export:
+  en: "The file could not be saved"
+  ru: "Файл не сохранён"
+
+plural.patterns.one:
+  en: "pattern"
+  ru: "схема"
+plural.patterns.few:
+  en: "patterns"
+  ru: "схемы"
+plural.patterns.many:
+  en: "patterns"
+  ru: "схем"
+plural.beads.one:
+  en: "bead"
+  ru: "бусина"
+plural.beads.few:
+  en: "beads"
+  ru: "бусины"
+plural.beads.many:
+  en: "beads"
+  ru: "бусин"
+plural.days.one:
+  en: "day"
+  ru: "день"
+plural.days.few:
+  en: "days"
+  ru: "дня"
+plural.days.many:
+  en: "days"
+  ru: "дней"

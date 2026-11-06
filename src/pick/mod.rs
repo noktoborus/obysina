@@ -1,6 +1,6 @@
-//! The choice of a picture file, the way each platform has: a dialog of the
-//! desktop, the documents of android, a file input of the browser. The
-//! answer comes in a later frame.
+//! The choice of a file, and the place a file is saved to, the way each
+//! platform has: a dialog of the desktop, the documents of android, a file
+//! input and a download of the browser. The answer comes in a later frame.
 
 use std::sync::mpsc::{Receiver, Sender, channel};
 
@@ -11,8 +11,32 @@ mod desktop;
 #[cfg(target_arch = "wasm32")]
 mod web;
 
+mod save;
+
 #[cfg(target_os = "android")]
 pub use android::picked as android_picked;
+#[cfg(target_os = "android")]
+pub use save::android_saved;
+pub use save::{Saved, Saver};
+
+/// What kind of file a choice asks for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Kinds {
+    /// A picture to put under a pattern.
+    Pictures,
+    /// A file of patterns to import.
+    Patterns,
+}
+
+impl Kinds {
+    /// The extensions a dialog shows.
+    pub fn extensions(self) -> &'static [&'static str] {
+        match self {
+            Kinds::Pictures => &obusina_backdrop::Kind::EXTENSIONS,
+            Kinds::Patterns => &crate::library::archive::EXTENSIONS,
+        }
+    }
+}
 
 /// A file the person chose.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,9 +72,9 @@ pub struct Picker {
 }
 
 impl Picker {
-    /// Asks the person for a picture, unless a choice is under way. `title`
-    /// names the kinds of picture in the dialog.
-    pub fn start(&mut self, context: &egui::Context, title: &str) {
+    /// Asks the person for a file of `kinds`, unless a choice is under way.
+    /// `title` names the kinds in the dialog.
+    pub fn start(&mut self, context: &egui::Context, title: &str, kinds: Kinds) {
         if self.answer.is_some() {
             return;
         }
@@ -61,7 +85,7 @@ impl Picker {
             *held = Some(sender);
             return;
         }
-        start(context.clone(), title.to_owned(), sender);
+        start(context.clone(), (title.to_owned(), kinds), sender);
     }
 
     /// Opens no dialog from now on: a test notes the choice only.
@@ -96,11 +120,11 @@ impl Picker {
 
 /// Starts the choice of the platform; the answer goes to `sender`, and the
 /// window is asked to draw again.
-fn start(context: egui::Context, title: String, sender: Sender<Answer>) {
+fn start(context: egui::Context, kinds: (String, Kinds), sender: Sender<Answer>) {
     #[cfg(not(any(target_os = "android", target_arch = "wasm32")))]
-    desktop::start(context, title, sender);
+    desktop::start(context, kinds, sender);
     #[cfg(target_arch = "wasm32")]
-    web::start(context, title, sender);
+    web::start(context, kinds, sender);
     #[cfg(target_os = "android")]
-    android::start(context, title, sender);
+    android::start(context, kinds, sender);
 }

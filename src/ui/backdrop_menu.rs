@@ -36,7 +36,11 @@ pub fn button(app: &mut App, ui: &mut egui::Ui) {
         return;
     }
     if !present {
-        app.picker.start(ui.ctx(), &t!("backdrop.kinds"));
+        app.picker.start(
+            ui.ctx(),
+            &t!("backdrop.kinds"),
+            crate::pick::Kinds::Pictures,
+        );
     } else if app.backdrop.hidden() {
         app.backdrop.set_hidden(ui.ctx(), false);
     } else {
@@ -123,7 +127,9 @@ pub fn show(app: &mut App, context: &egui::Context) {
         return;
     };
     match chosen.id.as_str() {
-        "choose" => app.picker.start(context, &t!("backdrop.kinds")),
+        "choose" => app
+            .picker
+            .start(context, &t!("backdrop.kinds"), crate::pick::Kinds::Pictures),
         "edit" => app.backdrop.begin_editing(),
         "hide" => {
             let hidden = !app.backdrop.hidden();

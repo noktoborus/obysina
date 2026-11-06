@@ -4,6 +4,17 @@ An editor of bead patterns, for Linux, Windows and Android.
 
 ## What it does
 
+- Opens on the list of patterns: a card for each, its picture, name, size
+  and the time of its last change. A new pattern is named by the time it
+  was made. A long press or the second button on a card: rename, duplicate,
+  export to a file, select, move to the trash. A trash keeps a pattern 30
+  days, with "Undo" right after the move. "Export all" saves every pattern
+  in one file; "Import" takes `.obusina`, `.obusiny` and `.json` files.
+  Search by name, the arrows, `Enter`, `Delete` and `F2` on the desktop.
+- A pattern is saved by itself, with its undo and redo: a few seconds after
+  the last change, on the way back to the list (the button or `Escape`),
+  when the window closes and when android pauses the program.
+
 - Draws a pattern on a field in a window. A bead is drawn at its
   proportions.
 - The work area is on paper: the sheet, whose columns and rows are set in
@@ -40,7 +51,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
     the picker, the settings, the shadows, the columns and the rows of the sheet,
-    save;
+    the picture, back to the list;
   - **Beads**: the colours of the palette shown, each with the number of its
     place, and the empty place `0`. They stand as a line, which turns with
     the panel, or as a block, as the keys of a numpad; the tabs of the window
@@ -71,7 +82,8 @@ An editor of bead patterns, for Linux, Windows and Android.
 | --- | --- |
 | ctrl+z | undo |
 | ctrl+shift+z | redo |
-| ctrl+s | save |
+| ctrl+s | save now |
+| Escape | back to the list, when no menu is open |
 | 1 … 9 | the colour of that place of the palette shown |
 | 0 | the empty place |
 | + / - | the next and the previous palette |
@@ -80,12 +92,11 @@ An editor of bead patterns, for Linux, Windows and Android.
 ## Running
 
 ```sh
-cargo run -- my-pattern.json
+cargo run                      # the list of patterns
+cargo run -- my-pattern.json   # the file imported as a copy, and opened
 ```
 
-A file that is not there is a new pattern, saved there. With no file the
-pattern cannot be saved yet. On Android the pattern is kept in the data of the
-program.
+The patterns are kept in the data of the program (`docs/projects.md`).
 
 ## Building
 

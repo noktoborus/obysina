@@ -32,11 +32,12 @@ fn next_revision() -> u64 {
 ///
 /// Only the cells that hold a bead are kept; every other cell of the field
 /// is empty. Two patterns are equal when they have the same identifier and
-/// hold the same beads, sheet, ruling and paper; the revision is not
+/// name and hold the same work ([`Pattern::same_work`]); the revision is not
 /// compared.
 #[derive(Debug, Clone)]
 pub struct Pattern {
     id: PatternId,
+    name: String,
     grid: Grid,
     ratio: f32,
     palettes: Vec<Palette>,
@@ -50,8 +51,16 @@ pub struct Pattern {
 
 impl PartialEq for Pattern {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-            && self.grid == other.grid
+        self.id == other.id && self.name == other.name && self.same_work(other)
+    }
+}
+
+impl Pattern {
+    /// True when two patterns hold the same work: every field but the
+    /// identifier, the name and the revision is the same. A pattern renamed
+    /// elsewhere is the same work.
+    pub fn same_work(&self, other: &Pattern) -> bool {
+        self.grid == other.grid
             && self.ratio == other.ratio
             && self.palettes == other.palettes
             && self.beads == other.beads
@@ -77,6 +86,7 @@ impl Pattern {
         check(&palettes)?;
         Ok(Pattern {
             id: PatternId::new(),
+            name: String::new(),
             grid,
             ratio,
             palettes,
@@ -97,6 +107,20 @@ impl Pattern {
     /// Takes the identifier a file gives.
     pub fn set_id(&mut self, id: PatternId) {
         self.id = id;
+    }
+
+    /// The name the person gave it; empty when none was given.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// Gives it a name.
+    pub fn set_name(&mut self, name: impl Into<String>) {
+        let name = name.into();
+        if self.name != name {
+            self.name = name;
+            self.revision = next_revision();
+        }
     }
 
     /// The kind of grid.

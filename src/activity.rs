@@ -25,6 +25,30 @@ pub fn with<T>(work: impl FnOnce(&AndroidApp) -> T) -> Option<T> {
         .map(work)
 }
 
+/// Calls `work` with the environment of java and the activity of the
+/// `AndroidApp` kept, on this thread. The activity is not the context of
+/// ndk-context, which is the application and has none of the methods of
+/// `MainActivity`.
+pub fn call(
+    work: impl for<'local> FnOnce(
+        &mut jni::Env<'local>,
+        &jni::objects::JObject<'local>,
+    ) -> jni::errors::Result<()>,
+) -> jni::errors::Result<()> {
+    let Some((vm, activity)) = with(|app| (app.vm_as_ptr(), app.activity_as_ptr())) else {
+        return Err(jni::errors::Error::NullPtr("no activity"));
+    };
+    // SAFETY: android-activity keeps the virtual machine for the life of the
+    // program.
+    let vm = unsafe { jni::JavaVM::from_raw(vm.cast()) };
+    vm.attach_current_thread(|env| {
+        // SAFETY: the activity of android-activity is a global reference it
+        // owns, alive while its `AndroidApp` is; it is not deleted here.
+        let activity = unsafe { jni::objects::JObject::from_raw(env, activity.cast()) };
+        work(env, &activity)
+    })
+}
+
 /// The insets of the part of the window the system leaves free, in points:
 /// what the content rectangle of the activity leaves out of the window of
 /// `raw_input`. egui lays the panels out inside it (`Context::content_rect`).

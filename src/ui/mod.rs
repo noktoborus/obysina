@@ -7,6 +7,7 @@ pub mod button;
 pub mod icons;
 pub mod palette;
 pub mod palette_window;
+pub mod projects;
 pub mod settings_menu;
 pub mod sheet;
 pub mod tools;

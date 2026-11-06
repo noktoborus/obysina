@@ -5,7 +5,7 @@ use egui::{Event, Modifiers, PointerButton, Pos2};
 use egui_kittest::kittest::Queryable;
 use rust_i18n::t;
 
-use super::{FREE, SIZE, Window, window, window_in};
+use super::{FREE, Window, window};
 use crate::pick::Picked;
 
 /// A PNG of `width` by `height` pixels of one colour.
@@ -112,13 +112,13 @@ fn a_chosen_picture_is_found_again() {
     assert!((size.x / size.y - 2.0).abs() < 1e-3, "{size:?}");
     assert_eq!(stored(&window), ["1.png", "1.yaml"]);
     let corners = app.backdrop.corners;
-    window.click(&t!("file.save"));
-    let Window { harness, directory } = window;
-    drop(harness);
 
-    let window = window_in(directory, SIZE);
-    assert!(window.harness.state().backdrop.has());
-    assert_eq!(window.harness.state().backdrop.corners, corners);
+    let mut again = super::reopened(&mut window);
+    let context = egui::Context::default();
+    let pattern = again.pattern.clone();
+    let _ = again.backdrop.update(&context, &pattern);
+    assert!(again.backdrop.has());
+    assert_eq!(again.backdrop.corners, corners);
 }
 
 /// A handle moves its corner; "put back" puts it back, "keep" keeps and
@@ -319,13 +319,7 @@ fn a_kept_picture_shimmers_over_its_corners_while_it_is_read() {
     window.harness.key_press(egui::Key::Escape);
     window.harness.run();
     let corners = window.harness.state().backdrop.corners;
-    window.click(&t!("file.save"));
-    let Window { harness, directory } = window;
-    drop(harness);
-
-    let path = directory.path().join("pattern.json");
-    let pictures = directory.path().join(crate::backdrop::DIRECTORY);
-    let mut app = crate::app::App::open(Some(path), None, Some(pictures));
+    let mut app = super::reopened(&mut window);
     app.backdrop.tasks().hold();
     let context = egui::Context::default();
     let pattern = app.pattern.clone();
@@ -374,7 +368,12 @@ fn a_new_picture_is_edited_at_once() {
     assert!(app.backdrop.editing());
     let laid = app.backdrop.corners;
     assert!(window.harness.query_by_label(&t!("edit.undo")).is_none());
-    assert!(window.harness.query_by_label(&t!("file.save")).is_none());
+    assert!(
+        window
+            .harness
+            .query_by_label(&t!("projects.back"))
+            .is_none()
+    );
     window.harness.get_by_label(&t!("backdrop.done"));
     let corner = handle(&window, 1);
     drag(&mut window, corner, egui::vec2(-20.0, 15.0));

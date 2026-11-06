@@ -1,4 +1,5 @@
-//! The window: the field of beads and the floating panels over it.
+//! The window: the list of patterns, or the field of beads of the pattern
+//! open and the floating panels over it (`src/session.rs`).
 
 use std::path::PathBuf;
 
@@ -51,10 +52,19 @@ pub enum Tool {
 
 /// The state of the window.
 pub struct App {
-    /// The pattern being edited.
+    /// Which screen is shown: the list or the editor.
+    pub(crate) screen: crate::session::Screen,
+    /// The patterns of the person; `None` when the platform gives no place
+    /// to keep them, and nothing is saved.
+    pub(crate) library: Option<crate::library::Library>,
+    /// The list of patterns as the screen shows it.
+    pub(crate) projects: crate::ui::projects::Projects,
+    /// The store of the pictures under the patterns.
+    pub(crate) pictures: Option<PathBuf>,
+    /// What was saved last of the pattern open.
+    pub(crate) saved: crate::session::Saved,
+    /// The pattern being edited; a new one while the list is shown first.
     pub(crate) pattern: Pattern,
-    /// Where it is saved; `None` when there is nowhere to save it.
-    pub(crate) path: Option<PathBuf>,
     /// How the field is moved and zoomed.
     pub(crate) view: View,
     /// What a press does.
@@ -86,39 +96,44 @@ pub struct App {
     pub(crate) backdrop_menu: plate_menu::PlateMenu,
     /// A choice of a picture file under way.
     pub(crate) picker: crate::pick::Picker,
+    /// The toasts: what was done, and the undo of a move to the trash.
+    pub(crate) toasts: egui_notify::Toasts,
+}
+
+/// Where the window keeps what it keeps; `None` where the platform gives no
+/// place.
+#[derive(Debug, Default, Clone)]
+pub struct Places {
+    /// The directory of the patterns (`src/library/mod.rs`).
+    pub data: Option<PathBuf>,
+    /// The file of the settings.
+    pub settings: Option<PathBuf>,
+    /// The store of the pictures under the patterns.
+    pub pictures: Option<PathBuf>,
+    /// A file named on the command line: taken in as a copy and opened.
+    pub file: Option<PathBuf>,
 }
 
 impl App {
-    /// The window over the pattern at `path`, with the settings of the file
-    /// `settings` and the pictures of the store `pictures`. A pattern file
-    /// that is not there is a new pattern to be saved there. A file that
-    /// cannot be read is never written over (`RULE pattern.newer`).
-    pub fn open(
-        path: Option<PathBuf>,
-        settings: Option<PathBuf>,
-        pictures: Option<PathBuf>,
-    ) -> App {
-        let (settings, settings_error) = Settings::load(settings);
-        let (pattern, path, message) = match path {
-            Some(path) if path.exists() => match obusina_pattern::read(&path) {
-                Ok(pattern) => (pattern, Some(path), None),
-                Err(error) => (new_pattern(), None, Some(say(&error.into()))),
-            },
-            other => (new_pattern(), other, None),
-        };
-        let backdrop = crate::backdrop::Backdrop::new(pictures);
-        let message = message.or_else(|| settings_error.map(|error| say(&error)));
-        let mut view = View::default();
-        view.set_degrees(pattern.turn());
-        let colour = first_colour(&pattern);
-        App {
+    /// The window on the list of patterns kept in `places`. A file named on
+    /// the command line is taken in as a copy and opened. With no place for
+    /// patterns, a new pattern opens and nothing is saved.
+    pub fn start(places: Places) -> App {
+        let (settings, settings_error) = Settings::load(places.settings);
+        let library = places.data.as_deref().map(crate::session::library);
+        let pattern = new_pattern();
+        let mut app = App {
+            screen: crate::session::Screen::List,
+            library,
+            projects: crate::ui::projects::Projects::default(),
+            pictures: places.pictures.clone(),
+            saved: crate::session::Saved::default(),
+            view: View::default(),
+            colour: first_colour(&pattern),
             pattern,
-            path,
-            view,
             tool: Tool::Pencil,
-            colour,
             history: History::default(),
-            message,
+            message: None,
             menu: plate_menu::PlateMenu::new(),
             settings,
             palette: 0,
@@ -126,10 +141,20 @@ impl App {
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
             settings_edit: None,
-            backdrop,
+            backdrop: crate::backdrop::Backdrop::new(places.pictures),
             backdrop_menu: plate_menu::PlateMenu::new().with_id("backdrop-menu"),
             picker: crate::pick::Picker::default(),
+            toasts: egui_notify::Toasts::new().with_anchor(egui_notify::Anchor::BottomRight),
+        };
+        if let Some(error) = settings_error {
+            app.projects.tell(say(&error));
         }
+        match (&app.library, places.file) {
+            (Some(_), Some(file)) => app.take_in_file(&file, 0.0),
+            (Some(_), None) => {}
+            (None, _) => app.open_pattern(new_pattern(), History::default(), 0.0),
+        }
+        app
     }
 
     /// Says what went wrong with the picture under the pattern, if anything.
@@ -210,17 +235,6 @@ impl App {
         self.history.redo(&mut self.pattern);
     }
 
-    /// Writes the pattern where it came from.
-    pub(crate) fn save(&mut self) {
-        let Some(path) = &self.path else {
-            return;
-        };
-        self.message = Some(match write(path, &self.pattern) {
-            Ok(()) => t!("file.saved").to_string(),
-            Err(error) => say(&error),
-        });
-    }
-
     /// Does what the tool does to a bead pressed on. The second button does
     /// nothing.
     fn press(&mut self, cell: Cell, press: Press) {
@@ -254,14 +268,21 @@ impl App {
         if undo {
             self.undo();
         }
+        let time = ui.input(|input| input.time);
         if save {
-            self.save();
+            self.save_now(time);
         }
         let free = !ui.ctx().egui_wants_keyboard_input()
             && !self.palette_window.open
             && !self.bead_menu.is_open()
-            && !self.menu.is_open();
+            && !self.menu.is_open()
+            && !self.backdrop_menu.is_open()
+            && !self.backdrop.editing();
         if !free {
+            return;
+        }
+        if ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
+            self.back_to_list(ui.ctx(), time);
             return;
         }
         if ui.input(|input| input.key_pressed(Key::P)) {
@@ -339,7 +360,15 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
+        if self.screen == crate::session::Screen::List {
+            crate::ui::projects::show(self, ui);
+            self.show_toasts(ui.ctx());
+            return;
+        }
         self.shortcuts(ui);
+        if self.screen != crate::session::Screen::Editor {
+            return;
+        }
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
         crate::ui::palette::show(self, ui.ctx());
@@ -348,11 +377,24 @@ impl eframe::App for App {
         crate::ui::settings_menu::show(self, ui.ctx());
         crate::ui::backdrop_menu::show(self, ui.ctx());
         crate::ui::palette_window::keep_in_hand(self);
+        self.autosave(ui.ctx());
+        self.show_toasts(ui.ctx());
+    }
+
+    /// Saves the pattern open when android pauses the program: eframe calls
+    /// it on suspend, as on a close and every `auto_save_interval`.
+    fn save(&mut self, _storage: &mut dyn eframe::Storage) {
+        self.save_now(f64::MAX);
+    }
+
+    /// Saves the pattern open when the window is closed.
+    fn on_exit(&mut self) {
+        self.save_now(f64::MAX);
     }
 }
 
 /// The colour in hand at the start: the first of the first palette shown.
-fn first_colour(pattern: &Pattern) -> Option<ColourId> {
+pub(crate) fn first_colour(pattern: &Pattern) -> Option<ColourId> {
     pattern.palettes()[0]
         .places()
         .iter()
@@ -371,13 +413,8 @@ pub(crate) fn new_pattern() -> Pattern {
     Pattern::new(Grid::Loom, DEFAULT_BEAD_RATIO, palette).expect("the new pattern is valid")
 }
 
-/// Writes a pattern file.
-fn write(path: &std::path::Path, pattern: &Pattern) -> crate::error::Result<()> {
-    Ok(obusina_pattern::write(path, pattern)?)
-}
-
 /// The text of an error for the user.
-fn say(error: &AppError) -> String {
+pub(crate) fn say(error: &AppError) -> String {
     log::warn!("{error}: {:?}", std::error::Error::source(error));
     t!(error.message_key()).to_string()
 }

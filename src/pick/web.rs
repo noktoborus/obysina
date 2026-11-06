@@ -3,14 +3,12 @@
 
 use std::sync::mpsc::Sender;
 
-use obusina_backdrop::Kind;
-
-use super::{Answer, Choice, Picked};
+use super::{Answer, Choice, Kinds, Picked};
 
 /// Opens the input of files; its answer goes to `sender`.
-pub fn start(context: egui::Context, title: String, sender: Sender<Answer>) {
+pub fn start(context: egui::Context, (title, kinds): (String, Kinds), sender: Sender<Answer>) {
     wasm_bindgen_futures::spawn_local(async move {
-        let dialog = rfd::AsyncFileDialog::new().add_filter(title, &Kind::EXTENSIONS);
+        let dialog = rfd::AsyncFileDialog::new().add_filter(title, kinds.extensions());
         let answer = match dialog.pick_file().await {
             Some(file) => Choice::Picked(Picked {
                 name: Some(file.file_name()),

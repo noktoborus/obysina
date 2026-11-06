@@ -9,7 +9,7 @@ use crate::error::PatternError;
 /// A random identifier, unique to one pattern and kept in its file.
 ///
 /// A copy of the file has the same one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PatternId(uuid::Uuid);
 
 impl PatternId {
