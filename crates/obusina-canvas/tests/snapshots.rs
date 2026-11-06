@@ -109,6 +109,50 @@ fn hatched() {
     harness.snapshot_options("hatched", &SnapshotOptions::new().output_path(PICTURES));
 }
 
+/// The glow off: the beads are flat.
+#[test]
+fn flat() {
+    let pattern = pattern(Grid::Loom);
+    let mut view = View::default();
+    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let mut harness = Harness::builder()
+        .with_size(SIZE)
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).glow(false).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.snapshot_options("flat", &SnapshotOptions::new().output_path(PICTURES));
+}
+
+/// A black paper: the shade, the shadows and the hatch are lighter than it.
+/// The pale colour is hidden, so its beads are hatched.
+#[test]
+fn dark_paper() {
+    let mut pattern = pattern(Grid::Loom);
+    pattern.set_paper(Rgb([0x1e, 0x1e, 0x1e]));
+    pattern.set_hidden(PALE, true);
+    let mut view = View::default();
+    view.sheet = Some(Bounds {
+        min: Cell { column: 2, row: 1 },
+        max: Cell { column: 6, row: 5 },
+    });
+    let mut harness = Harness::builder()
+        .with_size(SIZE)
+        .with_theme(egui::Theme::Dark)
+        .build_ui_state(
+            |ui, (pattern, view): &mut (Pattern, View)| {
+                Canvas::new(pattern, view).show(ui);
+            },
+            (pattern, view),
+        );
+    harness.run();
+    harness.snapshot_options("dark-paper", &SnapshotOptions::new().output_path(PICTURES));
+}
+
 /// Zoomed out, the field moved so the middle of the screen is at the top
 /// left corner of the paper, the pointer in the shade at the bottom left:
 /// the shadows in the frame of the screen at zoom 1 and in the round under

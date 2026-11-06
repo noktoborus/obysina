@@ -16,9 +16,9 @@ fn type_number(window: &mut Window, name: &str, text: &str) {
     window.harness.run();
 }
 
-/// Opens the menu of the ruling from the menu of grids.
+/// Opens the menu of the ruling from the menu of the settings.
 fn open_ruling(window: &mut Window) {
-    window.click(&t!("grid.kind"));
+    window.click(&t!("settings.open"));
     window.click(&t!("ruling.open"));
 }
 
@@ -86,4 +86,58 @@ fn a_ruling_not_accepted_goes_back() {
         assert_eq!(app.pattern.ruling(), Ruling::default(), "{leave}");
         assert!(!app.history.can_undo(), "{leave}");
     }
+}
+
+/// A swatch under the picker changes the paper at once; "Accept" keeps it
+/// as one step of undo, and the paper is written in the file.
+#[test]
+fn an_accepted_paper_is_one_step() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("paper.open"));
+
+    window.click(&t!("paper.black"));
+    let black = obusina_pattern::Rgb([0x1e, 0x1e, 0x1e]);
+    assert_eq!(window.harness.state().pattern.paper(), black);
+    window.click(&t!("ruling.accept"));
+
+    assert_eq!(window.harness.state().pattern.paper(), black);
+    window.click(&t!("edit.undo"));
+    let app = window.harness.state();
+    assert_eq!(app.pattern.paper(), obusina_pattern::DEFAULT_PAPER);
+    assert!(!app.history.can_undo(), "one step");
+}
+
+/// "Cancel" puts the paper back.
+#[test]
+fn a_paper_not_accepted_goes_back() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("paper.open"));
+    window.click(&t!("paper.linen"));
+
+    window.click(&t!("ruling.cancel"));
+
+    let app = window.harness.state();
+    assert!(!app.menu.is_open());
+    assert_eq!(app.pattern.paper(), obusina_pattern::DEFAULT_PAPER);
+    assert!(!app.history.can_undo());
+}
+
+/// The glow is on at first; its entry turns it off, the menu stays open on
+/// it, and the next start keeps it off.
+#[test]
+fn the_glow_is_kept_until_the_next_start() {
+    let mut window = window();
+    assert!(window.harness.state().settings.glow());
+
+    window.click(&t!("settings.open"));
+    window.click(&t!("view.glow"));
+    assert!(!window.harness.state().settings.glow());
+    assert!(window.harness.state().menu.is_open(), "it opens again");
+    let Window { harness, directory } = window;
+    drop(harness);
+
+    let window = window_in(directory, SIZE);
+    assert!(!window.harness.state().settings.glow());
 }

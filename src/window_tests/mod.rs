@@ -220,6 +220,7 @@ fn a_tap_on_a_swatch_takes_the_colour_in_hand() {
 #[test]
 fn a_change_of_grid_is_undone() {
     let mut window = window();
+    window.click(&t!("settings.open"));
     window.click(&t!("grid.kind"));
     window.click(&t!("grid.peyote"));
     assert_eq!(window.harness.state().pattern.grid(), Grid::Peyote);
@@ -268,7 +269,7 @@ fn every_widget_has_a_name() {
         t!("edit.redo"),
         t!("tool.pencil"),
         t!("tool.pick"),
-        t!("grid.kind"),
+        t!("settings.open"),
         t!("file.save"),
         t!("palette.empty"),
     ] {
@@ -629,7 +630,7 @@ fn every_button_of_the_panels_has_one_size() {
         t!("edit.redo"),
         t!("tool.pencil"),
         t!("tool.pick"),
-        t!("grid.kind"),
+        t!("settings.open"),
         t!("sheet.width"),
         t!("sheet.height"),
         t!("file.save"),
@@ -826,6 +827,9 @@ fn a_press_on_a_turned_field_reaches_its_bead() {
     assert_eq!(window.harness.state().pattern.count(id_at(0)), 1);
 }
 
+/// How far the glow takes the middle of a bead from its colour.
+const GLOW_SHADE: u8 = 4;
+
 #[test]
 fn a_moved_field_draws_its_beads_where_they_are_pressed() {
     let mut window = window();
@@ -837,7 +841,11 @@ fn a_moved_field_draws_its_beads_where_they_are_pressed() {
     let scale = window.harness.ctx.pixels_per_point();
     let pixel = picture.get_pixel((point.x * scale) as u32, (point.y * scale) as u32);
 
-    assert_eq!(&pixel.0[..3], &[0x1b, 0x1b, 0x1b], "the bead at {point:?}");
+    let near = |channel: u8| channel.abs_diff(0x1b) <= GLOW_SHADE;
+    assert!(
+        pixel.0[..3].iter().all(|channel| near(*channel)),
+        "the bead at {point:?}: {pixel:?}"
+    );
 }
 
 #[test]

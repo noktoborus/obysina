@@ -1,7 +1,7 @@
 //! The settings of the program: `settings.yaml` in the configuration
 //! directory (`RULE config.dir`). They keep the place of each panel, how the
-//! places of a palette stand and whether the empty places show their
-//! shadows.
+//! places of a palette stand, whether the empty places show their shadows
+//! and whether the beads glow.
 //!
 //! A file this version cannot read is renamed to [`UNREADABLE`] beside it,
 //! and the program starts from the defaults (`RULE config.legacy`).
@@ -35,6 +35,8 @@ pub struct Settings {
     palette_view: PaletteView,
     /// Whether the empty places of the field show their shadows.
     shadows: bool,
+    /// Whether the beads are drawn round, lighter in the middle.
+    glow: bool,
 }
 
 impl Default for Settings {
@@ -44,6 +46,7 @@ impl Default for Settings {
             panels: BTreeMap::new(),
             palette_view: PaletteView::default(),
             shadows: true,
+            glow: true,
         }
     }
 }
@@ -130,6 +133,20 @@ impl Settings {
             return Ok(());
         }
         self.shadows = shadows;
+        self.write()
+    }
+
+    /// Whether the beads are drawn round, lighter in the middle.
+    pub fn glow(&self) -> bool {
+        self.glow
+    }
+
+    /// Keeps whether the beads glow and writes the file.
+    pub fn keep_glow(&mut self, glow: bool) -> Result<()> {
+        if glow == self.glow {
+            return Ok(());
+        }
+        self.glow = glow;
         self.write()
     }
 

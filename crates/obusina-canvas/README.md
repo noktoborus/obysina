@@ -13,16 +13,21 @@ The field of beads: an egui widget that draws an
   drawn is the work area doubled (`Bounds::doubled`). Past it the ground is
   bare and a press does nothing. Only its cells on the screen are drawn.
 - A bead is drawn at its proportions, with a small gap. The ground of the
-  work area is paper, `PAPER`, which a new colour is told from; the rest
-  of the field is in shade. An empty place has no outline. It shows the
+  work area is the paper of the pattern, `Pattern::paper`; the rest of the
+  field is the paper in shade. `Tones::of` takes from the paper the shade,
+  the shadows and the hatch: on a paper lighter than `LIGHT` (`lightness`,
+  of OKLab) they are darker than it, on a darker one lighter. An empty place has no outline. It shows the
   shadow of a bead only in a frame of the screen at zoom 1 (`DEFAULT_BEAD`)
   in its middle and within `NEAR_RADIUS` cells of the pointer, on the paper,
   in the shade and past the field alike, each fading over its edge
   (`FRAME_FADE`). With no
   pointer over the field, as under a finger, there is no round.
   `shadow.rs` holds the rules. A shadow on a line of the ruling of the
-  pattern (`Pattern::ruling`) is `SHADOW`, any other the lighter
-  `SHADOW_CELL`. `Canvas::shadows(false)` shows none.
+  pattern (`Pattern::ruling`) is `Tones::line`, any other the fainter
+  `Tones::cell`. `Canvas::shadows(false)` shows none.
+- `Canvas::glow(true)`, the default, draws the beads round: lighter in the
+  middle, darker at the sides and the bottom. `glow(false)` draws them
+  flat. The shadows are flat either way.
 - `Canvas::picture(Picture)`: a picture under the beads, over the paper and
   under the shadows, laid over four corners in bead units through the
   projection they give (`picture.rs`). With no texture, while it loads, a
@@ -43,8 +48,9 @@ The field of beads: an egui widget that draws an
   the field moves back as little as it takes and stays at that side.
 - Nothing is tessellated. One white bead is drawn into a texture by the
   distance to a rounded box, again only when the size of a bead changes
-  (`sprite.rs`). A bead on the screen is one quad of it, tinted its colour;
-  so is a shadow, tinted `SHADOW` or `SHADOW_CELL`. A bead of a colour not seen, removed or
+  (`sprite.rs`); a round bead is a second texture, its white shaded. A bead
+  on the screen is one quad of it, tinted its colour; so is a shadow,
+  tinted by the tones of the paper. A bead of a colour not seen, removed or
   hidden (`Colour::seen`), is a quad of a second texture: its outline and
   diagonal lines.
 
@@ -72,6 +78,8 @@ The field of beads: an egui widget that draws an
 | Peyote | ![Peyote][picture-peyote] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 | A colour removed, its beads hatched | ![Hatched][picture-hatched] |
+| The glow off: flat beads | ![Flat][picture-flat] |
+| A black paper, a colour hidden: the shade, the shadows and the hatch lighter than it | ![Dark paper][picture-dark-paper] |
 | Loom, a line every 10 columns and 4 rows from (2, 1) | ![Ruling][picture-ruling] |
 | Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
 | A picture under the beads over four corners | ![Picture][picture-picture] |
@@ -89,6 +97,8 @@ The field of beads: an egui widget that draws an
 [picture-picture-editing]: img/picture-editing.png
 [picture-picture-loading]: img/picture-loading.png
 [picture-ruling]: img/ruling.png
+[picture-flat]: img/flat.png
+[picture-dark-paper]: img/dark-paper.png
 
 ## Boundaries
 

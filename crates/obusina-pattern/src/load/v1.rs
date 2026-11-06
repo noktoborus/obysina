@@ -23,6 +23,8 @@ struct Document {
     sheet: Option<Sheet>,
     #[serde(default)]
     ruling: Option<Ruling>,
+    #[serde(default)]
+    paper: Option<String>,
     bead_ratio: f32,
     palettes: Vec<Vec<Option<Colour>>>,
     rows_origin: [i32; 2],
@@ -84,6 +86,9 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     }
     if let Some(Ruling { step, offset }) = document.ruling {
         pattern.set_ruling(Lines { step, offset });
+    }
+    if let Some(paper) = document.paper {
+        pattern.set_paper(Rgb::parse(&paper)?);
     }
     Ok(pattern)
 }

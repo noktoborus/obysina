@@ -67,7 +67,7 @@ fn candidates() -> impl Iterator<Item = Rgb> {
 mod tests {
     use super::*;
 
-    const PAPER: Rgb = Rgb([0xd6, 0xd4, 0xce]);
+    const PAPER: Rgb = obusina_pattern::DEFAULT_PAPER;
 
     /// Next to black and white, a new colour is neither grey nor near
     /// either, nor near the paper.

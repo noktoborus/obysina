@@ -170,9 +170,9 @@ on the field, columns 1 2 3       the file
     - The ruling is part of the pattern and its file (`ruling`), so a
       pattern opens with the lines it was counted by. A change is a step of
       undo. Format 1 changes itself (`EXC` of `RULE pattern.version`).
-    - "Ruling…" of the menu of the grid opens a menu with the four numbers
-      on top, then "Accept" and "Cancel", as the picker of a colour
-      (`src/ui/grid_menu.rs`). A number shows on the field at once; only
+    - "Ruling…" of the menu of the settings opens a menu with the four
+      numbers on top, then "Accept" and "Cancel", as the picker of a colour
+      (`src/ui/settings_menu.rs`). A number shows on the field at once; only
       "Accept" keeps it. Cancel, Escape or a press beside the menu put it
       back.
     - Why from cell (0, 0): it does not move. The middle of the sheet moves
@@ -183,7 +183,7 @@ on the field, columns 1 2 3       the file
       row is a stair.
     - Was: every shadow of one strength, `SHADOW`.
 22. **A button of the tools hides the shadows,** and shows them again. It
-    stands beside the button of the grid. Whether they show is a setting of
+    stands beside the button of the settings. Whether they show is a setting of
     the program (`src/settings.rs`), not of the pattern: it is how the
     window shows, not part of the work.
 23. **The field never leaves the screen.** At least `KEEP_BEADS` beads of
@@ -194,3 +194,25 @@ on the field, columns 1 2 3       the file
     - Why: a field moved off the screen was lost, and found again only by
       a new size of the window, which put it in the middle.
     - Why not the middle: the field stays where the person put it.
+24. **The paper is a colour of the pattern,** kept in its file (`paper`);
+    a new pattern has `DEFAULT_PAPER`. "Colour of the paper…" of the menu
+    of the settings opens a picker and four papers on top, then "Accept"
+    and "Cancel", as the ruling does. A colour shows on the field at once;
+    "Accept" keeps it as a step of undo.
+    - The shade, the shadows and the hatch come from the paper
+      (`Tones::of` of `obusina-canvas`): darker than a paper lighter than
+      `LIGHT`, lighter than a darker one, so they are seen on both.
+    - Why in the pattern: a pattern for black thread is drawn on black,
+      and opens on it.
+25. **The beads glow:** each is drawn round, lighter in the middle and
+    darker at its sides and its bottom. "Glow" of the menu of the settings
+    turns it off and on. It is a setting of the program, as the shadows
+    are: how the window shows, not part of the work.
+    - Why it costs nothing: the round bead is a second white texture,
+      tinted as the flat one; a bead is still one quad.
+    - Was: flat beads only. A white spot of shine and a halo of the colour
+      around the bead were weighed and left
+      (`experiments/mockups/src/mock/glow.rs`).
+26. **Each entry of the menu of the settings shows what it is now** right
+    of its label: the kind of grid, the step of the ruling, a swatch of the
+    paper, on or off (`plate_menu::Detail`).

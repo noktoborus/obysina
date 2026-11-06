@@ -30,7 +30,7 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-backdrop` | the pictures under the patterns and how each lies, kept in a directory of the cache |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
-| `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
+| `plate-menu` | a menu of wide plates in the middle of the window; the settings are chosen in it |
 | `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
 | `egui-notify` | toasts, with a button of an action; a copy of the crate of crates.io |
 | `obusina` | the window, the panels, the history of edits, the settings, the text of the user |
@@ -63,8 +63,8 @@ window of the palettes open ──► History::begin ... closed ──► Histor
                     every edit between is one step: `Edit::Many`
 ```
 
-A change of the kind of grid is one step too, and so is a ruling accepted
-in its menu (`History::keep_ruling`). While a batch is open there
+A change of the kind of grid is one step too, and so is a ruling or a
+paper accepted in its menu (`History::keep_ruling`, `History::keep_paper`). While a batch is open there
 is nothing to undo or redo: its edits are no step yet.
 
 ## Start

@@ -1,6 +1,6 @@
 //! Every change to a pattern, so that it can be undone (`RULE ui.undo`).
 
-use obusina_pattern::{Bounds, Cell, ColourId, Grid, Palette, Pattern, Ruling};
+use obusina_pattern::{Bounds, Cell, ColourId, Grid, Palette, Pattern, Rgb, Ruling};
 
 /// One bead changed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -47,6 +47,13 @@ pub enum Edit {
         /// The ruling after.
         after: Ruling,
     },
+    /// The colour of the paper changed.
+    Paper {
+        /// The paper before.
+        before: Rgb,
+        /// The paper after.
+        after: Rgb,
+    },
     /// Edits done as one step: done in order, undone in reverse.
     Many(Vec<Edit>),
 }
@@ -64,6 +71,7 @@ impl Edit {
             Edit::Palettes { after, .. } => put_back(pattern, after),
             Edit::Sheet { after, .. } => pattern.set_sheet(*after),
             Edit::Ruling { after, .. } => pattern.set_ruling(*after),
+            Edit::Paper { after, .. } => pattern.set_paper(*after),
             Edit::Many(edits) => edits.iter().for_each(|edit| edit.apply(pattern)),
         }
     }
@@ -80,6 +88,7 @@ impl Edit {
             Edit::Palettes { before, .. } => put_back(pattern, before),
             Edit::Sheet { before, .. } => pattern.set_sheet(*before),
             Edit::Ruling { before, .. } => pattern.set_ruling(*before),
+            Edit::Paper { before, .. } => pattern.set_paper(*before),
             Edit::Many(edits) => edits.iter().rev().for_each(|edit| edit.revert(pattern)),
         }
     }
@@ -226,6 +235,15 @@ impl History {
         let after = pattern.ruling();
         if after != before {
             self.keep(Edit::Ruling { before, after });
+        }
+    }
+
+    /// Keeps as a step the paper already put on the pattern in place of
+    /// `before`; nothing is kept when it is the same.
+    pub fn keep_paper(&mut self, pattern: &Pattern, before: Rgb) {
+        let after = pattern.paper();
+        if after != before {
+            self.keep(Edit::Paper { before, after });
         }
     }
 

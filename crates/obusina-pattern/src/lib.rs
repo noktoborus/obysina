@@ -15,5 +15,5 @@ pub use file::{FORMAT, read, write};
 pub use grid::{Bounds, Cell, Grid};
 pub use id::PatternId;
 pub use palette::{Colour, ColourId, MAX_COLOURS, Palette, Rgb};
-pub use pattern::{DEFAULT_BEAD_RATIO, Pattern, TURNS};
+pub use pattern::{DEFAULT_BEAD_RATIO, DEFAULT_PAPER, Pattern, TURNS};
 pub use ruling::{DEFAULT_RULING_STEP, Ruling};

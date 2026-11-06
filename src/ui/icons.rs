@@ -22,8 +22,8 @@ pub const PICK: &str = "\u{1f4a7}";
 pub const SWITCH: &str = "\u{2194}";
 /// Save, the floppy disk.
 pub const SAVE: &str = "\u{1f4be}";
-/// The kind of grid, the square cut in four.
-pub const GRID: &str = "\u{229e}";
+/// The settings of the pattern and of the view, the gear.
+pub const SETTINGS: &str = "\u{2699}";
 
 /// The shadows of the empty places, the dark shade.
 pub const SHADOW: &str = "\u{2593}";
@@ -42,7 +42,7 @@ pub const EMPTY: &str = "\u{1f6ab}";
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID, SHADOW, PICTURE, DONE,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, SETTINGS, SHADOW, PICTURE, DONE,
     CANCEL, EMPTY,
 ];
 

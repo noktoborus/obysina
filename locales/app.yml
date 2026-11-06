@@ -83,6 +83,33 @@ menu.nothing_found:
   en: "Nothing found"
   ru: "Ничего не найдено"
 
+settings.open:
+  en: "Settings"
+  ru: "Настройки"
+settings.on:
+  en: "on"
+  ru: "вкл"
+settings.off:
+  en: "off"
+  ru: "выкл"
+view.glow:
+  en: "Glow"
+  ru: "Свечение"
+paper.open:
+  en: "Colour of the paper…"
+  ru: "Цвет фона…"
+paper.grey:
+  en: "Grey"
+  ru: "Серый"
+paper.white:
+  en: "White"
+  ru: "Белый"
+paper.linen:
+  en: "Linen"
+  ru: "Лён"
+paper.black:
+  en: "Black"
+  ru: "Чёрный"
 grid.kind:
   en: "Grid"
   ru: "Сетка"

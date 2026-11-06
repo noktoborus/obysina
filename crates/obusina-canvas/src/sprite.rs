@@ -4,6 +4,10 @@
 //! texture for the size of a bead, and every bead is a quad of it tinted
 //! its colour: no tessellation, four vertices a bead. A bead with no colour
 //! to show is a quad of a second texture: its outline and diagonal lines.
+//!
+//! With the glow on, the white bead is round: lighter in the middle, darker
+//! at its sides and its bottom (`volume`). The tint keeps that, so every
+//! colour gets it for nothing.
 
 use egui::{Color32, ColorImage, Context, Mesh, Pos2, TextureHandle, TextureOptions, vec2};
 use obusina_pattern::Cell;
@@ -29,24 +33,35 @@ struct Key {
     /// height of a bead.
     gap: f32,
     rounding: f32,
+    /// True for a round bead, false for a flat one.
+    volume: bool,
 }
 
-/// The texture of one bead `bead` points high, a whole cell with its gap:
-/// drawn again only when one of these changes.
-pub fn texture(context: &Context, ratio: f32, bead: f32, gap: f32, rounding: f32) -> TextureHandle {
+/// How dark the sides of a round bead are, and its bottom.
+const SIDES: f32 = 0.38;
+const BOTTOM: f32 = 0.25;
+
+/// The texture of one bead `bead` points high, a whole cell with its gap,
+/// round when `volume`: drawn again only when one of these changes.
+pub fn texture(
+    context: &Context,
+    ratio: f32,
+    bead: f32,
+    (gap, rounding): (f32, f32),
+    volume: bool,
+) -> TextureHandle {
     let key = Key {
         ratio,
         pixels: bead * context.pixels_per_point(),
         gap,
         rounding,
+        volume,
     };
-    cached(
-        context,
-        "obusina-canvas-bead",
-        key,
-        TextureOptions::LINEAR,
-        || draw(key),
-    )
+    let name = match volume {
+        true => "obusina-canvas-bead-round",
+        false => "obusina-canvas-bead",
+    };
+    cached(context, name, key, TextureOptions::LINEAR, || draw(key))
 }
 
 /// The texture of one hatched bead, as [`texture`] gives a whole one.
@@ -62,6 +77,7 @@ pub fn hatch_texture(
         pixels: bead * context.pixels_per_point(),
         gap,
         rounding,
+        volume: false,
     };
     cached(
         context,
@@ -91,9 +107,36 @@ pub fn add_bead(
     });
 }
 
-/// Draws a bead: a white rounded box on nothing, its gap left around it.
+/// Draws a bead: a white rounded box on nothing, its gap left around it;
+/// round when the key says so.
 fn draw(key: Key) -> ColorImage {
-    draw_with(key, |_, _, distance| (0.5 - distance).clamp(0.0, 1.0))
+    let flat = draw_with(key, |_, _, distance| (0.5 - distance).clamp(0.0, 1.0));
+    if !key.volume {
+        return flat;
+    }
+    let [width, height] = flat.size;
+    let pixels = flat
+        .pixels
+        .iter()
+        .enumerate()
+        .map(|(index, pixel)| {
+            let across = (index % width) as f32 + 0.5;
+            let down = (index / width) as f32 + 0.5;
+            let light = volume(across / width as f32, down / height as f32);
+            let alpha = pixel.a();
+            let grey = (f32::from(alpha) * light).round() as u8;
+            Color32::from_rgba_premultiplied(grey, grey, grey, alpha)
+        })
+        .collect();
+    ColorImage::new(flat.size, pixels)
+}
+
+/// The light of a round bead at a place of its cell, `across` and `down`
+/// from 0 to 1: whole in the middle, darker to its sides and its bottom.
+fn volume(across: f32, down: f32) -> f32 {
+    let sides = (across * std::f32::consts::PI).sin().max(0.0).powf(0.6);
+    let bottom = 1.0 - BOTTOM * down * down;
+    (1.0 - SIDES + SIDES * sides) * bottom
 }
 
 /// The cover of a hatched bead at a pixel: the outline and the lines whole,
@@ -142,6 +185,7 @@ mod tests {
             pixels: 20.0,
             gap: 0.1,
             rounding: 0.3,
+            volume: false,
         });
         let alpha = |x: usize, y: usize| image.pixels[y * image.size[0] + x].a();
 
@@ -158,6 +202,7 @@ mod tests {
             pixels: 20.0,
             gap: 0.1,
             rounding: 0.3,
+            volume: false,
         };
         let image = draw_with(key, hatch);
         let alpha = |x: usize, y: usize| image.pixels[y * image.size[0] + x].a();
@@ -165,5 +210,24 @@ mod tests {
         assert_eq!(alpha(10, 10), 255, "a line: x + y is a whole period");
         assert!(alpha(11, 10) < 64, "the ground between the lines");
         assert_eq!(alpha(0, 10), 0, "the gap is empty");
+    }
+
+    #[test]
+    fn a_round_bead_is_lighter_in_the_middle_than_at_its_side() {
+        let image = draw(Key {
+            ratio: 1.0,
+            pixels: 40.0,
+            gap: 0.1,
+            rounding: 0.3,
+            volume: true,
+        });
+        let pixel = |x: usize, y: usize| image.pixels[y * image.size[0] + x];
+
+        assert_eq!(pixel(20, 12).a(), 255);
+        assert!(pixel(20, 12).r() > pixel(4, 12).r(), "the side is darker");
+        assert!(
+            pixel(20, 12).r() > pixel(20, 35).r(),
+            "the bottom is darker"
+        );
     }
 }

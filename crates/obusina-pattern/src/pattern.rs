@@ -12,6 +12,10 @@ use crate::ruling::Ruling;
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
 
+/// The paper of a new pattern, the ground of its sheet: a neutral grey, so
+/// that a colour looks the same in every theme and a black bead is seen.
+pub const DEFAULT_PAPER: Rgb = Rgb([0xd6, 0xd4, 0xce]);
+
 /// The turns a pattern is shown at, in degrees.
 pub const TURNS: [u16; 4] = [0, 90, 180, 270];
 
@@ -28,7 +32,8 @@ fn next_revision() -> u64 {
 ///
 /// Only the cells that hold a bead are kept; every other cell of the field
 /// is empty. Two patterns are equal when they have the same identifier and
-/// hold the same beads, sheet and ruling; the revision is not compared.
+/// hold the same beads, sheet, ruling and paper; the revision is not
+/// compared.
 #[derive(Debug, Clone)]
 pub struct Pattern {
     id: PatternId,
@@ -38,6 +43,7 @@ pub struct Pattern {
     beads: BTreeMap<Cell, ColourId>,
     sheet: Option<Bounds>,
     ruling: Ruling,
+    paper: Rgb,
     turn: u16,
     revision: u64,
 }
@@ -51,6 +57,7 @@ impl PartialEq for Pattern {
             && self.beads == other.beads
             && self.sheet == other.sheet
             && self.ruling == other.ruling
+            && self.paper == other.paper
             && self.turn == other.turn
     }
 }
@@ -76,6 +83,7 @@ impl Pattern {
             beads: BTreeMap::new(),
             sheet: None,
             ruling: Ruling::default(),
+            paper: DEFAULT_PAPER,
             turn: 0,
             revision: next_revision(),
         })
@@ -153,6 +161,19 @@ impl Pattern {
     pub fn set_ruling(&mut self, ruling: Ruling) {
         if self.ruling != ruling {
             self.ruling = ruling;
+            self.revision = next_revision();
+        }
+    }
+
+    /// The colour of the paper, the ground of the sheet.
+    pub fn paper(&self) -> Rgb {
+        self.paper
+    }
+
+    /// Sets the colour of the paper.
+    pub fn set_paper(&mut self, paper: Rgb) {
+        if self.paper != paper {
+            self.paper = paper;
             self.revision = next_revision();
         }
     }

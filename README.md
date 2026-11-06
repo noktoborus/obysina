@@ -16,7 +16,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   the tools hides the shadows. A new pattern is an empty sheet.
 - The panels and menus are light or dark as the system is, on Windows, on
   Android (its night mode) and in a browser. On Linux the system does not
-  tell winit, and they are dark. The field keeps one paper in both.
+  tell winit, and they are dark. The field keeps the paper of the pattern in both.
 - The field cannot be moved off the screen: at least ten beads of it stay
   on it, at the side it was moved to, also when the window changes its
   size.
@@ -25,7 +25,12 @@ An editor of bead patterns, for Linux, Windows and Android.
   straight. It is kept in the cache of the program, apart from the pattern.
 - A ruling to count the beads by: every few columns and rows the shadows
   are darker. The step and the offset from cell (0, 0) are set in the menu
-  of the grid and kept in the pattern.
+  of the settings and kept in the pattern.
+- The colour of the paper is set in the menu of the settings and kept in
+  the pattern. The shade and the shadows turn with it: darker on a light
+  paper, lighter on a dark one.
+- The beads glow: round, lighter in the middle. The menu of the settings
+  turns it off.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a
@@ -34,7 +39,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   against it. The place of each panel is kept for the next start. The
   panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
-    the picker, the kind of grid, the columns and the rows of the sheet,
+    the picker, the settings, the shadows, the columns and the rows of the sheet,
     save;
   - **Beads**: the colours of the palette shown, each with the number of its
     place, and the empty place `0`. They stand as a line, which turns with

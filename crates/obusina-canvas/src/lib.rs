@@ -6,10 +6,12 @@ mod picture;
 mod shadow;
 mod sprite;
 mod texture;
+mod tone;
 mod view;
 
 pub use picture::{HANDLE, Picture, SHIMMER_PERIOD, handles};
 pub use shadow::{FRAME_FADE, NEAR_RADIUS};
+pub use tone::{LIGHT, Tones, lightness};
 pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
@@ -19,24 +21,10 @@ use obusina_pattern::{Bounds, Cell, Colour, Pattern, Rgb};
 const GAP: f32 = 0.08;
 /// The rounding of a bead, as a part of its height.
 const ROUNDING: f32 = 0.3;
-/// The ground of the active area: a neutral grey, the same in every theme, so
-/// that a colour looks the same and a black bead is seen.
-pub const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
-/// The ground outside the active area: the paper in shade.
-const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
-/// The shadow of an empty place on a line of the ruling, at its strongest: a
-/// bead of faint black, seen on the paper and in the shade alike.
-const SHADOW: Color32 = Color32::from_black_alpha(36);
-/// The shadow of any other empty place, at its strongest: lighter, so the
-/// lines of the ruling stand out.
-const SHADOW_CELL: Color32 = Color32::from_black_alpha(18);
 
 /// The beads of the field that stay on the screen along each axis, however
 /// far the field is moved; all of it when it is smaller.
 pub const KEEP_BEADS: f32 = 10.0;
-
-/// The colour of the hatch of a bead of a removed or hidden colour.
-const HATCH: Color32 = Color32::from_gray(0x40);
 
 /// Which button pressed on a bead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -72,6 +60,7 @@ pub struct Canvas<'a> {
     pattern: &'a Pattern,
     view: &'a mut View,
     shadows: bool,
+    glow: bool,
     picture: Option<Picture<'a>>,
 }
 
@@ -82,6 +71,7 @@ impl<'a> Canvas<'a> {
             pattern,
             view,
             shadows: true,
+            glow: true,
             picture: None,
         }
     }
@@ -95,6 +85,13 @@ impl<'a> Canvas<'a> {
     /// Whether the empty places show their shadows; they do by default.
     pub fn shadows(mut self, shadows: bool) -> Self {
         self.shadows = shadows;
+        self
+    }
+
+    /// Whether the beads are drawn round, lighter in the middle; they are by
+    /// default. Off, they are flat.
+    pub fn glow(mut self, glow: bool) -> Self {
+        self.glow = glow;
         self
     }
 
@@ -120,16 +117,17 @@ impl<'a> Canvas<'a> {
         let painter = ui.painter_at(rect);
         let origin = rect.min + self.view.offset;
         let visible = self.cells_under(origin, rect);
-        painter.rect_filled(rect, 0.0, SHADE);
-        self.draw_paper(&painter, origin, visible);
+        let tones = Tones::of(self.pattern.paper());
+        painter.rect_filled(rect, 0.0, tones.shade);
+        self.draw_paper(&painter, origin, visible, tones.paper);
         if let Some(picture) = &picture {
             self.draw_picture(ui, &painter, origin, picture);
         }
         if self.shadows {
             let pointer = response.hover_pos();
-            self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
+            self.draw_shadows(ui, &painter, (origin, rect), visible, (pointer, tones));
         }
-        self.draw_beads(ui, &painter, origin, visible);
+        self.draw_beads(ui, &painter, origin, visible, tones.hatch);
         if let Some(picture) = picture.as_ref().filter(|picture| picture.editing) {
             self.draw_handles(&painter, origin, picture);
         }
@@ -191,41 +189,42 @@ impl<'a> Canvas<'a> {
 
     /// The paper under the work area, over the shade of the rest: one
     /// quad for each of its columns on the screen.
-    fn draw_paper(&self, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
+    fn draw_paper(&self, painter: &egui::Painter, origin: Pos2, visible: Bounds, paper: Color32) {
         let Some(cells) = self.work_area().and_then(|area| area.intersection(visible)) else {
             return;
         };
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let mut mesh = egui::Mesh::default();
         for column in texture::columns(grid, ratio, cells) {
-            texture::add_quad(&mut mesh, self.view, origin, column, PAPER, |_| {
+            texture::add_quad(&mut mesh, self.view, origin, column, paper, |_| {
                 egui::epaint::WHITE_UV
             });
         }
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The shadows of the empty places that [`shadow`] gives, each a sprite
-    /// of a bead as strong as it says: tinted `SHADOW` on a line of the
-    /// ruling, `SHADOW_CELL` elsewhere. The pattern stands at `origin` of the
-    /// field `rect`.
+    /// The shadows of the empty places that [`shadow`] gives, each a flat
+    /// sprite of a bead as strong as it says, of the tones of the paper: a
+    /// line of the ruling stronger than a cell. The pattern stands at
+    /// `origin` of the field `rect`.
     fn draw_shadows(
         &self,
         ui: &Ui,
         painter: &egui::Painter,
         (origin, rect): (Pos2, Rect),
         visible: Bounds,
-        pointer: Option<Pos2>,
+        (pointer, tones): (Option<Pos2>, Tones),
     ) {
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
-        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
+        let shape = (GAP, ROUNDING);
+        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, shape, false);
         let mut mesh = egui::Mesh::with_texture(texture.id());
         let ruling = self.pattern.ruling();
         for (cell, strength) in self.shadowed(origin, rect, visible, pointer) {
             let shadow = if ruling.marks(cell) {
-                SHADOW
+                tones.line
             } else {
-                SHADOW_CELL
+                tones.cell
             };
             let colour = shadow.gamma_multiply(strength);
             sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
@@ -233,12 +232,21 @@ impl<'a> Canvas<'a> {
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The beads on the screen, each a sprite tinted its colour; a bead of a
-    /// removed or hidden colour is a sprite of the hatch.
-    fn draw_beads(&self, ui: &Ui, painter: &egui::Painter, origin: Pos2, visible: Bounds) {
+    /// The beads on the screen, each a sprite tinted its colour, round when
+    /// they glow; a bead of a removed or hidden colour is a sprite of the
+    /// hatch, tinted `hatch`.
+    fn draw_beads(
+        &self,
+        ui: &Ui,
+        painter: &egui::Painter,
+        origin: Pos2,
+        visible: Bounds,
+        hatch_colour: Color32,
+    ) {
         let pattern = self.pattern;
         let (grid, ratio) = (pattern.grid(), pattern.ratio());
-        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
+        let shape = (GAP, ROUNDING);
+        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, shape, self.glow);
         let hatch = sprite::hatch_texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
         let mut hatched = egui::Mesh::with_texture(hatch.id());
@@ -249,7 +257,8 @@ impl<'a> Canvas<'a> {
                     sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
                 }
                 None => {
-                    sprite::add_bead(&mut hatched, grid, ratio, self.view, origin, cell, HATCH);
+                    let colour = hatch_colour;
+                    sprite::add_bead(&mut hatched, grid, ratio, self.view, origin, cell, colour);
                 }
             }
         }

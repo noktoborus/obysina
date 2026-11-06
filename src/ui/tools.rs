@@ -129,12 +129,12 @@ fn tools(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// The kind of grid: a button that opens the menu of kinds and of the
-/// ruling ([`crate::ui::grid_menu`]); and whether the empty places show
-/// their shadows.
+/// The settings: a button that opens their menu
+/// ([`crate::ui::settings_menu`]); and whether the empty places show their
+/// shadows.
 fn grid(app: &mut App, ui: &mut egui::Ui) {
-    if button::icon(ui, icons::GRID, &t!("grid.kind"), true).clicked() {
-        crate::ui::grid_menu::open(app);
+    if button::icon(ui, icons::SETTINGS, &t!("settings.open"), true).clicked() {
+        crate::ui::settings_menu::open(app);
     }
     let shadows = app.settings.shadows();
     if button::toggle(ui, shadows, icons::SHADOW, &t!("view.shadows")).clicked() {

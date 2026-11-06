@@ -65,7 +65,7 @@ pub struct App {
     pub(crate) history: History,
     /// A line for the user: what was saved, what failed.
     pub(crate) message: Option<String>,
-    /// The menu of the kinds of grid.
+    /// The menu of the settings: the grid, the ruling, the paper, the glow.
     pub(crate) menu: plate_menu::PlateMenu,
     /// The settings: the place of each panel.
     pub(crate) settings: Settings,
@@ -77,8 +77,9 @@ pub struct App {
     pub(crate) bead_menu: plate_menu::PlateMenu,
     /// What that menu is of: a colour, or the empty place.
     pub(crate) bead_menu_of: Option<Option<ColourId>>,
-    /// The ruling being changed in the menu of grids, while it is.
-    pub(crate) ruling_edit: Option<crate::ui::grid_menu::RulingEdit>,
+    /// The ruling or the paper being changed in the menu of the settings,
+    /// while it is.
+    pub(crate) settings_edit: Option<crate::ui::settings_menu::Editing>,
     /// The picture under the pattern.
     pub(crate) backdrop: crate::backdrop::Backdrop,
     /// The menu of the picture.
@@ -124,7 +125,7 @@ impl App {
             palette_window: Default::default(),
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
-            ruling_edit: None,
+            settings_edit: None,
             backdrop,
             backdrop_menu: plate_menu::PlateMenu::new().with_id("backdrop-menu"),
             picker: crate::pick::Picker::default(),
@@ -156,6 +157,13 @@ impl App {
     /// next start.
     pub(crate) fn keep_shadows(&mut self, shadows: bool) {
         if let Err(error) = self.settings.keep_shadows(shadows) {
+            self.message = Some(say(&error));
+        }
+    }
+
+    /// Draws the beads round or flat, and keeps that for the next start.
+    pub(crate) fn keep_glow(&mut self, glow: bool) {
+        if let Err(error) = self.settings.keep_glow(glow) {
             self.message = Some(say(&error));
         }
     }
@@ -288,8 +296,9 @@ impl App {
         if let Some(error) = self.backdrop.update(ui.ctx(), &self.pattern) {
             self.say_backdrop(Err(error));
         }
-        let mut canvas =
-            Canvas::new(&self.pattern, &mut self.view).shadows(self.settings.shadows());
+        let mut canvas = Canvas::new(&self.pattern, &mut self.view)
+            .shadows(self.settings.shadows())
+            .glow(self.settings.glow());
         if let Some(picture) = self.backdrop.picture(ui.ctx()) {
             canvas = canvas.picture(picture);
         }
@@ -336,7 +345,7 @@ impl eframe::App for App {
         crate::ui::palette::show(self, ui.ctx());
         crate::ui::palette_window::show(self, ui.ctx());
         crate::ui::palette::menu(self, ui.ctx());
-        crate::ui::grid_menu::show(self, ui.ctx());
+        crate::ui::settings_menu::show(self, ui.ctx());
         crate::ui::backdrop_menu::show(self, ui.ctx());
         crate::ui::palette_window::keep_in_hand(self);
     }

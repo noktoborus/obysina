@@ -27,6 +27,7 @@ struct Document<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     sheet: Option<Sheet>,
     ruling: WrittenRuling,
+    paper: String,
     bead_ratio: f32,
     palettes: Vec<Vec<Option<Written<'a>>>>,
     rows_origin: [i32; 2],
@@ -110,6 +111,7 @@ impl Pattern {
                 step: self.ruling().step,
                 offset: self.ruling().offset,
             },
+            paper: self.paper().to_string(),
             bead_ratio: self.ratio(),
             palettes: self
                 .palettes()

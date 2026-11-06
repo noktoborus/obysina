@@ -4,7 +4,8 @@
 //! changed once the format is replaced.
 
 use obusina_pattern::{
-    Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError, PatternId, Ruling,
+    Bounds, Cell, ColourId, DEFAULT_PAPER, FORMAT, Grid, Pattern, PatternError, PatternId, Rgb,
+    Ruling,
 };
 
 /// The file of a format, as text.
@@ -257,7 +258,7 @@ fn format_1_reads_its_ruling() {
 #[test]
 fn a_file_with_no_ruling_reads_with_the_default() {
     let start = file(1).find("  \"ruling\"").expect("the file has a ruling");
-    let end = file(1).find("  \"bead_ratio\"").expect("and a bead ratio");
+    let end = file(1).find("  \"paper\"").expect("and a paper");
     let mut text = file(1);
     text.replace_range(start..end, "");
 
@@ -301,5 +302,33 @@ fn an_id_that_is_no_identifier_is_refused() {
     assert!(matches!(
         Pattern::from_json(&text),
         Err(PatternError::Id { .. })
+    ));
+}
+
+#[test]
+fn format_1_reads_its_paper() {
+    let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+
+    assert_eq!(pattern.paper(), Rgb([0xe6, 0xdc, 0xc8]));
+}
+
+/// A file written before the paper reads with the paper of a new pattern.
+#[test]
+fn a_file_with_no_paper_reads_with_the_default() {
+    let text = file(1).replace("  \"paper\": \"#e6dcc8\",\n", "");
+
+    assert_eq!(
+        Pattern::from_json(&text).expect("it reads").paper(),
+        DEFAULT_PAPER
+    );
+}
+
+#[test]
+fn a_paper_that_is_no_colour_is_refused() {
+    let text = file(1).replace("\"#e6dcc8\"", "\"linen\"");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::Colour { .. })
     ));
 }

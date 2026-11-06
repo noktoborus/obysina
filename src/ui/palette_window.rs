@@ -477,7 +477,7 @@ fn new_colour(pattern: &Pattern) -> Rgb {
         .flatten()
         .filter_map(|colour| colour.rgb)
         .collect();
-    crate::new_colour::next_colour(&taken, rgb(obusina_canvas::PAPER))
+    crate::new_colour::next_colour(&taken, pattern.paper())
 }
 
 /// Puts back palettes kept before a menu opened.
