@@ -331,12 +331,9 @@ fn a_panel_turns_while_it_is_dragged() {
     assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
 }
 
-/// The window is tall enough for the column, whose size is guessed from the
-/// row before it is first drawn.
 #[test]
 fn a_panel_that_runs_out_of_the_window_turns() {
-    let directory = tempfile::tempdir().expect("a scratch directory");
-    let mut window = window_in(directory, egui::vec2(SIZE.x, 800.0));
+    let mut window = window();
 
     window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 90.0));
 

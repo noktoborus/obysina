@@ -35,7 +35,11 @@ otherwise                           → wanted
 ```
 
   In the middle a panel fits when its far end lies inside the window. At an
-  edge, or at rest, it fits when it is not larger than the window. The same
+  edge, or at rest, it fits when it is not larger than the window. The size
+  of an orientation is the one last drawn in it; one never drawn is
+  measured: the content is laid out once more in that frame, invisible, in
+  an area of its own. So `add_contents` is `FnMut` and may run twice in a
+  frame; its widgets give no clicks in the invisible pass. The same
   rule turns a panel at rest when the window changes its size.
 - Let go in an edge strip, the panel stands against that edge. Nothing is
   drawn while a panel is dragged.

@@ -23,6 +23,12 @@ rules themselves are `crates/obusina-panel/README.md`.
    - At an edge the panel slides along the edge when it is let go, so there
      it only has to be no larger than the window. Else a column too tall
      for the pointer at the middle of a side would turn back into a row.
+   - Whether the turned one fits is told by its size. A panel never drawn
+     turned lays its content out once more in that frame, invisible, to
+     measure it (`FloatingPanel::show`).
+   - Was: the size of the other orientation guessed by swapping the sides.
+     The column of the tools is half as tall as their row is long, so a row
+     longer than the window was high never turned into a column at a side.
 5. **A place is a part of the window, nothing more.** 0 or 1 on an axis is
    against an edge. There is no docked state.
 6. **The tools have two layouts, like the beads.** In a row, one line of

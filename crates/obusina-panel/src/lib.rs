@@ -131,10 +131,14 @@ impl FloatingPanel {
 
     /// Shows the panel; `add_contents` lays out the content in the room it is
     /// given.
+    ///
+    /// The content is laid out a second time in a frame where the panel has
+    /// never been drawn in the other orientation: invisible, to measure it,
+    /// so the panel knows whether it fits turned (`docs/panels.md`).
     pub fn show<R>(
         self,
         context: &Context,
-        add_contents: impl FnOnce(&mut Ui, Room) -> R,
+        mut add_contents: impl FnMut(&mut Ui, Room) -> R,
     ) -> PanelResponse<R> {
         let window = context.content_rect();
         let stored = context.data(|data| data.get_temp::<State>(self.id));
@@ -172,6 +176,7 @@ impl FloatingPanel {
         let frame = egui::Frame::window(&context.global_style());
         let margin = frame.total_margin();
         let start = vec2(margin.left, margin.top);
+        self.measure_other(context, window, &frame, &mut state, &mut add_contents);
         turn(window, &mut state, start);
         let measure = std::mem::take(&mut state.measure);
         let position = match state.drag {
@@ -190,12 +195,10 @@ impl FloatingPanel {
             .current_pos(position)
             .show(context, |ui| {
                 frame.show(ui, |ui| {
-                    let layout = match orientation {
-                        Orientation::Horizontal => egui::Layout::left_to_right(egui::Align::Center),
-                        Orientation::Vertical => egui::Layout::top_down(egui::Align::Center),
-                    };
-                    ui.with_layout(layout, |ui| self.body(ui, &state, room, add_contents))
-                        .inner
+                    ui.with_layout(layout(orientation), |ui| {
+                        self.body(ui, &state, room, &mut add_contents)
+                    })
+                    .inner
                 })
             });
         let (grip, inner) = shown.inner.inner;
@@ -265,12 +268,47 @@ impl FloatingPanel {
     }
 
     /// The grip, then the content unless the panel is folded.
+    /// Measures the open panel in the orientation it does not have, when it
+    /// was never drawn so: the content laid out once more, invisible, in a
+    /// sizing pass of an area of its own.
+    fn measure_other<R>(
+        &self,
+        context: &Context,
+        window: Rect,
+        frame: &egui::Frame,
+        state: &mut State,
+        add_contents: &mut impl FnMut(&mut Ui, Room) -> R,
+    ) {
+        let other = state.placement.orientation.other();
+        if state.placement.folded || state.open[index(other)].is_some() || !window.is_positive() {
+            return;
+        }
+        let mut turned = *state;
+        turned.placement.orientation = other;
+        let room = room(context, window, other, frame);
+        let measured = egui::Area::new(self.id.with("measure"))
+            .order(egui::Order::Background)
+            .movable(false)
+            .interactable(false)
+            .constrain(false)
+            .sizing_pass(true)
+            .current_pos(window.min)
+            .show(context, |ui| {
+                frame.show(ui, |ui| {
+                    ui.with_layout(layout(other), |ui| {
+                        self.body(ui, &turned, room, &mut *add_contents)
+                    })
+                })
+            });
+        state.open[index(other)] = Some(measured.response.rect.size());
+    }
+
     fn body<R>(
         &self,
         ui: &mut Ui,
         state: &State,
         room: Room,
-        add_contents: impl FnOnce(&mut Ui, Room) -> R,
+        add_contents: &mut impl FnMut(&mut Ui, Room) -> R,
     ) -> (Response, Option<R>) {
         let grip = self.grip(ui, state);
         let inner = (!state.placement.folded).then(|| add_contents(ui, room));
@@ -305,6 +343,14 @@ impl FloatingPanel {
             ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
         }
         response
+    }
+}
+
+/// The layout of the content of a panel laid out as `orientation`.
+fn layout(orientation: Orientation) -> egui::Layout {
+    match orientation {
+        Orientation::Horizontal => egui::Layout::left_to_right(egui::Align::Center),
+        Orientation::Vertical => egui::Layout::top_down(egui::Align::Center),
     }
 }
 
@@ -353,8 +399,8 @@ fn turn(window: Rect, state: &mut State, start: Vec2) {
 }
 
 /// The rect of the panel laid out as `orientation`: under the pointer while
-/// it is dragged, at its place otherwise. The size is the one last drawn in
-/// that orientation; before the panel was ever drawn so, its sides swap.
+/// it is dragged, at its place otherwise. The size is the one last drawn or
+/// measured in that orientation; folded, its sides swap.
 fn span(window: Rect, state: &State, start: Vec2, orientation: Orientation) -> Rect {
     let swapped = vec2(state.size.y, state.size.x);
     let size = if orientation == state.placement.orientation {
