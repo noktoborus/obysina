@@ -239,16 +239,20 @@ pub fn step(app: &mut App, by: isize) {
 }
 
 /// The switch of the palette, the way to it by touch (`RULE ui.touch`): with
-/// two palettes one button goes to the other, with more `<` and `>`.
+/// two palettes one button goes to the other, with more `<` and `>`; with
+/// one palette nothing, not even its number.
 fn switch(app: &mut App, ui: &mut egui::Ui) {
     let count = app.pattern.palettes().len();
+    if count == 1 {
+        return;
+    }
     if count == 2 {
         let both = ui.button(icons::SWITCH);
         if both.named(&t!("palette.switch")).clicked() {
             step(app, 1);
         }
     } else {
-        let previous = ui.add_enabled(count > 1, egui::Button::new("<"));
+        let previous = ui.button("<");
         if previous.named(&t!("palette.previous")).clicked() {
             step(app, -1);
         }
@@ -259,7 +263,7 @@ fn switch(app: &mut App, ui: &mut egui::Ui) {
         count = count
     ));
     if count != 2 {
-        let next = ui.add_enabled(count > 1, egui::Button::new(">"));
+        let next = ui.button(">");
         if next.named(&t!("palette.next")).clicked() {
             step(app, 1);
         }

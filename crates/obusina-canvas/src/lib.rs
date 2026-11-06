@@ -5,12 +5,14 @@
 mod picture;
 mod shadow;
 mod sprite;
+mod still;
 mod texture;
 mod tone;
 mod view;
 
 pub use picture::{HANDLE, Picture, SHIMMER_PERIOD, handles};
 pub use shadow::{FRAME_FADE, NEAR_RADIUS};
+pub use still::still;
 pub use tone::{LIGHT, Tones, lightness};
 pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
@@ -119,7 +121,7 @@ impl<'a> Canvas<'a> {
         let visible = self.cells_under(origin, rect);
         let tones = Tones::of(self.pattern.paper());
         painter.rect_filled(rect, 0.0, tones.shade);
-        self.draw_paper(&painter, origin, visible, tones.paper);
+        painter.add(self.paper_mesh(origin, visible, tones.paper));
         if let Some(picture) = &picture {
             self.draw_picture(ui, &painter, origin, picture);
         }
@@ -127,7 +129,9 @@ impl<'a> Canvas<'a> {
             let pointer = response.hover_pos();
             self.draw_shadows(ui, &painter, (origin, rect), visible, (pointer, tones));
         }
-        self.draw_beads(ui, &painter, origin, visible, tones.hatch);
+        for mesh in self.bead_meshes(ui.ctx(), origin, visible, tones.hatch) {
+            painter.add(mesh);
+        }
         if let Some(picture) = picture.as_ref().filter(|picture| picture.editing) {
             self.draw_handles(&painter, origin, picture);
         }
@@ -189,9 +193,9 @@ impl<'a> Canvas<'a> {
 
     /// The paper under the work area, over the shade of the rest: one
     /// quad for each of its columns on the screen.
-    fn draw_paper(&self, painter: &egui::Painter, origin: Pos2, visible: Bounds, paper: Color32) {
+    pub(crate) fn paper_mesh(&self, origin: Pos2, visible: Bounds, paper: Color32) -> egui::Mesh {
         let Some(cells) = self.work_area().and_then(|area| area.intersection(visible)) else {
-            return;
+            return egui::Mesh::default();
         };
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
         let mut mesh = egui::Mesh::default();
@@ -200,7 +204,7 @@ impl<'a> Canvas<'a> {
                 egui::epaint::WHITE_UV
             });
         }
-        painter.add(egui::Shape::mesh(mesh));
+        mesh
     }
 
     /// The shadows of the empty places that [`shadow`] gives, each a flat
@@ -235,19 +239,18 @@ impl<'a> Canvas<'a> {
     /// The beads on the screen, each a sprite tinted its colour, round when
     /// they glow; a bead of a removed or hidden colour is a sprite of the
     /// hatch, tinted `hatch`.
-    fn draw_beads(
+    pub(crate) fn bead_meshes(
         &self,
-        ui: &Ui,
-        painter: &egui::Painter,
+        context: &egui::Context,
         origin: Pos2,
         visible: Bounds,
         hatch_colour: Color32,
-    ) {
+    ) -> [egui::Mesh; 2] {
         let pattern = self.pattern;
         let (grid, ratio) = (pattern.grid(), pattern.ratio());
         let shape = (GAP, ROUNDING);
-        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, shape, self.glow);
-        let hatch = sprite::hatch_texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
+        let texture = sprite::texture(context, ratio, self.view.bead, shape, self.glow);
+        let hatch = sprite::hatch_texture(context, ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
         let mut hatched = egui::Mesh::with_texture(hatch.id());
         for (cell, id) in pattern.beads().filter(|(cell, _)| visible.contains(*cell)) {
@@ -262,8 +265,7 @@ impl<'a> Canvas<'a> {
                 }
             }
         }
-        painter.add(egui::Shape::mesh(mesh));
-        painter.add(egui::Shape::mesh(hatched));
+        [mesh, hatched]
     }
 
     /// Keeps the middle of the field where it is when the field changes its

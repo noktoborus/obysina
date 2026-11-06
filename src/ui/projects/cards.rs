@@ -1,12 +1,8 @@
 //! The parts the list is drawn of: a card of a pattern with its picture, a
-//! card of an action, a plate across the list, and the pictures of the
-//! patterns, kept as textures.
+//! card of an action and a plate across the list.
 
-use std::collections::HashMap;
-use std::time::SystemTime;
-
-use egui::{Color32, ColorImage, Rect, Sense, TextureHandle, TextureOptions, Vec2, pos2, vec2};
-use obusina_pattern::{Bounds, Colour, Pattern, PatternId, Rgb};
+use egui::{Color32, Rect, Sense, TextureId, Vec2, pos2, vec2};
+use obusina_pattern::Rgb;
 
 use crate::ui::access::Named;
 
@@ -24,9 +20,6 @@ pub const GAP: f32 = 10.0;
 pub const PLATE: f32 = 56.0;
 /// The mark of a card chosen.
 const MARK: &str = "\u{2714}";
-/// The most pixels a side of a picture of a card has: one pixel a bead, a
-/// row two pixels high so a peyote column stands half a bead lower.
-const THUMB_MOST: usize = 512;
 
 /// What a card of a pattern says under its picture.
 pub struct Lines<'a> {
@@ -40,13 +33,13 @@ pub struct Lines<'a> {
     pub paper: Color32,
 }
 
-/// One card: its picture on the paper of the pattern, which fills the
-/// place of the picture; its name, its size and `last`; the mark of a
+/// One card: its picture (`thumbs.rs`), or the paper of the pattern until
+/// it is drawn; its name, its size and `last`; the mark of a
 /// choice when `mark` is given; the frame of the keys when `focused`.
 pub fn card(
     ui: &mut egui::Ui,
     size: Vec2,
-    picture: Option<(&TextureHandle, Vec2)>,
+    picture: Option<TextureId>,
     lines: &Lines<'_>,
     (mark, focused): (Option<bool>, bool),
 ) -> egui::Response {
@@ -66,11 +59,9 @@ pub fn card(
         vec2(inner, inner * THUMB_RATIO),
     );
     painter.rect_filled(frame, 4.0, lines.paper);
-    if let Some((texture, sides)) = picture {
-        let scale = (frame.width() / sides.x).min(frame.height() / sides.y);
-        let shown = Rect::from_center_size(frame.center(), sides * scale);
+    if let Some(texture) = picture {
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
-        painter.image(texture.id(), shown, uv, Color32::WHITE);
+        painter.image(texture, frame, uv, Color32::WHITE);
     }
     let text = ui.visuals().text_color();
     let weak = ui.visuals().weak_text_color();
@@ -177,68 +168,6 @@ pub fn plate(ui: &mut egui::Ui, width: f32, icon: &str, words: &str) -> egui::Re
         colour,
     );
     response.named(words)
-}
-
-/// The pictures of the cards, each kept until its pattern changes.
-#[derive(Default)]
-pub struct Thumbs {
-    kept: HashMap<PatternId, (SystemTime, TextureHandle, Vec2)>,
-}
-
-impl Thumbs {
-    /// The picture of `pattern`, whose file changed at `changed`.
-    pub fn of(
-        &mut self,
-        context: &egui::Context,
-        pattern: &Pattern,
-        changed: SystemTime,
-    ) -> Option<(&TextureHandle, Vec2)> {
-        let id = pattern.id();
-        let fresh = self.kept.get(&id).is_some_and(|(at, _, _)| *at == changed);
-        if !fresh {
-            let (image, sides) = thumb(pattern)?;
-            let name = format!("thumb-{id}");
-            let texture = context.load_texture(name, image, TextureOptions::NEAREST);
-            self.kept.insert(id, (changed, texture, sides));
-        }
-        self.kept
-            .get(&id)
-            .map(|(_, texture, sides)| (texture, *sides))
-    }
-}
-
-/// The picture of a pattern: its work area on its paper, a pixel a bead
-/// across, two down, so a peyote column stands half a bead lower; and the
-/// sides it is drawn at, a bead as wide to its height as in the pattern.
-/// `None` for a pattern with no work area.
-fn thumb(pattern: &Pattern) -> Option<(ColorImage, Vec2)> {
-    let area: Bounds = pattern.work_area()?;
-    let (grid, ratio) = (pattern.grid(), pattern.ratio());
-    let columns = area.width().min(THUMB_MOST);
-    let rows = area.height().min(THUMB_MOST / 2);
-    let height = rows * 2 + 1;
-    let paper = colour(pattern.paper());
-    let mut pixels = vec![paper; columns * height];
-    let (_, top) = grid.origin(area.min, ratio);
-    for (cell, id) in pattern.beads() {
-        if !area.contains(cell) {
-            continue;
-        }
-        let column = (cell.column - area.min.column) as usize;
-        let (_, y) = grid.origin(cell, ratio);
-        let row = ((y - top) * 2.0).round() as usize;
-        if column >= columns || row + 1 >= height {
-            continue;
-        }
-        let shown = pattern
-            .colour(id)
-            .and_then(Colour::seen)
-            .map_or(Color32::GRAY, colour);
-        pixels[row * columns + column] = shown;
-        pixels[(row + 1) * columns + column] = shown;
-    }
-    let sides = vec2(columns as f32 * ratio, rows as f32);
-    Some((ColorImage::new([columns, height], pixels), sides))
 }
 
 /// A colour of the pattern as the toolkit draws it.

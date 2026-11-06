@@ -204,8 +204,8 @@ on the field, columns 1 2 3       the file
       `LIGHT`, lighter than a darker one, so they are seen on both.
     - Why in the pattern: a pattern for black thread is drawn on black,
       and opens on it.
-25. **The beads glow:** each is drawn round, lighter in the middle and
-    darker at its sides and its bottom. "Glow" of the menu of the settings
+25. **The beads have volume:** each is drawn round, lighter in the middle
+    and darker at its sides and its bottom. "Volume" of the menu of the settings
     turns it off and on. It is a setting of the program, as the shadows
     are: how the window shows, not part of the work.
     - Why it costs nothing: the round bead is a second white texture,

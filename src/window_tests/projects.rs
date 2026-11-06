@@ -22,6 +22,7 @@ fn list() -> Window {
     let places = places(directory.path());
     let mut harness = Harness::builder()
         .with_size(SIZE)
+        .wgpu()
         .build_eframe(move |_| App::start(places));
     harness.run();
     Window { harness, directory }
@@ -106,4 +107,50 @@ fn export_all_saves_a_file_that_imports_back() {
     assert!(kept[0].0.ends_with(".obusiny"), "{}", kept[0].0);
     let patterns = crate::library::archive::read(&kept[0].1).expect("it reads");
     assert_eq!(patterns.len(), 1);
+}
+
+/// The picture of a card is drawn by the renderer of the window once every
+/// texture of its beads is on the chip, and kept.
+#[test]
+fn a_card_gets_its_picture() {
+    let mut window = list();
+    window.click(&t!("projects.new"));
+    window.press(FREE, PointerButton::Primary);
+    window.click(&t!("projects.back"));
+
+    for _ in 0..3 {
+        window.harness.run_steps(2);
+        let _ = window.harness.render();
+    }
+
+    assert_eq!(window.harness.state().projects.thumbs.drawn(), 1);
+}
+
+/// While patterns are chosen, the row of the trash and the export goes;
+/// the bar on top exports the chosen.
+#[test]
+fn the_chosen_are_exported_from_the_bar() {
+    let mut window = list();
+    for _ in 0..2 {
+        window.click(&t!("projects.new"));
+        window.click(&t!("projects.back"));
+    }
+    let first = window.harness.state().projects.entries[0].pattern.id();
+    window.harness.state_mut().projects.chosen = Some([first].into());
+    window.harness.state_mut().projects.saver.hold();
+    window.harness.run();
+    let all = t!("projects.export_all");
+    assert!(window.harness.query_by_label_contains(&all).is_none());
+
+    tap(&mut window, &t!("projects.export"));
+
+    let kept = window.harness.state().projects.saver.kept().to_vec();
+    assert!(
+        kept[0].0.ends_with(".obusina"),
+        "one pattern: {}",
+        kept[0].0
+    );
+    let patterns = crate::library::archive::read(&kept[0].1).expect("it reads");
+    assert_eq!(patterns.len(), 1);
+    assert_eq!(patterns[0].id(), first);
 }

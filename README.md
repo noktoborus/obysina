@@ -9,7 +9,8 @@ An editor of bead patterns, for Linux, Windows and Android.
   was made. A long press or the second button on a card: rename, duplicate,
   export to a file, select, move to the trash. A trash keeps a pattern 30
   days, with "Undo" right after the move. "Export all" saves every pattern
-  in one file; "Import" takes `.obusina`, `.obusiny` and `.json` files.
+  in one file; while patterns are chosen, a bar on top exports them or
+  moves them to the trash, and the row of the trash and the export goes; "Import" takes `.obusina`, `.obusiny` and `.json` files.
   Search by name, the arrows, `Enter`, `Delete` and `F2` on the desktop.
 - A pattern is saved by itself, with its undo and redo: a few seconds after
   the last change, on the way back to the list (the button or `Escape`),
@@ -40,8 +41,8 @@ An editor of bead patterns, for Linux, Windows and Android.
 - The colour of the paper is set in the menu of the settings and kept in
   the pattern. The shade and the shadows turn with it: darker on a light
   paper, lighter on a dark one.
-- The beads glow: round, lighter in the middle. The menu of the settings
-  turns it off.
+- The beads have volume: round, lighter in the middle. "Volume" of the
+  menu of the settings turns it off.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a

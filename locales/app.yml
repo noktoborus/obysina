@@ -93,8 +93,8 @@ settings.off:
   en: "off"
   ru: "выкл"
 view.glow:
-  en: "Glow"
-  ru: "Свечение"
+  en: "Volume"
+  ru: "Объём"
 paper.open:
   en: "Colour of the paper…"
   ru: "Цвет фона…"

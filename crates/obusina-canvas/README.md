@@ -25,6 +25,11 @@ The field of beads: an egui widget that draws an
   `shadow.rs` holds the rules. A shadow on a line of the ruling of the
   pattern (`Pattern::ruling`) is `Tones::line`, any other the fainter
   `Tones::cell`. `Canvas::shadows(false)` shows none.
+- `still(context, pattern, size, glow)`: the shapes of the pattern drawn
+  still into a box, by the code of the field: the box on its paper, the
+  work area as large as fits in its middle, turned as it is shown. No
+  shadow, no shade, no input. A caller renders them once into a texture,
+  as the list of patterns does for its cards.
 - `Canvas::glow(true)`, the default, draws the beads round: lighter in the
   middle, darker at the sides and the bottom. `glow(false)` draws them
   flat. The shadows are flat either way.
@@ -79,6 +84,7 @@ The field of beads: an egui widget that draws an
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 | A colour removed, its beads hatched | ![Hatched][picture-hatched] |
 | The glow off: flat beads | ![Flat][picture-flat] |
+| `still`: drawn still into a box, a quarter turned, for a picture of it | ![Still][picture-still] |
 | A black paper, a colour hidden: the shade, the shadows and the hatch lighter than it | ![Dark paper][picture-dark-paper] |
 | Loom, a line every 10 columns and 4 rows from (2, 1) | ![Ruling][picture-ruling] |
 | Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
@@ -99,6 +105,7 @@ The field of beads: an egui widget that draws an
 [picture-ruling]: img/ruling.png
 [picture-flat]: img/flat.png
 [picture-dark-paper]: img/dark-paper.png
+[picture-still]: img/still.png
 
 ## Boundaries
 

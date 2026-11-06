@@ -8,7 +8,8 @@
 //!                               added, passed over or copied (src/library)
 //!          ──a tap on a card──► the pattern opened
 //!          ──a long press, the second button ──► its menu (menu.rs)
-//!          ──"Trash" │ "Export all" ──► the trash │ one .obusiny
+//!          ──"Trash" │ "Export all" ──► the trash │ one .obusiny;
+//!            not while patterns are chosen: the bar on top acts on them
 //! the trash ──"Back"──► the list; a card ──► restore │ delete for good
 //!           ──"Empty the trash…" ──► asks
 //! select: a mark on the cards; a bar on top: the count, export, to the trash, ✖
@@ -28,6 +29,7 @@
 
 mod cards;
 mod menu;
+mod thumbs;
 
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
@@ -44,8 +46,9 @@ use crate::library::{Entry, Report, Trashed, archive};
 use crate::pick::{Choice, Kinds, Picker, Saved, Saver};
 use crate::ui::access::Named;
 use crate::ui::icons;
-use cards::{CARD_LEAST, CARD_MARGIN, CARD_TEXT, GAP, Lines, PLATE, THUMB_RATIO, Thumbs};
+use cards::{CARD_LEAST, CARD_MARGIN, CARD_TEXT, GAP, Lines, PLATE, THUMB_RATIO};
 pub use menu::Of;
+use thumbs::Thumbs;
 
 /// The seconds the toast that undoes a move to the trash stays.
 pub const UNDO_SECONDS: u64 = 5;
@@ -85,7 +88,7 @@ pub struct Projects {
     undo: Option<(ToastId, Vec<PatternId>)>,
     /// What is to be told in a toast.
     told: Vec<String>,
-    thumbs: Thumbs,
+    pub(crate) thumbs: Thumbs,
     /// The choice of a file to import.
     pub(crate) picker: Picker,
     /// The save of an export.
@@ -545,10 +548,11 @@ fn list(
                             .chosen
                             .as_ref()
                             .map(|chosen| chosen.contains(&id));
+                        let place = (picture_size(card), app.settings.glow());
                         let picture =
                             app.projects
                                 .thumbs
-                                .of(ui.ctx(), &entry.pattern, entry.changed);
+                                .of(ui.ctx(), &entry.pattern, entry.changed, place);
                         let response = cards::card(ui, card, picture, &lines, (mark, focused));
                         let held = response.secondary_clicked() || response.long_touched();
                         if let Some(chosen) = &mut app.projects.chosen {
@@ -565,8 +569,9 @@ fn list(
             }
         });
     }
-    let export_all = !app.projects.entries.is_empty();
-    let trash = !app.projects.trash.is_empty();
+    let choosing = app.projects.chosen.is_some();
+    let export_all = !choosing && !app.projects.entries.is_empty();
+    let trash = !choosing && !app.projects.trash.is_empty();
     if !export_all && !trash {
         return;
     }
@@ -596,12 +601,8 @@ fn list(
                 patterns(count)
             );
             if cards::plate(ui, share, icons::EXPORT, &words).clicked() {
-                let ids: Vec<PatternId> = app
-                    .projects
-                    .entries
-                    .iter()
-                    .map(|e| e.pattern.id())
-                    .collect();
+                let all = app.projects.entries.iter().map(|e| e.pattern.id());
+                let ids: Vec<PatternId> = all.collect();
                 export_many(app, ui.ctx(), &ids);
             }
         }
@@ -659,10 +660,11 @@ fn trash(
                     paper: cards::colour(trashed.pattern.paper()),
                 };
                 let focused = app.projects.focus == Some(row * columns + place);
-                let picture = app
-                    .projects
-                    .thumbs
-                    .of(ui.ctx(), &trashed.pattern, trashed.since);
+                let place = (picture_size(card), app.settings.glow());
+                let picture =
+                    app.projects
+                        .thumbs
+                        .of(ui.ctx(), &trashed.pattern, trashed.since, place);
                 let response = cards::card(ui, card, picture, &lines, (None, focused));
                 if response.clicked() || response.secondary_clicked() || response.long_touched() {
                     menu::open(app, Of::Trashed(id));
@@ -674,6 +676,12 @@ fn trash(
     if cards::plate(ui, width, icons::TRASH, &t!("projects.empty")).clicked() {
         menu::open(app, Of::AllTrash);
     }
+}
+
+/// The size of the place of the picture of a card of `card`.
+fn picture_size(card: Vec2) -> Vec2 {
+    let inner = card.x - 2.0 * CARD_MARGIN;
+    vec2(inner, inner * THUMB_RATIO)
 }
 
 /// Leaves room before a row of plates, so that it stands at the bottom of

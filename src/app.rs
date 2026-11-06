@@ -358,9 +358,10 @@ impl eframe::App for App {
         }
     }
 
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
         if self.screen == crate::session::Screen::List {
+            self.projects.thumbs.render = frame.wgpu_render_state().cloned();
             crate::ui::projects::show(self, ui);
             self.show_toasts(ui.ctx());
             return;

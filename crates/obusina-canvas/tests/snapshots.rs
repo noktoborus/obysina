@@ -322,3 +322,26 @@ fn a_picture_edited() {
 fn a_picture_that_loads() {
     picture_shot(false, true, "picture-loading");
 }
+
+/// The peyote pattern turned a quarter, drawn still into a box wider than
+/// it: the picture a card of the list shows, by the code of the field.
+#[test]
+fn still() {
+    let mut pattern = pattern(Grid::Peyote);
+    pattern.set_paper(Rgb([0xe6, 0xdc, 0xc8]));
+    pattern.set_turn(90).expect("a quarter");
+    let mut harness = Harness::builder()
+        .with_size(egui::vec2(220.0, 160.0))
+        .with_theme(egui::Theme::Dark)
+        .build_ui(|ui| {
+            let size = ui.available_size();
+            let at = ui.min_rect().min.to_vec2();
+            for shape in obusina_canvas::still(ui.ctx(), &pattern, size, true) {
+                let mut shape = shape;
+                shape.translate(at);
+                ui.painter().add(shape);
+            }
+        });
+    harness.run();
+    harness.snapshot_options("still", &SnapshotOptions::new().output_path(PICTURES));
+}

@@ -81,7 +81,23 @@ way and opened.
 
 `src/ui/projects/` draws it, from the mockup
 `experiments/mockups/src/mock/projects.rs`. The menus are in
-`src/ui/projects/menu.rs`; the cards, the plates and the pictures of the
-cards in `cards.rs`. A picture of a card is drawn once a change of its
-file, one pixel a bead, two down so a peyote column stands half a bead
-lower.
+`src/ui/projects/menu.rs`; the cards and the plates in `cards.rs`.
+
+The picture of a card is the field: `obusina_canvas::still` gives the
+shapes of the paper and the beads by the code that draws the field, and
+`thumbs.rs` has the renderer of the window draw them once into a texture
+of the graphics chip, at the size of the card in pixels. The card then
+shows the texture only. It is drawn again when the file of the pattern,
+the size of the card or the volume of the beads changes.
+
+```text
+frame N    still(): the shapes; the sprites of the beads become textures
+frame N+1  once every texture of the shapes is on the chip: tessellate,
+           render into a texture of the target format, register it
+```
+
+- Why the renderer of the window: its pipeline and its textures draw the
+  field, so the picture is the same.
+- The texture is shown through its own format: the renderer writes into it
+  what it writes into the window.
+- Where the renderer is not wgpu, a card shows its paper only.
