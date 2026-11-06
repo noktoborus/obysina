@@ -1,7 +1,8 @@
 # obusina-android
 
-The library android loads: `libobusina_android.so`. The game activity calls
-`android_main`, which calls `obusina::android`.
+The library android loads: `libobusina_android.so`. `MainActivity`, the game
+activity of `app/src/main/java`, calls `android_main`, which calls
+`obusina::android`.
 
 ## Scope
 
@@ -9,9 +10,14 @@ The library android loads: `libobusina_android.so`. The game activity calls
 - On any other platform it is empty, so `cargo build --workspace` builds it
   everywhere and it costs nothing.
 
+- `MainActivity.pickPicture` opens the choice of a document of the system
+  for a picture; its answer comes back through the native method
+  `picturePicked`, exported here, to `obusina::android_picked`
+  (`docs/backdrop.md`).
+
 ## Boundaries
 
-No code of its own beyond the entry. What the program does is the root
+No code of its own beyond the entries. What the program does is the root
 package.
 
 ## Errors

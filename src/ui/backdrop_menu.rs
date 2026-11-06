@@ -1,0 +1,130 @@
+//! The picture under the pattern: its button of the tools, its menu and the
+//! buttons that end the editing of its corners (`docs/backdrop.md`).
+//!
+//! ```text
+//! picture ──► PlateMenu: the opacity on top, then
+//!               │──choose a picture…─► the dialog of the platform; the
+//!               │                      picture takes the place of the old one
+//!               │                      and its corners
+//!               │──edit the corners──► a handle on each corner; ✔ keeps, ✖ puts back
+//!               │──hide / show───────► kept, not drawn
+//!               └──remove…───────────► asks; yes takes it and its copy away
+//! closed ──► the opacity is written
+//! ```
+
+use std::sync::Arc;
+
+use plate_menu::{MenuItem, Notice};
+use rust_i18n::t;
+
+use crate::app::App;
+use crate::ui::access::Named;
+use crate::ui::{button, icons};
+
+/// The least opacity of the slider: a picture is never quite gone by it.
+const LEAST_OPACITY: f32 = 0.1;
+
+/// The button of the picture, which opens its menu.
+pub fn button(app: &mut App, ui: &mut egui::Ui) {
+    let shown = app.backdrop.has() && !app.backdrop.hidden();
+    if button::toggle(ui, shown, icons::PICTURE, &t!("backdrop.button")).clicked() {
+        open(app);
+    }
+}
+
+/// While the corners are edited, the buttons that keep them and put them
+/// back; nothing otherwise.
+pub fn editing(app: &mut App, ui: &mut egui::Ui) {
+    if app.backdrop.editing() {
+        if button::icon(ui, icons::DONE, &t!("backdrop.done"), true).clicked() {
+            let done = app.backdrop.end_editing(true);
+            app.say_backdrop(done);
+        }
+        if button::icon(ui, icons::CANCEL, &t!("backdrop.cancel"), true).clicked() {
+            let done = app.backdrop.end_editing(false);
+            app.say_backdrop(done);
+        }
+    }
+}
+
+/// Opens the menu of the picture.
+fn open(app: &mut App) {
+    let has = app.backdrop.has();
+    let hide = if app.backdrop.hidden() {
+        t!("backdrop.show")
+    } else {
+        t!("backdrop.hide")
+    };
+    let items = vec![
+        MenuItem::new("choose", t!("backdrop.choose")),
+        MenuItem::new("edit", t!("backdrop.edit")).enabled(has),
+        MenuItem::new("hide", hide).enabled(has),
+        MenuItem::new("remove", t!("backdrop.remove")).enabled(has),
+    ];
+    if let Err(error) = app.backdrop_menu.open(items) {
+        log::error!("the menu of the picture does not open: {error}");
+        return;
+    }
+    if has {
+        let opacity = Arc::clone(&app.backdrop.opacity);
+        let name = t!("backdrop.opacity").to_string();
+        app.backdrop_menu.notice(Notice::widget(move |ui| {
+            let mut value = opacity.lock().expect("the opacity is never poisoned");
+            ui.spacing_mut().slider_width = ui.available_width();
+            let slider = egui::Slider::new(&mut *value, LEAST_OPACITY..=1.0).show_value(false);
+            ui.label(name.as_str());
+            ui.add(slider).named(&name);
+        }));
+    }
+}
+
+/// Asks whether to take the picture away.
+fn ask_remove(app: &mut App) {
+    let items = vec![
+        MenuItem::new("remove-yes", t!("backdrop.remove_yes")),
+        MenuItem::new("remove-no", t!("backdrop.remove_no")),
+    ];
+    if let Err(error) = app.backdrop_menu.open(items) {
+        log::error!("the question of the picture does not open: {error}");
+        return;
+    }
+    app.backdrop_menu.notice(t!("backdrop.remove_question"));
+}
+
+/// Draws the menu while it is open, does what is chosen, and takes the answer
+/// of a choice of a file once it has come.
+pub fn show(app: &mut App, context: &egui::Context) {
+    if let Some(answer) = app.picker.take()
+        && let Some(picked) = answer
+    {
+        app.take_picture(picked);
+    }
+    app.backdrop_menu.nothing_found(t!("menu.nothing_found"));
+    let was_open = app.backdrop_menu.is_open();
+    if was_open {
+        crate::ui::blocker::under(context, "backdrop-menu", &app.backdrop_menu);
+    }
+    let chosen = app.backdrop_menu.show(context);
+    if was_open && !app.backdrop_menu.is_open() {
+        let done = app.backdrop.save();
+        app.say_backdrop(done);
+    }
+    let Some(chosen) = chosen else {
+        return;
+    };
+    match chosen.id.as_str() {
+        "choose" => app.picker.start(context, &t!("backdrop.kinds")),
+        "edit" => app.backdrop.begin_editing(),
+        "hide" => {
+            let hidden = !app.backdrop.hidden();
+            let done = app.backdrop.set_hidden(hidden);
+            app.say_backdrop(done);
+        }
+        "remove" => ask_remove(app),
+        "remove-yes" => {
+            let done = app.backdrop.remove();
+            app.say_backdrop(done);
+        }
+        _ => {}
+    }
+}

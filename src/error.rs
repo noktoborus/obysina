@@ -39,6 +39,44 @@ pub enum AppError {
         #[source]
         source: std::io::Error,
     },
+    /// The store of pictures could not be read or written.
+    #[error("store of pictures error")]
+    Backdrop {
+        /// What went wrong.
+        #[source]
+        source: obusina_backdrop::BackdropError,
+    },
+    /// A picture of the store could not be read.
+    #[error("picture {} unreadable", path.display())]
+    PictureRead {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What went wrong.
+        #[source]
+        source: std::io::Error,
+    },
+    /// A picture is no PNG, JPEG or WebP.
+    #[error("picture of another kind")]
+    PictureKind,
+    /// A picture could not be decoded.
+    #[error("picture not decoded")]
+    Picture {
+        /// What went wrong.
+        #[source]
+        source: image::ImageError,
+    },
+    /// The platform gives no cache to keep a picture in.
+    #[error("no cache for pictures")]
+    NoCache,
+}
+
+impl From<obusina_backdrop::BackdropError> for AppError {
+    fn from(source: obusina_backdrop::BackdropError) -> Self {
+        match source {
+            obusina_backdrop::BackdropError::Kind => AppError::PictureKind,
+            source => AppError::Backdrop { source },
+        }
+    }
 }
 
 impl From<PatternError> for AppError {
@@ -77,6 +115,11 @@ impl AppError {
                 "error.settings.read"
             }
             AppError::SettingsWrite { .. } => "error.settings.write",
+            AppError::Backdrop { .. } | AppError::PictureRead { .. } | AppError::NoCache => {
+                "error.backdrop.store"
+            }
+            AppError::PictureKind => "error.backdrop.kind",
+            AppError::Picture { .. } => "error.backdrop.picture",
         }
     }
 }

@@ -3,7 +3,7 @@
 //! draws them again.
 
 use egui_kittest::{Harness, SnapshotOptions};
-use obusina_canvas::{Canvas, Turn, View};
+use obusina_canvas::{Canvas, Picture, Turn, View};
 use obusina_pattern::{Bounds, Cell, Colour, ColourId, Grid, Pattern, Rgb, Ruling};
 
 /// Where the pictures are kept: beside the README, which shows them.
@@ -195,4 +195,78 @@ fn ruling() {
         );
     harness.run();
     harness.snapshot_options("ruling", &SnapshotOptions::new().output_path(PICTURES));
+}
+
+/// A made up picture: a grid of lines on two colours, which shows whether a
+/// line stays straight.
+fn lines() -> egui::ColorImage {
+    let size = [96, 72];
+    let pixels = (0..size[1])
+        .flat_map(|y| (0..size[0]).map(move |x| (x, y)))
+        .map(|(x, y)| {
+            if x % 12 == 0 || y % 12 == 0 {
+                egui::Color32::from_rgb(0x30, 0x30, 0x30)
+            } else if y < 36 {
+                egui::Color32::from_rgb(0x70, 0xa0, 0xe0)
+            } else {
+                egui::Color32::from_rgb(0x50, 0x80, 0x40)
+            }
+        })
+        .collect();
+    egui::ColorImage::new(size, pixels)
+}
+
+/// A picture under the beads over corners that make no rectangle; while
+/// `editing`, with the handles of its corners.
+fn picture_shot(editing: bool, name: &str) {
+    {
+        let pattern = pattern(Grid::Loom);
+        let mut view = View::default();
+        view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+        let corners = [
+            egui::vec2(1.0, -1.0),
+            egui::vec2(7.0, -0.5),
+            egui::vec2(10.0, 8.0),
+            egui::vec2(-2.0, 7.0),
+        ];
+        let mut harness = Harness::builder()
+            .with_size(SIZE)
+            .with_theme(egui::Theme::Dark)
+            .build_ui_state(
+                move |ui,
+                      (pattern, view, texture, corners): &mut (
+                    Pattern,
+                    View,
+                    Option<egui::TextureHandle>,
+                    [egui::Vec2; 4],
+                )| {
+                    let texture = texture.get_or_insert_with(|| {
+                        ui.ctx()
+                            .load_texture("lines", lines(), egui::TextureOptions::LINEAR)
+                    });
+                    let picture = Picture {
+                        texture: texture.id(),
+                        corners,
+                        opacity: 0.7,
+                        editing,
+                    };
+                    Canvas::new(pattern, view).picture(picture).show(ui);
+                },
+                (pattern, view, None, corners),
+            );
+        harness.run();
+        harness.snapshot_options(name, &SnapshotOptions::new().output_path(PICTURES));
+    }
+}
+
+#[test]
+fn a_picture_under_the_beads() {
+    picture_shot(false, "picture");
+}
+
+/// The same picture while its corners are edited: a handle on each, over
+/// the beads.
+#[test]
+fn a_picture_edited() {
+    picture_shot(true, "picture-editing");
 }

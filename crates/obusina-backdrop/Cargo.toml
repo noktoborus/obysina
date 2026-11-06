@@ -1,0 +1,15 @@
+[package]
+name = "obusina-backdrop"
+description = "The pictures under bead patterns, each with how it is laid over the field, kept in a directory of their own"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_yaml_ng.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

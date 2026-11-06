@@ -32,6 +32,46 @@ view.shadows:
   en: "Shadows of the empty places"
   ru: "Тени пустых мест"
 
+backdrop.button:
+  en: "Picture under the beads"
+  ru: "Картинка под бусинами"
+backdrop.choose:
+  en: "Choose a picture…"
+  ru: "Выбрать картинку…"
+backdrop.kinds:
+  en: "Pictures: PNG, JPEG, WebP"
+  ru: "Картинки: PNG, JPEG, WebP"
+backdrop.edit:
+  en: "Edit the corners"
+  ru: "Править углы"
+backdrop.hide:
+  en: "Hide the picture"
+  ru: "Скрыть картинку"
+backdrop.show:
+  en: "Show the picture"
+  ru: "Показать картинку"
+backdrop.remove:
+  en: "Remove the picture…"
+  ru: "Убрать картинку…"
+backdrop.remove_question:
+  en: "Remove the picture? Its copy is deleted."
+  ru: "Убрать картинку? Её копия будет удалена."
+backdrop.remove_yes:
+  en: "Remove"
+  ru: "Убрать"
+backdrop.remove_no:
+  en: "Keep"
+  ru: "Оставить"
+backdrop.opacity:
+  en: "Opacity"
+  ru: "Непрозрачность"
+backdrop.done:
+  en: "Keep the corners"
+  ru: "Оставить углы"
+backdrop.cancel:
+  en: "Put the corners back"
+  ru: "Вернуть углы"
+
 tool.pencil:
   en: "Pencil"
   ru: "Карандаш"
@@ -195,6 +235,15 @@ error.pattern.newer:
 error.pattern.invalid:
   en: "The pattern file is damaged"
   ru: "Файл схемы повреждён"
+error.backdrop.store:
+  en: "The picture under the pattern could not be kept"
+  ru: "Не удалось сохранить картинку под узором"
+error.backdrop.kind:
+  en: "The picture is no PNG, JPEG or WebP"
+  ru: "Картинка не в формате PNG, JPEG или WebP"
+error.backdrop.picture:
+  en: "The picture could not be read"
+  ru: "Не удалось прочитать картинку"
 error.settings.read:
   en: "The settings cannot be read; the program started from the defaults"
   ru: "Настройки не читаются; программа запущена с настройками по умолчанию"

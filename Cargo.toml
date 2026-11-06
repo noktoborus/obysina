@@ -17,10 +17,15 @@ embed-resource = "3.0"
 egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
 env_logger = "0.11"
 ico = "0.6"
+jni = "0.22"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
 log = "0.4"
+ndk-context = "0.1"
 nucleo-matcher = "0.3"
 palette = "0.7"
+pollster = "1.0"
 resvg = { version = "0.48", default-features = false }
+rfd = "0.17"
 rust-i18n = "4.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -32,6 +37,7 @@ uuid = { version = "1.29", features = ["v4"] }
 winit = { version = "0.30", default-features = false }
 
 obusina = { path = ".", version = "0.1.0" }
+obusina-backdrop = { path = "crates/obusina-backdrop", version = "0.1.0" }
 obusina-button = { path = "crates/obusina-button", version = "0.1.0" }
 obusina-canvas = { path = "crates/obusina-canvas", version = "0.1.0" }
 obusina-panel = { path = "crates/obusina-panel", version = "0.1.0" }
@@ -68,6 +74,8 @@ eframe.workspace = true
 egui.workspace = true
 env_logger.workspace = true
 log.workspace = true
+image.workspace = true
+obusina-backdrop.workspace = true
 obusina-button.workspace = true
 obusina-canvas.workspace = true
 obusina-panel.workspace = true
@@ -86,8 +94,14 @@ embed-resource.workspace = true
 ico.workspace = true
 resvg.workspace = true
 
+[target.'cfg(not(any(target_os = "android", target_arch = "wasm32")))'.dependencies]
+pollster.workspace = true
+rfd.workspace = true
+
 [target.'cfg(target_os = "android")'.dependencies]
 eframe = { workspace = true, features = ["android-game-activity"] }
+jni.workspace = true
+ndk-context.workspace = true
 winit.workspace = true
 
 [dev-dependencies]

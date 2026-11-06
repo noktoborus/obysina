@@ -309,7 +309,7 @@ WHY  a code point no font carries is drawn as a box
 THEN add it to `icons::ALL`; the test there asks the toolkit and fails if no
      font has it
 EX+  pub const UNDO: &str = "\u{21b6}";
-EX-  "\u{2714}", a check mark no default font carries
+EX-  "\u{25a8}", a square with lines no default font carries
 
 RULE icon.search : an icon is picked from `cargo run -p glyphs`, never guessed
 WHY  the set the fonts carry is small and not obvious. `Fonts::has_glyph`

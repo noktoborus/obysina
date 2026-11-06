@@ -9,6 +9,7 @@ use rust_i18n::t;
 
 use crate::app::App;
 
+mod backdrop;
 mod field;
 mod palette;
 mod sheet;
@@ -34,9 +35,10 @@ fn window() -> Window {
 fn window_in(directory: tempfile::TempDir, size: egui::Vec2) -> Window {
     let path = directory.path().join("pattern.json");
     let settings = directory.path().join(crate::settings::FILE);
+    let pictures = directory.path().join(crate::backdrop::DIRECTORY);
     let mut harness = Harness::builder()
         .with_size(size)
-        .build_eframe(move |_| App::open(Some(path), Some(settings)));
+        .build_eframe(move |_| App::open(Some(path), Some(settings), Some(pictures)));
     harness.run();
     Window { harness, directory }
 }
@@ -235,7 +237,7 @@ fn a_saved_pattern_opens_again() {
     window.click(&t!("file.save"));
 
     let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None);
+    let again = App::open(Some(path), None, None);
     assert_eq!(again.pattern, window.harness.state().pattern);
     assert_eq!(
         window.harness.state().message.as_deref(),
@@ -249,7 +251,7 @@ fn a_newer_file_is_never_written_over() {
     let path = directory.path().join("pattern.json");
     std::fs::write(&path, "{\"format\": 99}").expect("the file is written");
 
-    let app = App::open(Some(path.clone()), None);
+    let app = App::open(Some(path.clone()), None, None);
 
     assert_eq!(app.path, None);
     assert_eq!(app.message.as_deref(), Some(&*t!("error.pattern.newer")));
@@ -729,7 +731,7 @@ fn a_bead_left_of_the_middle_opens_where_it_was() {
     window.click(&t!("file.save"));
 
     let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None);
+    let again = App::open(Some(path), None, None);
 
     assert_eq!(again.pattern.get(cell), Some(id_at(0)));
     assert_eq!(again.pattern.count(id_at(0)), 1);
@@ -806,7 +808,7 @@ fn a_turned_pattern_opens_turned() {
     window.click(&t!("file.save"));
 
     let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None);
+    let again = App::open(Some(path), None, None);
 
     assert_eq!(again.pattern.turn(), 90);
     assert_eq!(again.view.degrees(), 90);

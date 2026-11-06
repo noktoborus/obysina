@@ -110,7 +110,7 @@ fn the_sheet_is_saved_with_the_pattern() {
     window.click(&t!("file.save"));
 
     let path = window.directory.path().join("pattern.json");
-    let again = App::open(Some(path), None);
+    let again = App::open(Some(path), None, None);
 
     assert_eq!(again.pattern.sheet(), Some(sheet));
 }

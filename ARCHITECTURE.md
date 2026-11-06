@@ -5,12 +5,14 @@
 | [docs/field.md](docs/field.md) | the kinds of grid, the endless field, the place of a pattern on it |
 | [docs/panels.md](docs/panels.md) | where a panel stands, how it is laid out, how its place is kept |
 | [docs/palette.md](docs/palette.md) | how the colours of a pattern are filled in |
+| [docs/backdrop.md](docs/backdrop.md) | the picture under the pattern, its store and the choice of its file |
 
 ## Crates
 
 ```
 obusina-android (cdylib, android only) ──► obusina
 obusina (binary and library)
+ ├── obusina-backdrop
  ├── obusina-button
  ├── obusina-canvas ──► obusina-pattern
  ├── obusina-panel
@@ -24,6 +26,7 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 | --- | --- |
 | `obusina-pattern` | the model: grid, palettes, colours, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
+| `obusina-backdrop` | the pictures under the patterns and how each lies, kept in a directory of the cache |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the kinds of grid are chosen in it |
 | `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
@@ -69,7 +72,9 @@ is nothing to undo or redo: its edits are no step yet.
 | Android | `android_main` of `android/` → `obusina::android` | `pattern.json` in the internal data path |
 
 The settings are `settings.yaml` in the configuration directory of `APP_ID`,
-on Android in the internal data path (`src/settings.rs`).
+on Android in the internal data path (`src/settings.rs`). The pictures under
+the patterns are `backdrops/` of the cache directory of `APP_ID`, on Android
+of `cache` beside the internal data path (`docs/backdrop.md`).
 
 ## Rendering
 

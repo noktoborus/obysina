@@ -28,6 +28,13 @@ pub const GRID: &str = "\u{229e}";
 /// The shadows of the empty places, the dark shade.
 pub const SHADOW: &str = "\u{2593}";
 
+/// The picture under the pattern, the framed picture.
+pub const PICTURE: &str = "\u{1f5bc}";
+/// Keeps what was edited, the heavy check mark.
+pub const DONE: &str = "\u{2714}";
+/// Puts back what was edited, the heavy multiplication sign.
+pub const CANCEL: &str = "\u{2716}";
+
 /// The empty place `0`, no colour, which takes beads away. The fonts of the
 /// toolkit carry no eraser; the no entry sign is the nearest.
 pub const EMPTY: &str = "\u{1f6ab}";
@@ -35,7 +42,8 @@ pub const EMPTY: &str = "\u{1f6ab}";
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID, SHADOW, EMPTY,
+    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, SAVE, GRID, SHADOW, PICTURE, DONE,
+    CANCEL, EMPTY,
 ];
 
 #[cfg(test)]

@@ -79,14 +79,24 @@ pub struct App {
     pub(crate) bead_menu_of: Option<Option<ColourId>>,
     /// The ruling being changed in the menu of grids, while it is.
     pub(crate) ruling_edit: Option<crate::ui::grid_menu::RulingEdit>,
+    /// The picture under the pattern.
+    pub(crate) backdrop: crate::backdrop::Backdrop,
+    /// The menu of the picture.
+    pub(crate) backdrop_menu: plate_menu::PlateMenu,
+    /// A choice of a picture file under way.
+    pub(crate) picker: crate::pick::Picker,
 }
 
 impl App {
     /// The window over the pattern at `path`, with the settings of the file
-    /// `settings`. A pattern file that is not there is a new pattern to be
-    /// saved there. A file that cannot be read is never written over
-    /// (`RULE pattern.newer`).
-    pub fn open(path: Option<PathBuf>, settings: Option<PathBuf>) -> App {
+    /// `settings` and the pictures of the store `pictures`. A pattern file
+    /// that is not there is a new pattern to be saved there. A file that
+    /// cannot be read is never written over (`RULE pattern.newer`).
+    pub fn open(
+        path: Option<PathBuf>,
+        settings: Option<PathBuf>,
+        pictures: Option<PathBuf>,
+    ) -> App {
         let (settings, settings_error) = Settings::load(settings);
         let (pattern, path, message) = match path {
             Some(path) if path.exists() => match obusina_pattern::read(&path) {
@@ -95,7 +105,10 @@ impl App {
             },
             other => (new_pattern(), other, None),
         };
-        let message = message.or_else(|| settings_error.map(|error| say(&error)));
+        let (backdrop, backdrop_error) = crate::backdrop::Backdrop::open(pictures, &pattern);
+        let message = message
+            .or_else(|| settings_error.map(|error| say(&error)))
+            .or_else(|| backdrop_error.map(|error| say(&error)));
         let mut view = View::default();
         view.set_degrees(pattern.turn());
         let colour = first_colour(&pattern);
@@ -114,7 +127,24 @@ impl App {
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
             ruling_edit: None,
+            backdrop,
+            backdrop_menu: plate_menu::PlateMenu::new().with_id("backdrop-menu"),
+            picker: crate::pick::Picker::default(),
         }
+    }
+
+    /// Says what went wrong with the picture under the pattern, if anything.
+    pub(crate) fn say_backdrop(&mut self, done: crate::error::Result<()>) {
+        if let Err(error) = done {
+            log::error!("the picture under the pattern: {error}");
+            self.message = Some(say(&error));
+        }
+    }
+
+    /// Puts a picture chosen by the person under the pattern.
+    pub(crate) fn take_picture(&mut self, picked: crate::pick::Picked) {
+        let done = self.backdrop.put(&self.pattern, picked);
+        self.say_backdrop(done);
     }
 
     /// Keeps how the places of a palette stand for the next start.
@@ -257,15 +287,18 @@ impl App {
     /// sheet: the start value, no step of undo. The size of the first screen
     /// is the least a sheet shrinks to when a bead goes.
     fn field(&mut self, ui: &mut egui::Ui) {
-        let field = Canvas::new(&self.pattern, &mut self.view)
-            .shadows(self.settings.shadows())
-            .show(ui);
+        let mut canvas =
+            Canvas::new(&self.pattern, &mut self.view).shadows(self.settings.shadows());
+        if let Some(picture) = self.backdrop.picture(ui.ctx()) {
+            canvas = canvas.picture(picture);
+        }
+        let field = canvas.show(ui);
         if self.pattern.sheet().is_none() {
             self.pattern.set_sheet(self.view.sheet);
         }
         self.history.least_sheet = self.view.sheet.map(|first| (first.width(), first.height()));
         field.response.named(&t!("field"));
-        if let Some((cell, press)) = field.pressed {
+        if let Some((cell, press)) = field.pressed.filter(|_| !self.backdrop.editing()) {
             self.press(cell, press);
         }
     }
@@ -290,6 +323,7 @@ impl eframe::App for App {
         crate::ui::palette_window::show(self, ui.ctx());
         crate::ui::palette::menu(self, ui.ctx());
         crate::ui::grid_menu::show(self, ui.ctx());
+        crate::ui::backdrop_menu::show(self, ui.ctx());
         crate::ui::palette_window::keep_in_hand(self);
     }
 }
@@ -305,7 +339,7 @@ fn first_colour(pattern: &Pattern) -> Option<ColourId> {
 }
 
 /// A new pattern with the colours of [`NEW_PALETTE`].
-fn new_pattern() -> Pattern {
+pub(crate) fn new_pattern() -> Pattern {
     let palette = NEW_PALETTE
         .into_iter()
         .zip(1..)

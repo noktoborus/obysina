@@ -44,11 +44,15 @@ fn row(app: &mut App, ui: &mut egui::Ui) {
     grid(app, ui);
     crate::ui::sheet::show(app, ui);
     gap(ui, orientation);
+    crate::ui::backdrop_menu::button(app, ui);
+    crate::ui::backdrop_menu::editing(app, ui);
+    gap(ui, orientation);
     save(app, ui);
 }
 
 /// The tools in a column two buttons wide, like the swatches of the beads:
-/// a group of two on a line, save alone on the last one.
+/// a group of two on a line, the picture and save on the last one, and under
+/// them the two that end the editing of the corners while it goes on.
 ///
 /// The lines are one block, so the block stands in the middle across the
 /// panel.
@@ -65,7 +69,13 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
         gap(ui, orientation);
         ui.horizontal(|ui| grid(app, ui));
         gap(ui, orientation);
-        ui.horizontal(|ui| save(app, ui));
+        ui.horizontal(|ui| {
+            crate::ui::backdrop_menu::button(app, ui);
+            save(app, ui);
+        });
+        if app.backdrop.editing() {
+            ui.horizontal(|ui| crate::ui::backdrop_menu::editing(app, ui));
+        }
     });
 }
 

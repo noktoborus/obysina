@@ -2,11 +2,13 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+mod picture;
 mod shadow;
 mod sprite;
 mod texture;
 mod view;
 
+pub use picture::{HANDLE, Picture, handles};
 pub use shadow::{FRAME_FADE, NEAR_RADIUS};
 pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
@@ -70,6 +72,7 @@ pub struct Canvas<'a> {
     pattern: &'a Pattern,
     view: &'a mut View,
     shadows: bool,
+    picture: Option<Picture<'a>>,
 }
 
 impl<'a> Canvas<'a> {
@@ -79,7 +82,14 @@ impl<'a> Canvas<'a> {
             pattern,
             view,
             shadows: true,
+            picture: None,
         }
+    }
+
+    /// A picture under the beads, over the paper and under the shadows.
+    pub fn picture(mut self, picture: Picture<'a>) -> Self {
+        self.picture = Some(picture);
+        self
     }
 
     /// Whether the empty places show their shadows; they do by default.
@@ -98,7 +108,13 @@ impl<'a> Canvas<'a> {
         if self.view.sheet.is_none() && rect.is_positive() {
             self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
         }
-        self.navigate(ui, &response);
+        let mut picture = self.picture.take();
+        let held = picture.as_mut().is_some_and(|picture| {
+            self.drag_picture(ui, &response, rect.min + self.view.offset, picture)
+        });
+        if !held {
+            self.navigate(ui, &response);
+        }
         self.keep_on_screen(rect);
 
         let painter = ui.painter_at(rect);
@@ -106,11 +122,17 @@ impl<'a> Canvas<'a> {
         let visible = self.cells_under(origin, rect);
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
+        if let Some(picture) = &picture {
+            self.draw_picture(&painter, origin, picture);
+        }
         if self.shadows {
             let pointer = response.hover_pos();
             self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
         }
         self.draw_beads(ui, &painter, origin, visible);
+        if let Some(picture) = picture.as_ref().filter(|picture| picture.editing) {
+            self.draw_handles(&painter, origin, picture);
+        }
 
         let hovered = response
             .hover_pos()

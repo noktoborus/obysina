@@ -1,6 +1,7 @@
 //! The parts of the window.
 
 pub mod access;
+pub mod backdrop_menu;
 pub mod blocker;
 pub mod button;
 pub mod grid_menu;

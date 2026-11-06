@@ -17,6 +17,9 @@ An editor of bead patterns, for Linux, Windows and Android.
 - The field cannot be moved off the screen: at least ten beads of it stay
   on it, at the side it was moved to, also when the window changes its
   size.
+- A picture under the beads to trace from: PNG, JPEG or WebP, its opacity
+  and its four corners set by hand, so a photo taken at an angle lies
+  straight. It is kept in the cache of the program, apart from the pattern.
 - A ruling to count the beads by: every few columns and rows the shadows
   are darker. The step and the offset from cell (0, 0) are set in the menu
   of the grid and kept in the pattern.
