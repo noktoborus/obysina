@@ -33,6 +33,16 @@ pub enum PatternError {
         source: serde_json::Error,
     },
 
+    /// The `id` of the file is no identifier.
+    #[error("the pattern id {text:?} is no identifier")]
+    Id {
+        /// The text of the file.
+        text: String,
+        /// What the parser said.
+        #[source]
+        source: uuid::Error,
+    },
+
     /// The file has no `format` field.
     #[error("the pattern has no format number")]
     NoFormat,

@@ -6,6 +6,9 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
 
 - `Pattern`: the beads put on a field with no end; every other cell is
   empty. A `Cell` has a signed column and row.
+- `PatternId`: a random identifier of a pattern, kept in its file; files
+  kept apart from the pattern name it by. A copy of the file has the same
+  one.
 - `Palette`: [`MAX_COLOURS`] places, each a `Colour` or empty. A pattern has
   one palette or more.
 - `Colour`: an id, unique in the pattern, and what it looks like. A bead holds
@@ -46,6 +49,7 @@ an empty place.
 ```json
 {
   "format": 1,
+  "id": "6f0d2c7e-9a41-4b8e-8d3a-2f5b1c9e7a10",
   "grid": "peyote",
   "turn": 90,
   "sheet": {
@@ -75,6 +79,7 @@ beads on one line; the example keeps them all on one.
 | Field | Meaning |
 | --- | --- |
 | `format` | the format of the file, `FORMAT` when written |
+| `id` | the identifier of the pattern (`PatternId`), a UUID; a new one when left out |
 | `grid` | `loom` or `peyote` |
 | `turn` | how far the pattern is shown turned clockwise: 0, 90, 180 or 270; the beads do not move; 0 when left out |
 | `sheet` | the size of the work area set by hand; left out when none is set |

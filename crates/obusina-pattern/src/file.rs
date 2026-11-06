@@ -21,6 +21,7 @@ pub const FORMAT: u64 = 1;
 #[derive(Serialize)]
 struct Document<'a> {
     format: u64,
+    id: String,
     grid: Grid,
     turn: u16,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -98,6 +99,7 @@ impl Pattern {
             .map_or(Cell { column: 0, row: 0 }, |bounds| bounds.min);
         let document = Document {
             format: FORMAT,
+            id: self.id().to_string(),
             grid: self.grid(),
             turn: self.turn(),
             sheet: self.sheet().map(|sheet| Sheet {

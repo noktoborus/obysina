@@ -3,7 +3,9 @@
 //! `tests/patterns/<format>.json` is a file of that format. It is never
 //! changed once the format is replaced.
 
-use obusina_pattern::{Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError, Ruling};
+use obusina_pattern::{
+    Bounds, Cell, ColourId, FORMAT, Grid, Pattern, PatternError, PatternId, Ruling,
+};
 
 /// The file of a format, as text.
 fn file(format: u64) -> String {
@@ -262,4 +264,42 @@ fn a_file_with_no_ruling_reads_with_the_default() {
     let pattern = Pattern::from_json(&text).expect("it reads");
 
     assert_eq!(pattern.ruling(), Ruling::default());
+}
+
+#[test]
+fn format_1_reads_its_id() {
+    let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+
+    let id: PatternId = "6f0d2c7e-9a41-4b8e-8d3a-2f5b1c9e7a10"
+        .parse()
+        .expect("an identifier");
+    assert_eq!(pattern.id(), id);
+}
+
+/// A file written before the id reads with a new one, written at the next
+/// save.
+#[test]
+fn a_file_with_no_id_reads_with_a_new_one() {
+    let text = file(1).replace("  \"id\": \"6f0d2c7e-9a41-4b8e-8d3a-2f5b1c9e7a10\",\n", "");
+
+    let first = Pattern::from_json(&text).expect("it reads");
+    let second = Pattern::from_json(&text).expect("it reads");
+
+    assert_ne!(first.id(), second.id());
+    assert!(
+        first
+            .to_json()
+            .expect("it writes")
+            .contains(&first.id().to_string())
+    );
+}
+
+#[test]
+fn an_id_that_is_no_identifier_is_refused() {
+    let text = file(1).replace("6f0d2c7e-9a41-4b8e-8d3a-2f5b1c9e7a10", "twelve");
+
+    assert!(matches!(
+        Pattern::from_json(&text),
+        Err(PatternError::Id { .. })
+    ));
 }

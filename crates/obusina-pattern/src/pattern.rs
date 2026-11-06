@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::{PatternError, Result};
 use crate::grid::{Bounds, Cell, Grid};
+use crate::id::PatternId;
 use crate::palette::{Colour, ColourId, NO_BEAD, Palette, Rgb};
 use crate::ruling::Ruling;
 
@@ -26,10 +27,11 @@ fn next_revision() -> u64 {
 /// A bead pattern.
 ///
 /// Only the cells that hold a bead are kept; every other cell of the field
-/// is empty. Two patterns are equal when they hold the same beads, the same
-/// sheet and the same ruling; the revision is not compared.
+/// is empty. Two patterns are equal when they have the same identifier and
+/// hold the same beads, sheet and ruling; the revision is not compared.
 #[derive(Debug, Clone)]
 pub struct Pattern {
+    id: PatternId,
     grid: Grid,
     ratio: f32,
     palettes: Vec<Palette>,
@@ -42,7 +44,8 @@ pub struct Pattern {
 
 impl PartialEq for Pattern {
     fn eq(&self, other: &Self) -> bool {
-        self.grid == other.grid
+        self.id == other.id
+            && self.grid == other.grid
             && self.ratio == other.ratio
             && self.palettes == other.palettes
             && self.beads == other.beads
@@ -66,6 +69,7 @@ impl Pattern {
         }
         check(&palettes)?;
         Ok(Pattern {
+            id: PatternId::new(),
             grid,
             ratio,
             palettes,
@@ -75,6 +79,16 @@ impl Pattern {
             turn: 0,
             revision: next_revision(),
         })
+    }
+
+    /// The identifier, kept in the file.
+    pub fn id(&self) -> PatternId {
+        self.id
+    }
+
+    /// Takes the identifier a file gives.
+    pub fn set_id(&mut self, id: PatternId) {
+        self.id = id;
     }
 
     /// The kind of grid.
@@ -468,7 +482,8 @@ mod tests {
     #[test]
     fn a_change_gives_a_new_revision_and_no_change_none() {
         let mut pattern = pattern();
-        let other = self::pattern();
+        let mut other = self::pattern();
+        other.set_id(pattern.id());
         let first = pattern.revision();
         assert_ne!(first, other.revision());
         assert_eq!(pattern, other, "the revision is not compared");

@@ -56,6 +56,7 @@ impl AppError {
                 PatternError::Write { .. } => "error.pattern.write",
                 PatternError::Newer { .. } => "error.pattern.newer",
                 PatternError::Json { .. }
+                | PatternError::Id { .. }
                 | PatternError::NoFormat
                 | PatternError::UnknownFormat { .. }
                 | PatternError::RowWidth { .. }

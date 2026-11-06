@@ -14,6 +14,8 @@ use crate::ruling::Ruling as Lines;
 struct Document {
     #[serde(rename = "format")]
     _format: u64,
+    #[serde(default)]
+    id: Option<String>,
     grid: Grid,
     #[serde(default)]
     turn: u16,
@@ -71,6 +73,9 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
         })
         .collect::<Result<Vec<_>>>()?;
     let mut pattern = Pattern::with_palettes(document.grid, document.bead_ratio, palettes)?;
+    if let Some(id) = document.id {
+        pattern.set_id(id.parse()?);
+    }
     pattern.set_turn(document.turn)?;
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
