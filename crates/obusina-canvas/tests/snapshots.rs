@@ -110,10 +110,11 @@ fn hatched() {
 }
 
 /// Zoomed out, the field moved so the middle of the screen is at the top
-/// left corner of the paper, the pointer in the shade at the bottom left: the frame of the
-/// screen at zoom 1 and the round under the pointer, each fading to its edge.
+/// left corner of the paper, the pointer in the shade at the bottom left:
+/// the shadows in the frame of the screen at zoom 1 and in the round under
+/// the pointer, each fading to its edge.
 #[test]
-fn shade_zoomed_out() {
+fn shadows_zoomed_out() {
     let pattern = pattern(Grid::Peyote);
     let mut view = View::default();
     view.bead = 6.0;
@@ -141,7 +142,7 @@ fn shade_zoomed_out() {
     harness.hover_at(egui::pos2(170.0, 240.0));
     harness.run();
     harness.snapshot_options(
-        "shade-zoomed-out",
+        "shadows-zoomed-out",
         &SnapshotOptions::new().output_path(PICTURES),
     );
 }

@@ -41,17 +41,16 @@ on the field, columns 1 2 3       the file
 
 7. **The grid is chosen in a `PlateMenu`** of two entries (`RULE ui.menu`).
 8. **The ground is in shade outside the work area** (decision 13). The
-   paper of the work area is lighter. An empty cell is the same faint outline
-   on the paper; in the shade, decision 20.
-   - Replaces the pale outlines outside the active area: one tile, one
-     colour, and the active area is seen as a whole.
+   paper of the work area is lighter. An empty cell has no outline; near the
+   middle of the screen and the pointer it shows a shadow (decision 20).
+   - Replaces the pale outlines outside the active area: one colour, and the
+     active area is seen as a whole.
 9. **The active area is the box itself,** with no margin around it. A bead
    can be drawn outside it all the same.
-10. **The outlines are drawn at every size of a bead.** A zoom never hides
-    the grid.
-    - Was: hidden below a smallest bead, because tens of thousands of
-      outlines cost too much to draw. One repeating tile costs the same at
-      any size (decision 15), so the reason is gone.
+10. **The shadows are drawn at every size of a bead.** A zoom never hides
+    them.
+    - Was: outlines, hidden below a smallest bead, because tens of thousands
+      of them cost too much to draw.
 11. **A new pattern is an empty field,** shown on cell (0, 0). A pattern
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
@@ -103,19 +102,15 @@ on the field, columns 1 2 3       the file
     - The sheet is part of the pattern (decision 17): a change of its size
       is a step of undo. Changes one after another are one step, since a
       number dragged changes it in every frame.
-15. **The outlines are one repeating texture, apart from the beads.** A tile
-    of outlines is drawn once for the size of a bead; a column of the field
-    is one quad of it. The beads are their own mesh.
-    - Why: the outlines were most of one mesh and were built again on every
-      press. At a bead of 10 points in a window of 1000 by 700 points, a
-      press took about 40 ms of a release build; now a press, a
-      step of a zoom and a move each take a few ms.
+15. **There are no outlines of empty places.** Decision 20 replaces them.
+    - Was: a repeating texture of outlines, a quad of it for each column of
+      the field.
 16. **A bead is a sprite.** One white bead is drawn into a texture for the
-    size of a bead; every bead is a quad of it, tinted its colour. Nothing is
-    tessellated, so nothing is kept from frame to frame but the two
-    textures.
-    - In the case of decision 15, a press, a step of a zoom and a move now
-      take about 0.1 ms each.
+    size of a bead; every bead is a quad of it, tinted its colour, and so is
+    every shadow. Nothing is tessellated, so nothing is kept from frame to
+    frame but the textures.
+    - At a bead of 10 points in a window of 1000 by 700 points, a press, a
+      step of a zoom and a move take about 0.1 ms each.
 17. **The sheet is written to the file.** It is the size of the work area
     set by hand, a part of the work, not of the window: `Pattern::sheet`,
     and `sheet` in the file, its origin and its size. A new pattern takes
@@ -139,23 +134,24 @@ on the field, columns 1 2 3       the file
       android carried the pattern off the screen.
     - The place and the zoom of the view are not written to the file: they
       belong to the window, not to the work.
-20. **In the shade the outlines stand only near the middle of the screen and
-    the pointer,** each fading to its edge. The rules are in
-    `crates/obusina-canvas/src/shade.rs`.
+20. **An empty place shows the shadow of a bead only near the middle of the
+    screen and the pointer,** on the paper and in the shade alike, each
+    fading to its edge. A shadow is a bead of faint black (`SHADOW`). The
+    rules are in `crates/obusina-canvas/src/shadow.rs`.
     - The frame is the screen at zoom 1 (`DEFAULT_BEAD`), in the middle of
       the screen, its corners rounded. Zoomed out it shows how much of the
       field one screen at zoom 1 holds. At zoom 1 and in, it is the screen
-      or more, and the whole shade on the screen has outlines.
+      or more, and every empty place on the screen has a shadow.
     - The round is `NEAR_RADIUS` cells around the pointer.
-    - Both end at the edge of the field. On the paper every outline stands.
+    - Both end at the edge of the field.
     - Why the frame: android gives no pointer while a stylus hovers. winit
       0.30 drops the events of a hover (`MotionAction::HoverMove`), so the
       round alone shows nothing under a finger or a stylus.
-    - Why the round stays: zoomed out, it shows the outlines past the frame
+    - Why the round stays: zoomed out, it shows the shadows past the frame
       under a mouse.
-    - Why the fade: a hard edge reads as a hole in the shade.
-    - An outline in the shade is a quad of its own from the tile of
-      decision 15, as strong as the fade says. Zoomed out the frame holds
-      as many cells as the screen at zoom 1, a few thousand quads.
-    - Was: the outlines over the whole field; then a round of ten cells
-      under the pointer alone.
+    - Why the fade: a hard edge reads as a hole.
+    - Zoomed out the frame holds as many cells as the screen at zoom 1, a
+      few thousand quads.
+    - Was: outlines over the whole field; then outlines over the paper,
+      and in the shade only in the frame and the round. A soft spot with no
+      cells was weighed and left: it does not show where a bead goes.

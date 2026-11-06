@@ -14,30 +14,28 @@ The field of beads: an egui widget that draws an
   bare and a press does nothing. Only its cells on the screen are drawn.
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is paper, `PAPER`, which a new colour is told from; the rest
-  of the field is in shade. An empty place is
-  a faint outline, at every size of a bead: every one on the paper; in the
-  shade only those in a frame of the screen at zoom 1 (`DEFAULT_BEAD`) in
-  its middle and within `NEAR_RADIUS` cells of the pointer, each fading
-  over its edge (`FRAME_FADE`). With no pointer over the field, as under a
-  finger, there is no round. `shade.rs` holds the rules.
+  of the field is in shade. An empty place has no outline. It shows the
+  shadow of a bead, `SHADOW`, only in a frame of the screen at zoom 1
+  (`DEFAULT_BEAD`) in its middle and within `NEAR_RADIUS` cells of the
+  pointer, on the paper and in the shade alike, each fading over its edge
+  (`FRAME_FADE`). With no pointer over the field, as under a finger, there
+  is no round. `shadow.rs` holds the rules.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.
 - Keeps the middle of the field where it is when the field changes its
   size, at the same size of a bead. When then no cell of the work area is
   on the screen, it centres the work area again. A frame where the field
   has no size is skipped.
-- Nothing is tessellated. Two textures are drawn by the distance to a
-  rounded box, again only when the size of a bead or the grid changes:
-  - a tile of outlines that repeats (`tile.rs`): loom every cell, peyote
-    every two columns; a column of the work area on the screen is one quad
-    of it, an outline in the shade one quad of its own;
-  - one white bead (`sprite.rs`); a bead on the screen is one quad of it,
-    tinted its colour. A bead of a colour not seen, removed or hidden
-    (`Colour::seen`), is a quad of a second texture: its outline and
-    diagonal lines.
+- Nothing is tessellated. One white bead is drawn into a texture by the
+  distance to a rounded box, again only when the size of a bead changes
+  (`sprite.rs`). A bead on the screen is one quad of it, tinted its colour;
+  so is a shadow, tinted `SHADOW`. A bead of a colour not seen, removed or
+  hidden (`Colour::seen`), is a quad of a second texture: its outline and
+  diagonal lines.
 
   Every frame lays the quads of what is on the screen anew; a frame costs
-  as many quads as there are columns and beads on the screen.
+  as many quads as there are columns of paper, beads and shadows on the
+  screen.
 - Turns the field by quarters, `View::turn`: 90, 180, 270, and 360, which is
   where it started. What is in the middle of the field stays there. Only the
   showing turns; the pattern is the same.
@@ -59,13 +57,13 @@ The field of beads: an egui widget that draws an
 | Peyote | ![Peyote][picture-peyote] |
 | Peyote, turned 90° | ![Peyote turned][picture-peyote-turned] |
 | A colour removed, its beads hatched | ![Hatched][picture-hatched] |
-| Zoomed out: the frame of the screen at zoom 1, the round under the pointer | ![Shade][picture-shade-zoomed-out] |
+| Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
 
 [picture-loom]: img/loom.png
 [picture-peyote]: img/peyote.png
 [picture-peyote-turned]: img/peyote-turned.png
 [picture-hatched]: img/hatched.png
-[picture-shade-zoomed-out]: img/shade-zoomed-out.png
+[picture-shadows-zoomed-out]: img/shadows-zoomed-out.png
 
 ## Boundaries
 

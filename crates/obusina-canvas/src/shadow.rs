@@ -1,6 +1,7 @@
-//! Which outlines the shade shows, and how strong each one is.
+//! Which empty places show a shadow, and how strong each one is.
 //!
-//! The shade has outlines only near two places, each fading to its edge:
+//! An empty place shows the shadow of a bead only near two places, on the
+//! paper and in the shade alike, each fading to its edge:
 //!
 //! ```text
 //! ┌──────────────── the screen ────────────────┐
@@ -27,7 +28,7 @@ use crate::Canvas;
 use crate::texture::rounded_box;
 use crate::view::DEFAULT_BEAD;
 
-/// The radius of the round of outlines under the pointer, in cells: a column
+/// The radius of the round of shadows under the pointer, in cells: a column
 /// is a cell wide, a row a cell high.
 pub const NEAR_RADIUS: f32 = 5.0;
 /// How many cells inside its edge the frame fades over.
@@ -38,17 +39,17 @@ const ROUND_FADE: f32 = 0.5;
 const FRAME_CORNER: f32 = 1.0 / 8.0;
 
 impl Canvas<'_> {
-    /// The cells of the shade on the screen with an outline, each with its
-    /// strength, more than 0 and at most 1. The pattern stands at `origin` of
+    /// The empty places of the field on the screen with a shadow, each with
+    /// its strength, more than 0 and at most 1. The pattern stands at `origin` of
     /// the field `rect`; `pointer` is where the pointer is over it.
-    pub(crate) fn shade_outlines(
+    pub(crate) fn shadows(
         &self,
         origin: Pos2,
         rect: Rect,
         visible: Bounds,
         pointer: Option<Pos2>,
     ) -> Vec<(Cell, f32)> {
-        let (Some(field), Some(work_area)) = (self.field(), self.work_area()) else {
+        let Some(field) = self.field() else {
             return Vec::new();
         };
         let Some(shown) = field.intersection(visible) else {
@@ -65,7 +66,7 @@ impl Canvas<'_> {
             .filter(move |cell| !in_frame_box(*cell));
         frame_cells
             .chain(round_cells)
-            .filter(|cell| !work_area.contains(*cell))
+            .filter(|cell| self.pattern.get(*cell).is_none())
             .filter_map(|cell| {
                 let middle = self.middle_of(cell);
                 let frame = self.in_frame(origin, rect, middle);

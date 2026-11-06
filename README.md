@@ -9,11 +9,11 @@ An editor of bead patterns, for Linux, Windows and Android.
 - The work area is on paper: the sheet, whose columns and rows are set in
   the tools and start at the size of the first screen, and every bead put
   past it. A bead put in the shade around grows the sheet. A bead taken
-  away shrinks it to the box of the beads, never below the first screen. The shade reaches half the work
-  area past it on every side. An empty place is a faint outline at every
-  zoom: on the paper everywhere; in the shade only in a frame of the
-  screen at zoom 1 in its middle and in a round under the pointer, both
-  fading to the edge. A new pattern is an empty sheet.
+  away shrinks it to the box of the beads, never below the first screen.
+  The shade reaches half the work area past it on every side. An empty
+  place has no outline: only near the middle of the screen and under the
+  pointer it shows the faint shadow of a bead, at every zoom. A new pattern
+  is an empty sheet.
 - Two kinds of grid: loom (and square stitch) and peyote.
 - Two floating panels with no title. The grip of dots moves a panel; a tap on
   it folds the panel. Dragged to the left or the right edge of the window, a

@@ -2,13 +2,12 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
-mod shade;
+mod shadow;
 mod sprite;
 mod texture;
-mod tile;
 mod view;
 
-pub use shade::{FRAME_FADE, NEAR_RADIUS};
+pub use shadow::{FRAME_FADE, NEAR_RADIUS};
 pub use view::{DEFAULT_BEAD, MAX_BEAD, MIN_BEAD, Turn, View};
 
 use egui::{Color32, Pos2, Rect, Response, Sense, Ui, Vec2, vec2};
@@ -18,16 +17,14 @@ use obusina_pattern::{Bounds, Cell, Colour, Pattern, Rgb};
 const GAP: f32 = 0.08;
 /// The rounding of a bead, as a part of its height.
 const ROUNDING: f32 = 0.3;
-/// The width of the outline of an empty place, in points.
-const OUTLINE: f32 = 1.0;
 /// The ground of the active area: a neutral grey, the same in every theme, so
 /// that a colour looks the same and a black bead is seen.
 pub const PAPER: Color32 = Color32::from_rgb(0xd6, 0xd4, 0xce);
 /// The ground outside the active area: the paper in shade.
 const SHADE: Color32 = Color32::from_rgb(0xb8, 0xb6, 0xb0);
-/// The outline of an empty place: a faint dark line, seen on the paper and
-/// in the shade alike.
-const OUTLINE_COLOUR: Color32 = Color32::from_black_alpha(40);
+/// The shadow of an empty place at its strongest: a bead of faint black,
+/// seen on the paper and in the shade alike.
+const SHADOW: Color32 = Color32::from_black_alpha(36);
 
 /// The colour of the hatch of a bead of a removed or hidden colour.
 const HATCH: Color32 = Color32::from_gray(0x40);
@@ -94,7 +91,7 @@ impl<'a> Canvas<'a> {
         painter.rect_filled(rect, 0.0, SHADE);
         self.draw_paper(&painter, origin, visible);
         let pointer = response.hover_pos();
-        self.draw_outlines(ui, &painter, (origin, rect), visible, pointer);
+        self.draw_shadows(ui, &painter, (origin, rect), visible, pointer);
         self.draw_beads(ui, &painter, origin, visible);
 
         let hovered = response
@@ -168,13 +165,10 @@ impl<'a> Canvas<'a> {
         painter.add(egui::Shape::mesh(mesh));
     }
 
-    /// The outlines of the empty places on the screen, from the repeating
-    /// tile: every one on the paper, a column of the work area one quad; in
-    /// the shade those [`shade`] gives, one quad each, as strong as it says.
-    /// They are drawn at every size of a bead. A bead is drawn over its
-    /// outline, which lies inside it. The pattern stands at `origin` of the
-    /// field `rect`.
-    fn draw_outlines(
+    /// The shadows of the empty places that [`shadow`] gives, each a sprite
+    /// of a bead tinted `SHADOW` as strong as it says. The pattern stands at
+    /// `origin` of the field `rect`.
+    fn draw_shadows(
         &self,
         ui: &Ui,
         painter: &egui::Painter,
@@ -183,30 +177,11 @@ impl<'a> Canvas<'a> {
         pointer: Option<Pos2>,
     ) {
         let (grid, ratio) = (self.pattern.grid(), self.pattern.ratio());
-        let texture = tile::texture(
-            ui.ctx(),
-            grid,
-            ratio,
-            self.view.bead,
-            GAP,
-            ROUNDING,
-            OUTLINE,
-        );
+        let texture = sprite::texture(ui.ctx(), ratio, self.view.bead, GAP, ROUNDING);
         let mut mesh = egui::Mesh::with_texture(texture.id());
-        if let Some(cells) = self.work_area().and_then(|area| area.intersection(visible)) {
-            tile::add_columns(
-                &mut mesh,
-                grid,
-                ratio,
-                self.view,
-                origin,
-                cells,
-                OUTLINE_COLOUR,
-            );
-        }
-        for (cell, strength) in self.shade_outlines(origin, rect, visible, pointer) {
-            let colour = OUTLINE_COLOUR.gamma_multiply(strength);
-            tile::add_cell(&mut mesh, grid, ratio, self.view, origin, cell, colour);
+        for (cell, strength) in self.shadows(origin, rect, visible, pointer) {
+            let colour = SHADOW.gamma_multiply(strength);
+            sprite::add_bead(&mut mesh, grid, ratio, self.view, origin, cell, colour);
         }
         painter.add(egui::Shape::mesh(mesh));
     }
