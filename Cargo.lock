@@ -1816,7 +1816,7 @@ dependencies = [
 
 [[package]]
 name = "glyphs"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "clap",
  "egui",
@@ -2821,7 +2821,7 @@ dependencies = [
 
 [[package]]
 name = "obusina"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "android_logger",
  "chrono",
@@ -2869,7 +2869,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-android"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "jni",
  "obusina",
@@ -2878,7 +2878,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-backdrop"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "pollster 1.0.1",
  "serde",
@@ -2890,7 +2890,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-button"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64",
  "eframe",
@@ -2900,7 +2900,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-canvas"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64",
  "eframe",
@@ -2911,7 +2911,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-panel"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64",
  "eframe",
@@ -2921,7 +2921,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-pattern"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -3203,7 +3203,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plate-menu"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "base64",
  "eframe",
@@ -4318,7 +4318,7 @@ checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
 
 [[package]]
 name = "unifs"
-version = "1.0.1"
+version = "1.0.2"
 dependencies = [
  "js-sys",
  "pollster 1.0.1",
