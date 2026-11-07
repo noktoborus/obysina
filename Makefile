@@ -93,7 +93,9 @@ uninstall:
 	sudo update-desktop-database $(APPDIR) 2>/dev/null || true
 
 # The version of the program, `make VERSION=x.y.z`: `version` of
-# `[workspace.package]` of Cargo.toml, which the android package reads too.
+# `[workspace.package]` of Cargo.toml, which the android package reads too,
+# and the version of each crate of the workspace in `[workspace.dependencies]`.
+# A step that fails puts Cargo.toml and Cargo.lock back.
 # Cargo.toml and Cargo.lock go in one commit, and the tag `vx.y.z` on it; the
 # tag is not pushed. It needs a clean tree and a tag that is not there yet.
 # 1.0.0 and on are refused while AGENTS.md still has the EXC of RULE
@@ -107,9 +109,11 @@ version:
 		|| { echo "v$(VERSION) is a tag already"; exit 1; }
 	@case "$(VERSION)" in 0.*) ;; *) ! grep -q 'EXC  before version 1.0.0' AGENTS.md \
 		|| { echo "delete the EXC of RULE pattern.version first"; exit 1; };; esac
-	sed -i '/^\[workspace.package\]/,/^\[/ s/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
-	grep -q '^version = "$(VERSION)"' Cargo.toml
-	cargo update --workspace --offline
+	sed -i -e '/^\[workspace.package\]/,/^\[/ s/^version = ".*"/version = "$(VERSION)"/' \
+		-e '/^\[workspace.dependencies\]/,/^\[/ s/\(path = "[^"]*", version = "\)[^"]*"/\1$(VERSION)"/' \
+		Cargo.toml
+	{ grep -q '^version = "$(VERSION)"' Cargo.toml && cargo update --workspace --offline; } \
+		|| { git checkout -- Cargo.toml Cargo.lock; echo "Cargo.toml and Cargo.lock put back"; exit 1; }
 	git commit -q -m "Set the version to $(VERSION)" Cargo.toml Cargo.lock
 	git tag -a "v$(VERSION)" -m "Obusina $(VERSION)"
-	@echo "v$(VERSION): git push && git push origin v$(VERSION)"
+	@echo "v$(VERSION): git push --follow-tags"
