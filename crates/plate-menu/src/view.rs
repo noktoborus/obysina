@@ -653,13 +653,17 @@ impl PlateMenu {
     /// A pointer that wanders off changes nothing: the menu stands where it is
     /// and is left by a key or by a click, never by the pointer alone. A menu set
     /// to [`Beside::Ignored`] is not left by that click either.
+    ///
+    /// The place of the click is `interact_pos`, not `latest_pos`: a finger
+    /// that leaves the screen ends its click and is gone in one frame, and
+    /// the place it is gone from is kept only there.
     fn click_outside(&mut self, context: &Context) {
         if self.beside == Beside::Ignored || self.rect == Rect::NOTHING || self.frames == 0 {
             return;
         }
 
         let (position, clicked) =
-            context.input(|input| (input.pointer.latest_pos(), input.pointer.any_click()));
+            context.input(|input| (input.pointer.interact_pos(), input.pointer.any_click()));
         let Some(position) = position else {
             return;
         };
@@ -1382,28 +1386,78 @@ mod tests {
         assert!(!menu.is_open(), "and it closes again when it may");
     }
 
+    /// A tap of a finger beside the menu closes it, as a click does.
+    #[test]
+    fn a_tap_beside_a_menu_closes_it() {
+        let context = Context::default();
+        let mut menu = PlateMenu::new();
+        menu.open(items(3)).expect("the menu opens");
+
+        tap(&context, &mut menu, egui::Pos2::new(5.0, 5.0));
+
+        assert!(!menu.is_open(), "a tap beside it closes it");
+    }
+
+    /// A tap of a finger on the margin of the menu, where no entry is, leaves
+    /// it open.
+    #[test]
+    fn a_tap_on_the_margin_of_the_menu_leaves_it_open() {
+        let context = Context::default();
+        let mut menu = PlateMenu::new();
+        menu.open(items(3)).expect("the menu opens");
+        frames(&context, &mut menu, vec![Vec::new(); 2]);
+
+        let margin = menu.rect.left_top() + Vec2::splat(1.0);
+        tap(&context, &mut menu, margin);
+
+        assert!(menu.is_open(), "a tap on it is no tap beside it");
+    }
+
     /// Draws the menu for as many frames as a click needs and clicks there.
     fn click(context: &Context, menu: &mut PlateMenu, at: egui::Pos2) {
-        for frame in 0..3 {
-            let events = if frame == 2 {
-                vec![
-                    egui::Event::PointerMoved(at),
-                    egui::Event::PointerButton {
-                        pos: at,
-                        button: egui::PointerButton::Primary,
-                        pressed: true,
-                        modifiers: egui::Modifiers::NONE,
-                    },
-                    egui::Event::PointerButton {
-                        pos: at,
-                        button: egui::PointerButton::Primary,
-                        pressed: false,
-                        modifiers: egui::Modifiers::NONE,
-                    },
-                ]
-            } else {
-                Vec::new()
-            };
+        let button = |pressed| egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        let click = vec![egui::Event::PointerMoved(at), button(true), button(false)];
+        frames(context, menu, vec![Vec::new(), Vec::new(), click]);
+    }
+
+    /// Draws the menu for as many frames as a tap needs and taps there with a
+    /// finger, as egui-winit gives a touch: the button with the touch, and on
+    /// the release the pointer gone in the same frame.
+    fn tap(context: &Context, menu: &mut PlateMenu, at: egui::Pos2) {
+        let touch = |phase| egui::Event::Touch {
+            device_id: egui::TouchDeviceId(1),
+            id: egui::TouchId(1),
+            phase,
+            pos: at,
+            force: None,
+        };
+        let button = |pressed| egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        };
+        let down = vec![
+            touch(egui::TouchPhase::Start),
+            egui::Event::PointerMoved(at),
+            button(true),
+        ];
+        let up = vec![
+            touch(egui::TouchPhase::End),
+            button(false),
+            egui::Event::PointerGone,
+        ];
+        frames(context, menu, vec![Vec::new(), Vec::new(), down, up]);
+    }
+
+    /// Draws the menu once for each list of `events`.
+    fn frames(context: &Context, menu: &mut PlateMenu, events: Vec<Vec<egui::Event>>) {
+        for events in events {
             let input = egui::RawInput {
                 screen_rect: Some(Rect::from_min_size(
                     egui::Pos2::ZERO,
