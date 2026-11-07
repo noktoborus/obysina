@@ -1,5 +1,7 @@
 # Obusina
 
+**[Open Obusina in the browser](https://noktoborus.github.io/obysina/)**: nothing to install; the site of the last release.
+
 An editor of bead patterns, for Linux, Windows and Android.
 
 | The list of patterns | A pattern, with volume | The palettes |
