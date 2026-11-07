@@ -246,6 +246,9 @@ THEN `img/<name>.png` beside the crate README, named there by a label
      file and Markdown takes the first definition of a label
 EX+  ![A peyote grid with a palette of three colours][picture-peyote]
 EX-  a screenshot taken by hand, a picture with no test that renders it
+EXC  the screenshots of README.md, in `img/`: drawn by the window test
+     `screenshots`, written by `SCREENSHOTS=1 cargo test -p obusina
+     screenshots`, compared to nothing; on the word of the user
 
 RULE doc.settings : a documentation file never repeats what the settings page
      shows — a default, a unit, the entries of a list, the text of a hint
@@ -547,6 +550,8 @@ EX+  `obusina-canvas`: one picture per kind of grid
 EX+  `obusina-panel`: a row, a column, a folded panel
 EX+  `obusina-button`: every kind of button in one row
 EX-  a picture of the main window of `obusina` committed as a reference
+EXC  the screenshots of README.md (`RULE doc.picture`, its EXC); no
+     reference, nothing compares them
 
 RULE test.picture.tool = `egui_kittest` with `wgpu` and `snapshot`, a
      dev-dependency of the widget crate

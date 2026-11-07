@@ -2,6 +2,17 @@
 
 An editor of bead patterns, for Linux, Windows and Android.
 
+| The list of patterns | A pattern, with volume | The palettes |
+| --- | --- | --- |
+| ![The list of patterns, one of them locked](img/list.png) | ![A heart on a loom grid](img/editor.png) | ![The window of the palettes over the field](img/palettes.png) |
+
+| On a phone: the list | On a phone: a pattern |
+| --- | --- |
+| ![The list at the width of a phone](img/phone-list.png) | ![A pattern at the width of a phone](img/phone-editor.png) |
+
+The screenshots are drawn by `src/window_tests/screenshots.rs`;
+`SCREENSHOTS=1 cargo test -p obusina screenshots` draws them again.
+
 ## What it does
 
 - Opens on the list of patterns: a card for each, its picture, name, size

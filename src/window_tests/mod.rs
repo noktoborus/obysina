@@ -15,6 +15,7 @@ mod help;
 mod locked;
 mod palette;
 mod projects;
+mod screenshots;
 mod sheet;
 
 /// The size of the window in every test.
