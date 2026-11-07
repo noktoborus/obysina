@@ -23,8 +23,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  # The versions of android/app/build.gradle.kts and of the Makefile.
-  ANDROID_PLATFORM: platforms;android-37
+  # The versions of android/app/build.gradle.kts and of the Makefile; the
+  # names of /opt/packages.sh. A platform of API 37 and on is named with its
+  # minor version: `android-37.0`, not `android-37`.
+  ANDROID_PLATFORM: platforms;android-37.0
   ANDROID_NDK: ndk;30.0.16248370
   ANDROID_BUILD_TOOLS: build-tools;36.0.0
 
