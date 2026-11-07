@@ -3,8 +3,11 @@
 # key of the secrets; a release of GitHub with the package and the program
 # for Windows; and the site of the browser on GitHub Pages.
 #
-# The repository needs, once: the four secrets that build.yml names, and
-# GitHub Actions as the source of its Pages (Settings, Pages).
+# The repository needs, once: the four secrets that build.yml names;
+# GitHub Actions as the source of its Pages (Settings, Pages); and the tags
+# `v*.*.*` allowed to deploy to the environment `github-pages` (Settings,
+# Environments, github-pages, Deployment branches and tags), which allows
+# only the default branch until told.
 
 name: release
 
