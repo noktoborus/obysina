@@ -34,6 +34,7 @@ pub const PICTURE_SIDE: u32 = 4096;
 /// How much of a new picture shows.
 pub const DEFAULT_OPACITY: f32 = 0.6;
 /// The name of the directory of pictures in the cache.
+#[cfg(not(target_arch = "wasm32"))]
 pub const DIRECTORY: &str = "backdrops";
 
 /// What a job of the store answers.

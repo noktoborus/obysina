@@ -1,0 +1,13 @@
+# The page of the program in a browser, `make web`: trunk builds the binary
+# `obusina` for wasm into `web/index.html` and writes the site to
+# target/web. The addresses are relative, so the site works under any path,
+# as GitHub Pages serves it under the name of the repository.
+[build]
+target = "web/index.html"
+dist = "target/web"
+release = true
+public_url = "./"
+
+[tools]
+# The version of wasm-bindgen of Cargo.lock: the two must be the same.
+wasm_bindgen = "0.2.129"

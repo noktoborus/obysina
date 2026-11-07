@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{AppError, Result};
 
 /// The name of the file in the configuration directory.
+#[cfg(not(target_arch = "wasm32"))]
 pub const FILE: &str = "settings.yaml";
 /// The name a file that cannot be read is kept aside under.
 pub const UNREADABLE: &str = "settings.yaml.unreadable";

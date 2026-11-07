@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Obusina</title>
+  <link data-trunk rel="rust" href="../Cargo.toml" data-bin="obusina" data-wasm-opt="z" data-wasm-opt-params="--enable-bulk-memory --enable-mutable-globals --enable-nontrapping-float-to-int --enable-sign-ext --enable-reference-types --enable-multivalue" data-initializer="loading.mjs">
+  <link data-trunk rel="copy-file" href="../assets/icon.svg">
+  <link rel="icon" href="icon.svg">
+  <style>
+    :root { color-scheme: light dark; --ground: #f7f7f5; --ink: #1b1b1b; --weak: #6b6b6b; --bar: #2f5fb3; --track: #dcdcd8; }
+    @media (prefers-color-scheme: dark) {
+      :root { --ground: #1b1b1b; --ink: #f2efe6; --weak: #9a9a96; --bar: #6f9be8; --track: #333331; }
+    }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: var(--ground); }
+    canvas { display: block; width: 100%; height: 100%; }
+    #loading {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      padding: 16px; box-sizing: border-box;
+      font: 15px/1.4 system-ui, sans-serif; color: var(--ink); background: var(--ground);
+      transition: opacity 0.3s;
+    }
+    #loading.gone { opacity: 0; pointer-events: none; }
+    #loading img { width: 72px; height: 72px; }
+    #loading h1 { margin: 0; font-size: 22px; font-weight: 600; }
+    #track { width: min(320px, 100%); height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+    #bar { width: 0; height: 100%; border-radius: 3px; background: var(--bar); transition: width 0.15s; }
+    #track.unknown #bar { width: 30%; animation: sweep 1.2s ease-in-out infinite; }
+    @keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+    #state { color: var(--weak); font-size: 13px; min-height: 1.4em; text-align: center; }
+    #loading.failed #track { display: none; }
+    #loading.failed #state { color: #d83232; }
+  </style>
+</head>
+<body>
+  <canvas id="obusina"></canvas>
+  <div id="loading" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+    <img src="icon.svg" alt="">
+    <h1>Obusina</h1>
+    <div id="track"><div id="bar"></div></div>
+    <div id="state"></div>
+  </div>
+</body>
+</html>

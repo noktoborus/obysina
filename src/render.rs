@@ -18,12 +18,15 @@
 //! else, a virtual one or a remote session, still gets its window — but it is
 //! said in the log when it happens.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
+#[cfg(not(target_arch = "wasm32"))]
 use eframe::egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use eframe::wgpu;
 
 /// The options the window is started with.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn native_options(viewport: egui::ViewportBuilder) -> eframe::NativeOptions {
     let mut setup = WgpuSetupCreateNew::without_display_handle();
     setup.power_preference = wgpu::PowerPreference::LowPower;
@@ -70,6 +73,7 @@ pub fn log_adapter(state: &eframe::egui_wgpu::RenderState) {
 /// the toolkit grows with the glyphs of the fonts and the images of the
 /// interface, and a limit of 8192 where the adapter grants 16384 is a limit
 /// nothing asked for, so what the adapter offers is what is asked of it.
+#[cfg(not(target_arch = "wasm32"))]
 fn limits(offered: &wgpu::Limits) -> wgpu::Limits {
     let mut asked = wgpu::Limits::default().or_worse_values_from(offered);
     asked.max_texture_dimension_1d = offered.max_texture_dimension_1d;
@@ -90,9 +94,11 @@ fn limits(offered: &wgpu::Limits) -> wgpu::Limits {
 pub const ATLAS_SIDE: usize = 8192;
 
 /// The label the device carries in the messages of `wgpu`.
+#[cfg(not(target_arch = "wasm32"))]
 const WINDOW_DEVICE: &str = "window device";
 
 /// Picks the adapter the window is drawn with, hardware before software.
+#[cfg(not(target_arch = "wasm32"))]
 fn choose_adapter(
     adapters: &[wgpu::Adapter],
     surface: Option<&wgpu::Surface<'_>>,

@@ -1,4 +1,4 @@
-//! The program on the desktop.
+//! The program on the desktop, or on the page of a browser.
 //!
 //! A release build for Windows is linked against the windows subsystem, so
 //! starting the program from the desktop opens no console window behind it. A
@@ -8,6 +8,13 @@
     windows_subsystem = "windows"
 )]
 
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> std::process::ExitCode {
     obusina::desktop()
+}
+
+/// Starts the window on the canvas `obusina` of `index.html`.
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    obusina::web("obusina");
 }

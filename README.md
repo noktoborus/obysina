@@ -100,6 +100,7 @@ The patterns are kept in the data of the program (`docs/projects.md`).
 | Linux | `make build`, then `make install` | `target/release/obusina` |
 | Windows | `make build-windows`, with mingw | `obusina.exe` |
 | Android | `make apk`, `make apk-release`, `make aab` | `target/obusina.apk`, signed with the debug key; `target/obusina-release.apk`; the bundle in `android/app/build/outputs/` |
+| Browser | `make web`, with trunk | the site in `target/web` |
 
 The icon is drawn from `assets/icon.svg` at build time. On Windows it is a
 resource of `obusina.exe`, built with `windres` of mingw.
@@ -108,3 +109,9 @@ Android needs the NDK, the SDK, a JDK and `cargo-ndk`, named by
 `ANDROID_HOME` and `ANDROID_NDK_HOME`. `.devcontainer/Dockerfile.claude`
 installs every tool these need. A release is signed as `android/README.md`
 says.
+
+In a browser the program keeps nothing: a browser gives it no directory,
+so it opens on a new pattern, and what is to be kept is exported to a file.
+The page `web/index.html` shows a bar of loading while the module is
+fetched (`web/loading.mjs`); the addresses are relative, so the site works
+under any path.

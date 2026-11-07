@@ -37,7 +37,7 @@ EX-  an `icon.ico` or a PNG of the icon committed beside the SVG
 RULE lang = rust, edition 2024
 RULE toolkit = egui and eframe
 
-RULE targets = linux, windows, android
+RULE targets = linux, windows, android, a browser (wasm)
 RULE platform_code : platform specific code is `cfg` gated
 EX+  #[cfg(target_os = "android")] fn data_dir(app: &AndroidApp) -> PathBuf
 EX-  two source trees, one per platform
@@ -569,6 +569,10 @@ THEN cargo fmt --all
 WHY  code gated by `cfg` for windows is compiled only for windows; the tests
      run on the linux build
 WHY  `/opt/env.sh` puts mingw on the path; `windres` of it compiles the icon
+
+RULE checks.web : the page of the browser is built when a change touches
+     `web/`, `Trunk.toml`, the code gated for wasm or what it calls
+THEN make web
 
 RULE checks.android : the android package is built when a change touches
      `android/`, the code gated for android or what it calls, or when the

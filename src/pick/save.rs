@@ -21,11 +21,13 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Saved {
     /// The file was written.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     Done,
     /// The browser was given the file to download; it shows that itself.
     #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
     Downloaded,
     /// The person gave the save up.
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     GivenUp,
     /// The file could not be written, or the dialog not opened.
     Failed,

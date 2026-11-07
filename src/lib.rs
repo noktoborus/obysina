@@ -1,7 +1,8 @@
 //! Obusina, an editor of bead patterns.
 //!
-//! The program is a library with two entries: [`desktop`], which
-//! `src/main.rs` calls, and `android`, which the `cdylib` of `android/` calls.
+//! The program is a library with three entries: `desktop`, which
+//! `src/main.rs` calls; `web`, which `src/main.rs` calls in a browser; and
+//! `android`, which the `cdylib` of `android/` calls.
 
 #[cfg(target_os = "android")]
 mod activity;
@@ -19,11 +20,13 @@ mod session;
 mod settings;
 mod task;
 mod ui;
+#[cfg(not(target_arch = "wasm32"))]
 mod window_icon;
 
 #[cfg(test)]
 mod window_tests;
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 
 pub use app::App;
@@ -53,6 +56,7 @@ pub const APP_ID: &str = "ru.styxheim.obusina";
 
 /// The directory eframe keeps its own state in, beside the settings: with
 /// it, eframe calls `App::save` when android pauses the program.
+#[cfg(not(target_arch = "wasm32"))]
 const EFRAME: &str = "eframe";
 
 /// The cache of android, beside the data of the program (`files`): the one
@@ -62,6 +66,7 @@ const CACHE: &str = "cache";
 
 /// Starts the window on the desktop on the list of patterns; a pattern file
 /// named on the command line is taken in as a copy and opened.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn desktop() -> std::process::ExitCode {
     env_logger::init();
     choose_locale();
@@ -131,6 +136,7 @@ pub fn android(android: winit::platform::android::activity::AndroidApp) {
 }
 
 /// Runs the window until it is closed, keeping what it keeps in `places`.
+#[cfg(not(target_arch = "wasm32"))]
 fn run(options: eframe::NativeOptions, places: app::Places) -> eframe::Result {
     eframe::run_native(
         "Obusina",
@@ -142,6 +148,39 @@ fn run(options: eframe::NativeOptions, places: app::Places) -> eframe::Result {
             Ok(Box::new(App::start(places)))
         }),
     )
+}
+
+/// Starts the window on the canvas `canvas` of the page. A browser gives no
+/// directory: a new pattern opens, and nothing is saved but what is
+/// exported to a file.
+#[cfg(target_arch = "wasm32")]
+pub fn web(canvas: &'static str) {
+    use wasm_bindgen::JsCast;
+
+    eframe::WebLogger::init(log::LevelFilter::Info).ok();
+    choose_locale();
+    wasm_bindgen_futures::spawn_local(async move {
+        let canvas = web_sys::window()
+            .and_then(|window| window.document())
+            .and_then(|document| document.get_element_by_id(canvas))
+            .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
+            .expect("index.html has the canvas");
+        let started = eframe::WebRunner::new()
+            .start(
+                canvas,
+                eframe::WebOptions::default(),
+                Box::new(|creation| {
+                    if let Some(state) = &creation.wgpu_render_state {
+                        render::log_adapter(state);
+                    }
+                    Ok(Box::new(App::start(app::Places::default())))
+                }),
+            )
+            .await;
+        if let Err(error) = started {
+            log::error!("the window failed: {error:?}");
+        }
+    });
 }
 
 /// Speaks the language of the system when there is a translation for it.

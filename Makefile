@@ -7,7 +7,7 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 APPDIR = $(DESTDIR)$(PREFIX)/share/applications
 ICONDIR = $(DESTDIR)$(PREFIX)/share/icons/hicolor
 
-.PHONY: build build-windows build-android apk apk-release aab install uninstall mockups version
+.PHONY: build build-windows build-android apk apk-release aab web install uninstall mockups version
 
 # `make VERSION=x.y.z` sets the version of the program and tags it, and does
 # nothing else (the target `version` at the end).
@@ -21,6 +21,11 @@ build:
 # Windows, built with mingw: target/x86_64-pc-windows-gnu/release/obusina.exe.
 build-windows:
 	cargo build --release --target x86_64-pc-windows-gnu -p obusina
+
+# The page of the program in a browser, built by trunk from web/index.html
+# (Trunk.toml): the site in target/web.
+web:
+	trunk build
 
 # The library android loads, built with the NDK of ANDROID_NDK_HOME:
 # target/aarch64-linux-android/release/libobusina_android.so.
