@@ -2,8 +2,11 @@ package ru.styxheim.obusina;
 
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.view.KeyEvent;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 
@@ -17,8 +20,9 @@ import java.io.OutputStream;
 /**
  * The activity of Obusina: the game activity; the choice of a document of
  * the system, which Rust asks for by pickPicture or pickPatterns and is
- * answered by picturePicked; and a new document, which Rust asks for by
- * saveDocument and is answered by fileSaved.
+ * answered by picturePicked; a new document, which Rust asks for by
+ * saveDocument and is answered by fileSaved; and the way back, which Rust
+ * takes by takeBack and is told of by backPressed.
  */
 public class MainActivity extends GameActivity {
     /** The kinds of picture Obusina reads. */
@@ -41,6 +45,50 @@ public class MainActivity extends GameActivity {
 
     /** The bytes of the document being created, until it is. */
     private byte[] saving;
+
+    /**
+     * The way back while Rust takes it: it acts as Escape there. While it is
+     * not taken, the system goes back out of the program.
+     */
+    private final OnBackPressedCallback back =
+            new OnBackPressedCallback(false) {
+                @Override
+                public void handleOnBackPressed() {
+                    backPressed();
+                }
+            };
+
+    @Override
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        getOnBackPressedDispatcher().addCallback(this, back);
+    }
+
+    /**
+     * The key of the way back, which an android before the gesture of the
+     * way back gives as a key: it goes where the gesture goes.
+     */
+    @Override
+    public boolean onKeyDown(int code, KeyEvent event) {
+        if (code == KeyEvent.KEYCODE_BACK) {
+            getOnBackPressedDispatcher().onBackPressed();
+            return true;
+        }
+        return super.onKeyDown(code, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int code, KeyEvent event) {
+        if (code == KeyEvent.KEYCODE_BACK) {
+            return true;
+        }
+        return super.onKeyUp(code, event);
+    }
+
+    /** Whether Rust takes the way back; called from Rust, on any thread. */
+    public void takeBack(boolean taken) {
+        runOnUiThread(() -> back.setEnabled(taken));
+    }
 
     /** Opens the choice of a picture; called from Rust, on any thread. */
     public void pickPicture() {
@@ -122,4 +170,7 @@ public class MainActivity extends GameActivity {
 
     /** The answer of a save: 1 written, 0 not written, -1 given up. */
     private static native void fileSaved(int state);
+
+    /** The way back, while Rust takes it. */
+    private static native void backPressed();
 }

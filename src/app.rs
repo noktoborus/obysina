@@ -396,11 +396,14 @@ impl eframe::App for App {
             if let Some(theme) = crate::activity::theme() {
                 raw_input.system_theme = Some(theme);
             }
+            crate::activity::escape_by_back(_context, raw_input);
         }
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
+        #[cfg(target_os = "android")]
+        crate::activity::take_back(crate::keys::layer(self, ui.ctx()) != Layer::List);
         crate::keys::global(self, ui.ctx());
         crate::ui::help::keys(self, ui.ctx());
         if self.screen == crate::session::Screen::List {

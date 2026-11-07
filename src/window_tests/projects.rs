@@ -178,3 +178,20 @@ fn f1_shows_the_keys_of_the_list() {
     window.harness.run();
     assert_eq!(window.harness.state().help, Some(crate::keys::Layer::List));
 }
+
+/// Escape in the trash goes back to the list, as its "Back" does, and as the
+/// way back of android does.
+#[test]
+fn escape_goes_back_from_the_trash() {
+    let mut window = list();
+    window.harness.state_mut().projects.view = crate::ui::projects::View::Trash;
+    window.harness.run();
+
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
+
+    assert_eq!(
+        window.harness.state().projects.view,
+        crate::ui::projects::View::List
+    );
+}

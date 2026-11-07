@@ -1,11 +1,21 @@
 //! The activity of android, kept for what needs it: the choice of a file,
 //! the part of the window the system bars and the cut out of the camera
-//! leave free, and the theme of the system.
+//! leave free, the theme of the system, and the way back.
+//!
+//! ```text
+//! a frame ──► takes(the layer on top is not the list) ──JNI──► MainActivity.takeBack
+//! the gesture or the key of the way back
+//!   ├─ taken ──► backPressed ──► back() ──► Escape in the next frame
+//!   └─ not taken, on the list ──► the system goes back out of the program
+//! ```
 //!
 //! `android_main` may run more than once in the life of the program, each time
 //! with a new `AndroidApp`; the last one is kept.
 
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use jni::{jni_sig, jni_str};
 
 use winit::platform::android::activity::AndroidApp;
 
@@ -74,5 +84,65 @@ pub fn theme() -> Option<egui::Theme> {
         UiModeNight::Yes => Some(egui::Theme::Dark),
         UiModeNight::No => Some(egui::Theme::Light),
         _ => None,
+    }
+}
+
+/// The way back was pressed, and the next frame has not yet read it.
+static BACK: AtomicBool = AtomicBool::new(false);
+/// The window to wake when the way back is pressed.
+static WINDOW: Mutex<Option<egui::Context>> = Mutex::new(None);
+/// Whether the activity was last told that the window takes the way back.
+static TAKEN: Mutex<Option<bool>> = Mutex::new(None);
+
+/// The way back of the system, pressed while the window takes it: the next
+/// frame reads it as Escape. Called by the native method of `android/`.
+pub fn back() {
+    BACK.store(true, Ordering::Release);
+    let window = WINDOW.lock().expect("the window is never poisoned");
+    if let Some(context) = window.as_ref() {
+        context.request_repaint();
+    }
+}
+
+/// Gives the frame of `raw_input` the way back pressed since the last one, as
+/// a press of Escape, and keeps `context` to wake.
+pub fn escape_by_back(context: &egui::Context, raw_input: &mut egui::RawInput) {
+    WINDOW
+        .lock()
+        .expect("the window is never poisoned")
+        .get_or_insert_with(|| context.clone());
+    if !BACK.swap(false, Ordering::AcqRel) {
+        return;
+    }
+    for pressed in [true, false] {
+        raw_input.events.push(egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+}
+
+/// Tells the activity whether the window takes the way back; only when that
+/// changes.
+pub fn take_back(taken: bool) {
+    let mut told = TAKEN.lock().expect("the way back is never poisoned");
+    if *told == Some(taken) {
+        return;
+    }
+    let called = call(|env, activity| {
+        env.call_method(
+            activity,
+            jni_str!("takeBack"),
+            jni_sig!("(Z)V"),
+            &[jni::JValue::Bool(taken)],
+        )?;
+        Ok(())
+    });
+    match called {
+        Ok(()) => *told = Some(taken),
+        Err(error) => log::error!("the way back is not given to the window: {error}"),
     }
 }

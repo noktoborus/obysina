@@ -1,6 +1,7 @@
 //! The library android loads. The activity calls `android_main`, which starts
 //! the window of `obusina`; `picturePicked` of `MainActivity` when the
-//! person chose a file; and `fileSaved` when a file was saved.
+//! person chose a file; `fileSaved` when a file was saved; and
+//! `backPressed` for the way back.
 //!
 //! On any other platform the library is empty: a `cdylib` of the whole
 //! program would export every symbol, and the linker of mingw refuses that
@@ -54,4 +55,15 @@ pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_fileSaved<'caller>(
         0 => Some(false),
         _ => None,
     });
+}
+
+/// The way back of the system, while the window takes it: it acts as
+/// Escape.
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_backPressed<'caller>(
+    _env: jni::EnvUnowned<'caller>,
+    _class: jni::objects::JClass<'caller>,
+) {
+    obusina::android_back();
 }

@@ -379,6 +379,7 @@ pub(crate) const LIST_KEYS: &[Binding<ListAction>] = &[
 /// What a key of the trash does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TrashAction {
+    Back,
     /// Walks the cards by the arrow `Taken::index` of `ARROWS`.
     Walk,
     Open,
@@ -386,6 +387,11 @@ pub(crate) enum TrashAction {
 
 /// The keys of the trash (`Layer::Trash`).
 pub(crate) const TRASH_KEYS: &[Binding<TrashAction>] = &[
+    Binding {
+        keys: &[plain(Key::Escape)],
+        action: TrashAction::Back,
+        name: "projects.back_from_trash",
+    },
     Binding {
         keys: &ARROWS,
         action: TrashAction::Walk,
@@ -455,6 +461,11 @@ fn list_keys(app: &mut App, ui: &egui::Ui) {
 /// The keys of the trash.
 fn trash_keys(app: &mut App, ui: &egui::Ui) {
     let taken = crate::keys::take(ui.ctx(), TRASH_KEYS);
+    if taken.iter().any(|taken| taken.action == TrashAction::Back) {
+        app.projects.view = View::List;
+        app.projects.focus = None;
+        return;
+    }
     let walks = taken
         .iter()
         .filter(|taken| taken.action == TrashAction::Walk)

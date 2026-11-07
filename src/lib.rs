@@ -31,6 +31,13 @@ pub use pick::Picked;
 #[cfg(target_os = "android")]
 pub use pick::{android_picked, android_saved};
 
+/// The way back of android, while the window takes it: it acts as Escape
+/// (`src/activity.rs`).
+#[cfg(target_os = "android")]
+pub fn android_back() {
+    activity::back();
+}
+
 rust_i18n::i18n!("locales", fallback = "en");
 
 /// The name the desktop and android know the program by (`RULE app.id`).

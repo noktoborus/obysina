@@ -4,6 +4,8 @@
 
 The table of each layer stands beside its code. `src/keys.rs` says which layer is on top; only that layer acts on a key. Every key is a second way to an action (`RULE ui.touch`), but F1: the keys help only a keyboard, so a key is the one way to them (the `EXC` of `RULE ui.touch`).
 
+On android the way back of the system is Escape, on every layer but the list of patterns; there it leaves the program (`src/activity.rs`).
+
 ## Global keys
 
 They act in every layer.
@@ -30,6 +32,7 @@ The trash is shown, no menu is open.
 
 | Key | Action |
 | --- | --- |
+| Escape | Back |
 | Right, Left, Down, Up | Walk the cards |
 | Enter | The menu of the pattern: restore or delete for good |
 
