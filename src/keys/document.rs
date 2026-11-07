@@ -1,12 +1,10 @@
 //! `docs/keys.md`, written from the tables by a test.
 
-use egui::{KeyboardShortcut, ModifierNames};
-
-use super::{GLOBAL, Layer, Row, keymap, rows};
+use super::{GLOBAL, Layer, Row, keymap, rows, written_keys};
 
 impl Layer {
     /// Every layer, in the order of `docs/keys.md`.
-    pub const ALL: [Layer; 9] = [
+    pub const ALL: [Layer; 10] = [
         Layer::List,
         Layer::Trash,
         Layer::Editor,
@@ -16,22 +14,8 @@ impl Layer {
         Layer::PaletteMenu,
         Layer::Menu,
         Layer::Text,
+        Layer::Help,
     ];
-
-    /// The heading of the layer in `docs/keys.md`.
-    pub fn title(self) -> &'static str {
-        match self {
-            Layer::List => "The list of patterns",
-            Layer::Trash => "The trash",
-            Layer::Editor => "The field",
-            Layer::Corners => "The corners of the picture",
-            Layer::Palettes => "The window of the palettes",
-            Layer::Dragging => "A colour dragged",
-            Layer::PaletteMenu => "The menu of the window of the palettes",
-            Layer::Menu => "A menu",
-            Layer::Text => "A text field",
-        }
-    }
 
     /// When the layer is on top, in `docs/keys.md`.
     pub fn about(self) -> &'static str {
@@ -60,17 +44,12 @@ impl Layer {
                  list. The keys are those of `plate-menu`. A menu opens with no entry \
                  selected: Down selects the first, Up the last, Enter does nothing."
             }
-            Layer::Text => "A text field holds the keys. It takes them all.",
+            Layer::Text => "A text field holds the keys. It takes all but the global ones.",
+            Layer::Help => {
+                "The plate of the keys of the layer under it, shown by F1. It takes \
+                 every key. A tap on it or beside it closes it."
+            }
         }
-    }
-}
-
-/// A key as `docs/keys.md` writes it, the way of a desktop that is not a mac.
-pub fn written(key: &KeyboardShortcut) -> String {
-    let held = ModifierNames::NAMES.format(&key.modifiers, false);
-    match held.is_empty() {
-        true => key.logical_key.name().to_string(),
-        false => format!("{held}+{}", key.logical_key.name()),
     }
 }
 
@@ -84,17 +63,13 @@ pub fn document() -> String {
          layer is on top; only that layer acts on a key. Every key is a second way \
          to an action (`RULE ui.touch`).\n\n\
          ## Global keys\n\n\
-         They act in every layer that lets them through.\n\n",
+         They act in every layer.\n\n",
     );
     push_table(&mut text, &rows(GLOBAL));
     for layer in Layer::ALL {
-        let keymap = keymap(layer);
-        text.push_str(&format!("## {}\n\n{}", layer.title(), layer.about()));
-        match keymap.globals {
-            true => text.push_str(" The global keys act.\n\n"),
-            false => text.push_str(" The global keys do not act.\n\n"),
-        }
-        push_table(&mut text, &keymap.rows);
+        let title = rust_i18n::t!(layer.title(), locale = "en");
+        text.push_str(&format!("## {title}\n\n{}\n\n", layer.about()));
+        push_table(&mut text, &keymap(layer));
     }
     text
 }
@@ -107,9 +82,8 @@ fn push_table(text: &mut String, rows: &[Row]) {
     }
     text.push_str("| Key | Action |\n| --- | --- |\n");
     for row in rows {
-        let keys: Vec<String> = row.keys.iter().map(written).collect();
         let name = rust_i18n::t!(row.name, locale = "en");
-        text.push_str(&format!("| {} | {name} |\n", keys.join(", ")));
+        text.push_str(&format!("| {} | {name} |\n", written_keys(&row.keys)));
     }
     text.push('\n');
 }

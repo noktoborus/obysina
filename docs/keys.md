@@ -6,13 +6,15 @@ The table of each layer stands beside its code. `src/keys.rs` says which layer i
 
 ## Global keys
 
-They act in every layer that lets them through.
+They act in every layer.
 
-No key.
+| Key | Action |
+| --- | --- |
+| F1 | Show the keys of this place, or hide them |
 
 ## The list of patterns
 
-The list is shown, no menu is open, no field holds the keys. A letter typed searches, as Ctrl+F does; that is text, not a key. The global keys act.
+The list is shown, no menu is open, no field holds the keys. A letter typed searches, as Ctrl+F does; that is text, not a key.
 
 | Key | Action |
 | --- | --- |
@@ -24,7 +26,7 @@ The list is shown, no menu is open, no field holds the keys. A letter typed sear
 
 ## The trash
 
-The trash is shown, no menu is open. The global keys act.
+The trash is shown, no menu is open.
 
 | Key | Action |
 | --- | --- |
@@ -33,7 +35,7 @@ The trash is shown, no menu is open. The global keys act.
 
 ## The field
 
-A pattern is open, nothing stands over the field, no field holds the keys. The global keys act.
+A pattern is open, nothing stands over the field, no field holds the keys.
 
 | Key | Action |
 | --- | --- |
@@ -44,17 +46,17 @@ A pattern is open, nothing stands over the field, no field holds the keys. The g
 | P | Open the window of the palettes |
 | Plus, Equals | Next palette |
 | Minus | Previous palette |
-| 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 | Take the colour of that place of the palette shown; 0, the empty place |
+| 0 … 9 | Take the colour of that place of the palette shown; 0, the empty place |
 
 ## The corners of the picture
 
-The corners of the picture under the pattern are edited; the buttons end it. The global keys act.
+The corners of the picture under the pattern are edited; the buttons end it.
 
 No key.
 
 ## The window of the palettes
 
-The window of the palettes is open, its menu is not. The global keys act.
+The window of the palettes is open, its menu is not.
 
 | Key | Action |
 | --- | --- |
@@ -64,13 +66,13 @@ The window of the palettes is open, its menu is not. The global keys act.
 
 ## A colour dragged
 
-A colour is dragged in the window of the palettes. The global keys do not act.
+A colour is dragged in the window of the palettes.
 
 No key.
 
 ## The menu of the window of the palettes
 
-The menu of a place of the window of the palettes. Escape closes it at once, with a query typed or the picker holding the keys; the other keys are those of a menu. The global keys do not act.
+The menu of a place of the window of the palettes. Escape closes it at once, with a query typed or the picker holding the keys; the other keys are those of a menu.
 
 | Key | Action |
 | --- | --- |
@@ -89,7 +91,7 @@ The menu of a place of the window of the palettes. Escape closes it at once, wit
 
 ## A menu
 
-Any other menu: the settings, a colour, the picture, a card of the list. The keys are those of `plate-menu`. A menu opens with no entry selected: Down selects the first, Up the last, Enter does nothing. The global keys do not act.
+Any other menu: the settings, a colour, the picture, a card of the list. The keys are those of `plate-menu`. A menu opens with no entry selected: Down selects the first, Up the last, Enter does nothing.
 
 | Key | Action |
 | --- | --- |
@@ -108,7 +110,15 @@ Any other menu: the settings, a colour, the picture, a card of the list. The key
 
 ## A text field
 
-A text field holds the keys. It takes them all. The global keys do not act.
+A text field holds the keys. It takes all but the global ones.
 
 No key.
+
+## The keys
+
+The plate of the keys of the layer under it, shown by F1. It takes every key. A tap on it or beside it closes it.
+
+| Key | Action |
+| --- | --- |
+| Escape | Close the keys |
 

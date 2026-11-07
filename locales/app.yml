@@ -475,3 +475,48 @@ keys.menu.choose:
 keys.menu.stay:
   en: "Nothing; the keyboard stays with the menu"
   ru: "Ничего; клавиатура остаётся у меню"
+keys.help:
+  en: "Show the keys of this place, or hide them"
+  ru: "Показать горячие клавиши этого места или скрыть их"
+keys.close_help:
+  en: "Close the keys"
+  ru: "Закрыть подсказку"
+keys.title:
+  en: "Keys"
+  ru: "Горячие клавиши"
+keys.global:
+  en: "Everywhere"
+  ru: "Везде"
+keys.none:
+  en: "No keys here"
+  ru: "Здесь клавиш нет"
+keys.layer.list:
+  en: "The list of patterns"
+  ru: "Список схем"
+keys.layer.trash:
+  en: "The trash"
+  ru: "Корзина"
+keys.layer.editor:
+  en: "The field"
+  ru: "Поле"
+keys.layer.corners:
+  en: "The corners of the picture"
+  ru: "Углы картинки"
+keys.layer.palettes:
+  en: "The window of the palettes"
+  ru: "Окно палитр"
+keys.layer.dragging:
+  en: "A colour dragged"
+  ru: "Цвет перетаскивается"
+keys.layer.palette_menu:
+  en: "The menu of the window of the palettes"
+  ru: "Меню окна палитр"
+keys.layer.menu:
+  en: "A menu"
+  ru: "Меню"
+keys.layer.text:
+  en: "A text field"
+  ru: "Поле ввода"
+keys.layer.help:
+  en: "The keys"
+  ru: "Подсказка клавиш"

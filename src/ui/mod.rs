@@ -4,6 +4,7 @@ pub mod access;
 pub mod backdrop_menu;
 pub mod blocker;
 pub mod button;
+pub mod help;
 pub mod icons;
 pub mod palette;
 pub mod palette_window;

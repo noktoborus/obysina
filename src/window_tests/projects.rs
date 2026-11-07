@@ -169,3 +169,12 @@ fn the_arrows_walk_the_cards() {
     window.harness.run();
     assert_eq!(window.harness.state().projects.focus, Some(1));
 }
+
+/// F1 on the list shows the keys of the list.
+#[test]
+fn f1_shows_the_keys_of_the_list() {
+    let mut window = list();
+    window.harness.key_press(egui::Key::F1);
+    window.harness.run();
+    assert_eq!(window.harness.state().help, Some(crate::keys::Layer::List));
+}

@@ -154,6 +154,9 @@ pub struct App {
     pub(crate) picker: crate::pick::Picker,
     /// The toasts: what was done, and the undo of a move to the trash.
     pub(crate) toasts: egui_notify::Toasts,
+    /// The plate of the keys, while it is shown: the layer it shows the keys
+    /// of (`src/ui/help.rs`).
+    pub(crate) help: Option<Layer>,
 }
 
 /// Where the window keeps what it keeps; `None` where the platform gives no
@@ -201,6 +204,7 @@ impl App {
             backdrop_menu: plate_menu::PlateMenu::new().with_id("backdrop-menu"),
             picker: crate::pick::Picker::default(),
             toasts: egui_notify::Toasts::new().with_anchor(egui_notify::Anchor::BottomRight),
+            help: None,
         };
         if let Some(error) = settings_error {
             app.projects.tell(say(&error));
@@ -398,10 +402,12 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
         crate::keys::global(self, ui.ctx());
+        crate::ui::help::keys(self, ui.ctx());
         if self.screen == crate::session::Screen::List {
             self.projects.thumbs.render = frame.wgpu_render_state().cloned();
             crate::ui::projects::show(self, ui);
             self.show_toasts(ui.ctx());
+            crate::ui::help::show(self, ui.ctx());
             return;
         }
         self.shortcuts(ui);
@@ -418,6 +424,7 @@ impl eframe::App for App {
         crate::ui::palette_window::keep_in_hand(self);
         self.autosave(ui.ctx());
         self.show_toasts(ui.ctx());
+        crate::ui::help::show(self, ui.ctx());
     }
 
     /// Saves the pattern open when android pauses the program: eframe calls

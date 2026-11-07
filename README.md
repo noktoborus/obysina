@@ -79,7 +79,8 @@ An editor of bead patterns, for Linux, Windows and Android.
   with ctrl zoom it.
 - A pattern is a JSON file. Every format the program ever wrote opens.
 
-The keys of each screen and menu are [docs/keys.md](docs/keys.md).
+F1 shows the keys of the screen or the menu on top, on a plate that a tap
+closes. All the keys are [docs/keys.md](docs/keys.md).
 
 ## Running
 

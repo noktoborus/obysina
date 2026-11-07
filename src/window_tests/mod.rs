@@ -11,6 +11,7 @@ use crate::app::App;
 
 mod backdrop;
 mod field;
+mod help;
 mod palette;
 mod projects;
 mod sheet;

@@ -1,18 +1,18 @@
 //! The keys of the window. Each layer keeps its table beside its code;
-//! [`GLOBAL`] is the table of the keys of every layer that lets them through.
+//! [`GLOBAL`] is the table of the keys of every layer.
 //! [`layer`] says which layer is on top: only it acts on a key. [`keymap`]
 //! gives the rows of a layer; a test writes `docs/keys.md` from them.
 //!
 //! ```text
-//! a frame ──► layer(app) ──► the code of that layer: take(its table) ──► its actions
-//!             └─ the layer lets the global keys through ──► take(GLOBAL)
+//! a frame ──► take(GLOBAL) ──► layer(app) ──► the code of that layer:
+//!                                             take(its table) ──► its actions
 //! ```
 //!
 //! Nothing else reads a key: `clippy.toml` refuses `key_pressed`,
 //! `consume_key` and `consume_shortcut` everywhere but here and in
 //! `plate-menu` (`RULE ui.keys`).
 
-use egui::{Context, Key, KeyboardShortcut, Modifiers};
+use egui::{Context, Key, KeyboardShortcut, ModifierNames, Modifiers};
 
 use crate::app::App;
 use crate::session::Screen;
@@ -82,24 +82,27 @@ pub fn take<A: Copy>(context: &Context, table: &[Binding<A>]) -> Vec<Taken<A>> {
     })
 }
 
-/// What a global key does. There is none now.
+/// What a global key does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Global {}
+pub enum Global {
+    /// Shows the keys of the layer on top, or hides them.
+    Help,
+}
 
-/// The keys of every layer that lets them through.
-pub const GLOBAL: &[Binding<Global>] = &[];
+/// The keys of every layer.
+pub const GLOBAL: &[Binding<Global>] = &[Binding {
+    keys: &[plain(Key::F1)],
+    action: Global::Help,
+    name: "keys.help",
+}];
 
-/// Acts on the global keys, when the layer on top lets them through.
-#[expect(
-    clippy::never_loop,
-    reason = "there is no global key yet; the first one makes the loop loop"
-)]
-pub fn global(app: &App, context: &Context) {
-    if !keymap(layer(app, context)).globals {
-        return;
-    }
+/// Acts on the global keys, before any layer reads the input of the frame.
+pub fn global(app: &mut App, context: &Context) {
+    let on_top = layer(app, context);
     for taken in take(context, GLOBAL) {
-        match taken.action {}
+        match taken.action {
+            Global::Help => crate::ui::help::toggle(app, on_top),
+        }
     }
 }
 
@@ -124,15 +127,40 @@ pub enum Layer {
     Menu,
     /// A text field that holds the keys.
     Text,
+    /// The plate of the keys, over everything.
+    Help,
+}
+
+impl Layer {
+    /// The key of the name of the layer in `locales/app.yml`: the heading of
+    /// its keys on the plate of the keys and in `docs/keys.md`.
+    pub fn title(self) -> &'static str {
+        match self {
+            Layer::List => "keys.layer.list",
+            Layer::Trash => "keys.layer.trash",
+            Layer::Editor => "keys.layer.editor",
+            Layer::Corners => "keys.layer.corners",
+            Layer::Palettes => "keys.layer.palettes",
+            Layer::Dragging => "keys.layer.dragging",
+            Layer::PaletteMenu => "keys.layer.palette_menu",
+            Layer::Menu => "keys.layer.menu",
+            Layer::Text => "keys.layer.text",
+            Layer::Help => "keys.layer.help",
+        }
+    }
 }
 
 /// The layer on top.
 ///
-/// A menu stands over a text field: the field of a menu takes the keys
-/// through the menu. The menu of the window of the palettes stands over
-/// both, so Escape closes it while its picker holds the keys.
+/// The plate of the keys stands over everything. A menu stands over a text
+/// field: the field of a menu takes the keys through the menu. The menu of
+/// the window of the palettes stands over both, so Escape closes it while
+/// its picker holds the keys.
 pub fn layer(app: &App, context: &Context) -> Layer {
     let text = context.egui_wants_keyboard_input();
+    if app.help.is_some() {
+        return Layer::Help;
+    }
     match app.screen {
         Screen::List if app.projects.menu_open() => Layer::Menu,
         Screen::List if text => Layer::Text,
@@ -170,15 +198,6 @@ pub struct Row {
     pub keys: Vec<KeyboardShortcut>,
     /// The key of the text that says what they do.
     pub name: &'static str,
-}
-
-/// The rows of a layer, and whether it lets the global keys through.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Keymap {
-    /// The rows, in the order they are taken.
-    pub rows: Vec<Row>,
-    /// The global keys act in this layer.
-    pub globals: bool,
 }
 
 /// The rows of a table.
@@ -235,20 +254,41 @@ fn over_menu(own: Vec<Row>) -> Vec<Row> {
     rows
 }
 
-/// The rows of `layer`.
-pub fn keymap(layer: Layer) -> Keymap {
-    let (rows, globals) = match layer {
-        Layer::List => (rows(crate::ui::projects::LIST_KEYS), true),
-        Layer::Trash => (rows(crate::ui::projects::TRASH_KEYS), true),
-        Layer::Editor => (rows(crate::app::FIELD_KEYS), true),
-        Layer::Corners => (Vec::new(), true),
-        Layer::Palettes => (rows(crate::ui::palette_window::KEYS), true),
-        Layer::Dragging => (Vec::new(), false),
-        Layer::PaletteMenu => (over_menu(rows(crate::ui::palette_window::MENU_KEYS)), false),
-        Layer::Menu => (menu_rows(), false),
-        Layer::Text => (Vec::new(), false),
-    };
-    Keymap { rows, globals }
+/// The rows of `layer`, without the global ones.
+pub fn keymap(layer: Layer) -> Vec<Row> {
+    match layer {
+        Layer::List => rows(crate::ui::projects::LIST_KEYS),
+        Layer::Trash => rows(crate::ui::projects::TRASH_KEYS),
+        Layer::Editor => rows(crate::app::FIELD_KEYS),
+        Layer::Corners | Layer::Dragging | Layer::Text => Vec::new(),
+        Layer::Palettes => rows(crate::ui::palette_window::KEYS),
+        Layer::PaletteMenu => over_menu(rows(crate::ui::palette_window::MENU_KEYS)),
+        Layer::Menu => menu_rows(),
+        Layer::Help => rows(crate::ui::help::KEYS),
+    }
+}
+
+/// The keys of a row as the plate of the keys and `docs/keys.md` write
+/// them: a run of more than `RUN` keys by its first and its last.
+pub fn written_keys(keys: &[KeyboardShortcut]) -> String {
+    match keys {
+        [first, .., last] if keys.len() > RUN => {
+            format!("{} \u{2026} {}", written(first), written(last))
+        }
+        _ => keys.iter().map(written).collect::<Vec<_>>().join(", "),
+    }
+}
+
+/// The most keys of a row written one by one.
+const RUN: usize = 4;
+
+/// A key as it is written, the way of a desktop that is not a mac.
+pub fn written(key: &KeyboardShortcut) -> String {
+    let held = ModifierNames::NAMES.format(&key.modifiers, false);
+    match held.is_empty() {
+        true => key.logical_key.name().to_string(),
+        false => format!("{held}+{}", key.logical_key.name()),
+    }
 }
 
 #[cfg(test)]

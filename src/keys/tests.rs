@@ -1,18 +1,15 @@
 //! The tables of the keys and `docs/keys.md`.
 
-use super::document::{document, written};
+use super::document::document;
 use super::*;
 
 /// The file the tables are written to.
 const DOCUMENT: &str = "docs/keys.md";
 
-/// The rows a layer acts on: its own, then the global ones it lets through.
+/// The rows a layer acts on: the global ones, then its own.
 fn acting(layer: Layer) -> Vec<Row> {
-    let keymap = keymap(layer);
-    let mut rows = keymap.rows;
-    if keymap.globals {
-        rows.extend(super::rows(GLOBAL));
-    }
+    let mut rows = super::rows(GLOBAL);
+    rows.extend(keymap(layer));
     rows
 }
 
@@ -91,4 +88,27 @@ fn the_document_is_written_from_the_tables() {
 fn a_key_is_written_with_its_modifiers() {
     assert_eq!(written(&command_shift(Key::Z)), "Ctrl+Shift+Z");
     assert_eq!(written(&plain(Key::Escape)), "Escape");
+}
+
+#[test]
+fn a_long_run_of_keys_is_written_by_its_ends() {
+    let digits = [
+        plain(Key::Num0),
+        plain(Key::Num1),
+        plain(Key::Num2),
+        plain(Key::Num3),
+        plain(Key::Num9),
+    ];
+    assert_eq!(written_keys(&digits), "0 \u{2026} 9");
+    assert_eq!(written_keys(&digits[..2]), "0, 1");
+}
+
+#[test]
+fn every_layer_has_a_title_in_both_languages() {
+    for layer in Layer::ALL {
+        for locale in ["en", "ru"] {
+            let text = rust_i18n::t!(layer.title(), locale = locale);
+            assert_ne!(text, layer.title(), "no {locale} title for {layer:?}");
+        }
+    }
 }
