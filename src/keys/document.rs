@@ -61,7 +61,8 @@ pub fn document() -> String {
          Not edited by hand. -->\n\n\
          The table of each layer stands beside its code. `src/keys.rs` says which \
          layer is on top; only that layer acts on a key. Every key is a second way \
-         to an action (`RULE ui.touch`).\n\n\
+         to an action (`RULE ui.touch`), but F1: the keys help only a keyboard, \
+         so a key is the one way to them (the `EXC` of `RULE ui.touch`).\n\n\
          ## Global keys\n\n\
          They act in every layer.\n\n",
     );

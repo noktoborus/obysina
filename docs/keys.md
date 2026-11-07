@@ -2,7 +2,7 @@
 
 <!-- Written from the tables by `UPDATE_KEYS=1 cargo test -p obusina keys`. Not edited by hand. -->
 
-The table of each layer stands beside its code. `src/keys.rs` says which layer is on top; only that layer acts on a key. Every key is a second way to an action (`RULE ui.touch`).
+The table of each layer stands beside its code. `src/keys.rs` says which layer is on top; only that layer acts on a key. Every key is a second way to an action (`RULE ui.touch`), but F1: the keys help only a keyboard, so a key is the one way to them (the `EXC` of `RULE ui.touch`).
 
 ## Global keys
 

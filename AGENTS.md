@@ -375,6 +375,8 @@ WHY  on android there is one button, no hover, no wheel and often no keyboard
 THEN a right click, a hover, a key or a wheel is a second way to an action,
      never the only one; two fingers zoom and move the field
 EX-  a second colour reachable only by the right button
+EXC  F1, the plate of the keys (`src/ui/help.rs`), by the user's word: it
+     shows the keys, which help only a keyboard, so a key is its one way
 
 RULE ui.layout : the field of beads fills the window; the tools and the
      palette are `obusina_panel::FloatingPanel`s
