@@ -57,7 +57,12 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 - A ruling to count the beads by: every few columns and rows the shadows
   are darker. The step and the offset from cell (0, 0) are set in the menu
   of the settings and kept in the pattern.
-- The colour of the paper is set in the menu of the settings and kept in
+- The menu of the settings: the grid, the turn of the canvas, the ruling,
+  the size of the sheet and the background colour, each a level of its own
+  whose change shows at once and can be put back; the palette settings,
+  the volume, the way back to the list. `Esc` or the way back of android
+  leaves a level.
+- The background colour is set in the menu of the settings and kept in
   the pattern. The shade and the shadows turn with it: darker on a light
   paper, lighter on a dark one.
 - The beads have volume: round, lighter in the middle. "Volume" of the
@@ -69,8 +74,8 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
   that does not fit the window turns too. Let go at an edge, it stands
   against it. The place of each panel is kept for the next start. The
   panels:
-  - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
-    the picker, the settings, the shadows, the picture, back to the list;
+  - **Tools**: undo, redo, the settings, the shadows, the picture, back to
+    the list;
   - **Beads**: the colours of the palette shown, each with the number of its
     place, and the empty place `0`. They stand as a line, which turns with
     the panel, or as a block, as the keys of a numpad; the tabs of the window
@@ -89,8 +94,8 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 - A press on a bead switches it: to the colour in hand, or to empty when it
   has that colour already. The second button does nothing. On a touch screen
   a tap is the first button.
-- The field turns by quarters, both ways: 90, 180, 270 and 360 degrees,
-  which is where it started. Only the showing turns, not the beads, so a
+- The field turns by quarters: none, 90, 180 or 270 degrees, chosen in the
+  menu of the settings. Only the showing turns, not the beads, so a
   turn is no step of undo. The turn is saved with the pattern, which opens
   turned as it was.
 - A drag moves the field, with any button or one finger. A pinch and the wheel

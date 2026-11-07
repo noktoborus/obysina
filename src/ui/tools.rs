@@ -3,11 +3,10 @@
 //! A locked pattern is only looked at: the panel holds the settings, the
 //! shadows, the underlay and the way back.
 
-use obusina_canvas::Turn;
 use obusina_panel::{FloatingPanel, Orientation, Placement};
 use rust_i18n::t;
 
-use crate::app::{App, Tool};
+use crate::app::App;
 use crate::ui::{button, icons};
 
 /// The name the place of the panel is kept by.
@@ -43,24 +42,16 @@ pub fn show(app: &mut App, context: &egui::Context) {
     }
 }
 
-/// The tools in one row, a group after another.
+/// The tools in one row, a group after another: undo and redo, the
+/// settings and the shadows, the underlay, the way back.
 fn row(app: &mut App, ui: &mut egui::Ui) {
-    let orientation = Orientation::Horizontal;
     history(app, ui);
-    gap(ui, orientation);
-    turns(app, ui);
-    gap(ui, orientation);
-    tools(app, ui);
-    gap(ui, orientation);
-    grid(app, ui);
-    gap(ui, orientation);
-    crate::ui::backdrop_menu::button(app, ui);
-    gap(ui, orientation);
-    back(app, ui);
+    gap(ui, Orientation::Horizontal);
+    viewer(app, ui, Orientation::Horizontal);
 }
 
 /// The tools in a column two buttons wide, like the swatches of the beads:
-/// a group of two on a line, the picture and the way back on the last one.
+/// a group of two on a line.
 ///
 /// The lines are one block, so the block stands in the middle across the
 /// panel.
@@ -69,21 +60,13 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
     ui.vertical(|ui| {
         ui.horizontal(|ui| history(app, ui));
         gap(ui, orientation);
-        ui.horizontal(|ui| turns(app, ui));
-        gap(ui, orientation);
-        ui.horizontal(|ui| tools(app, ui));
-        gap(ui, orientation);
-        ui.horizontal(|ui| grid(app, ui));
-        gap(ui, orientation);
-        ui.horizontal(|ui| {
-            crate::ui::backdrop_menu::button(app, ui);
-            back(app, ui);
-        });
+        viewer(app, ui, orientation);
     });
 }
 
-/// The tools of a locked pattern: the settings and the shadows, the
-/// underlay and the way back; in a column two buttons wide.
+/// The tools of a locked pattern, the last ones of the others: the settings
+/// and the shadows, the underlay and the way back; in a column two buttons
+/// wide.
 fn viewer(app: &mut App, ui: &mut egui::Ui, orientation: Orientation) {
     match orientation {
         Orientation::Horizontal => {
@@ -123,34 +106,6 @@ fn history(app: &mut App, ui: &mut egui::Ui) {
     }
     if button::icon(ui, icons::REDO, &t!("edit.redo"), app.history.can_redo()).clicked() {
         app.redo();
-    }
-}
-
-/// The quarter turns of the field, each way.
-fn turns(app: &mut App, ui: &mut egui::Ui) {
-    for (turn, icon, name) in [
-        (
-            Turn::CounterClockwise,
-            icons::TURN_LEFT,
-            t!("view.turn_left"),
-        ),
-        (Turn::Clockwise, icons::TURN_RIGHT, t!("view.turn_right")),
-    ] {
-        if button::icon(ui, icon, &name, true).clicked() {
-            app.turn(turn);
-        }
-    }
-}
-
-/// What a press on the field does.
-fn tools(app: &mut App, ui: &mut egui::Ui) {
-    for (tool, icon, name) in [
-        (Tool::Pencil, icons::PENCIL, t!("tool.pencil")),
-        (Tool::Pick, icons::PICK, t!("tool.pick")),
-    ] {
-        if button::toggle(ui, app.tool == tool, icon, &name).clicked() {
-            app.tool = tool;
-        }
     }
 }
 

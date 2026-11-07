@@ -161,6 +161,31 @@ impl Window {
         self.harness.run_steps(5);
     }
 
+    /// Turns the field to `degrees` by the menu of the settings, and closes
+    /// the menu.
+    fn turn_to(&mut self, degrees: u16) {
+        self.click(&t!("settings.open"));
+        self.click(&t!("turn.open"));
+        let name = match degrees {
+            0 => t!("turn.none").to_string(),
+            degrees => format!("{degrees}\u{b0}"),
+        };
+        self.click(&name);
+        self.close_menu();
+    }
+
+    /// Closes the menu open, by Escape out of each level.
+    fn close_menu(&mut self) {
+        for _ in 0..4 {
+            if !self.harness.state().menu.is_open() {
+                return;
+            }
+            self.harness.key_press(egui::Key::Escape);
+            self.harness.run();
+        }
+        assert!(!self.harness.state().menu.is_open(), "the menu closes");
+    }
+
     /// Clicks the widget named `name`.
     fn click(&mut self, name: &str) {
         self.harness.get_by_label(name).click();
@@ -305,6 +330,11 @@ fn a_change_of_grid_is_undone() {
     window.click(&t!("grid.kind"));
     window.click(&t!("grid.peyote"));
     assert_eq!(window.harness.state().pattern.grid(), Grid::Peyote);
+    assert!(
+        window.harness.state().menu.is_open(),
+        "the menu stays in the level"
+    );
+    window.close_menu();
 
     window.click(&t!("edit.undo"));
 
@@ -350,8 +380,6 @@ fn every_widget_has_a_name() {
         t!("field"),
         t!("edit.undo"),
         t!("edit.redo"),
-        t!("tool.pencil"),
-        t!("tool.pick"),
         t!("settings.open"),
         t!("projects.back"),
         t!("palette.empty"),
@@ -375,13 +403,13 @@ fn a_panel_has_a_grip_and_no_title() {
 #[test]
 fn a_panel_at_a_side_stands_in_a_column() {
     let mut window = window();
-    assert!(!window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
 
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
 
     window.drag(&t!("panel.tools"), pos2(100.0, 8.0));
-    assert!(!window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
 }
 
 #[test]
@@ -408,11 +436,11 @@ fn a_panel_turns_while_it_is_dragged() {
         window.harness.event(Event::PointerMoved(point));
         window.harness.step();
     }
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
 
     window.harness.event(button(target, false));
     window.harness.run();
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
     assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
 }
@@ -421,11 +449,11 @@ fn a_panel_turns_while_it_is_dragged() {
 fn a_panel_that_runs_out_of_the_window_turns() {
     let mut window = window();
 
-    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.7, 90.0));
+    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.85, 90.0));
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
-    assert!(grip.contains(pos2(SIZE.x * 0.7, 90.0)), "{grip:?}");
+    assert!(grip.contains(pos2(SIZE.x * 0.85, 90.0)), "{grip:?}");
 }
 
 #[test]
@@ -433,7 +461,7 @@ fn a_window_too_narrow_for_a_row_turns_the_tools() {
     let narrow = egui::vec2(400.0, 700.0);
     let window = window_in(tempfile::tempdir().expect("a scratch directory"), narrow);
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
 }
 
 #[test]
@@ -456,13 +484,13 @@ fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
 fn the_place_of_a_panel_is_kept_for_the_next_start() {
     let mut window = window();
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let Window { harness, directory } = window;
     drop(harness);
 
     let window = window_in(directory, SIZE);
 
-    assert!(window.stacked(&t!("edit.undo"), &t!("view.turn_left")));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     assert!(grip.min.x < SIZE.x / 4.0, "{grip:?}");
 }
@@ -711,8 +739,6 @@ fn every_button_of_the_panels_has_one_size() {
     for name in [
         t!("edit.undo"),
         t!("edit.redo"),
-        t!("tool.pencil"),
-        t!("tool.pick"),
         t!("settings.open"),
         t!("view.shadows"),
         t!("projects.back"),
@@ -858,19 +884,19 @@ fn the_buttons_of_a_row_stand_on_one_line() {
 }
 
 #[test]
-fn the_field_turns_both_ways_and_the_beads_stay() {
+fn the_field_turns_from_the_settings_and_the_beads_stay() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
     let pattern = window.harness.state().pattern.clone();
     let start = window.harness.state().view;
 
     for degrees in [90, 180, 270, 0] {
-        window.click(&t!("view.turn_right"));
+        window.turn_to(degrees);
         assert_eq!(window.harness.state().view.degrees(), degrees);
     }
     assert_eq!(window.harness.state().view, start);
 
-    window.click(&t!("view.turn_left"));
+    window.turn_to(270);
     let app = window.harness.state();
     assert_eq!(app.view.degrees(), 270);
     assert_eq!(app.pattern.turn(), 270);
@@ -884,7 +910,7 @@ fn the_field_turns_both_ways_and_the_beads_stay() {
 #[test]
 fn a_turned_pattern_opens_turned() {
     let mut window = window();
-    window.click(&t!("view.turn_right"));
+    window.turn_to(90);
     let again = reopened(&mut window);
 
     assert_eq!(again.pattern.turn(), 90);
@@ -894,7 +920,7 @@ fn a_turned_pattern_opens_turned() {
 #[test]
 fn a_press_on_a_turned_field_reaches_its_bead() {
     let mut window = window();
-    window.click(&t!("view.turn_right"));
+    window.turn_to(90);
     let cell = Cell { column: 3, row: 8 };
 
     window.press(cell, PointerButton::Primary);

@@ -22,12 +22,12 @@ edit.redo:
   en: "Redo"
   ru: "Повторить"
 
-view.turn_left:
-  en: "Turn the field counter clockwise"
-  ru: "Повернуть поле против часовой стрелки"
-view.turn_right:
-  en: "Turn the field clockwise"
-  ru: "Повернуть поле по часовой стрелке"
+turn.open:
+  en: "Turn of the canvas"
+  ru: "Поворот холста"
+turn.none:
+  en: "None"
+  ru: "Без поворота"
 view.shadows:
   en: "Shadows of the empty places"
   ru: "Тени пустых мест"
@@ -72,13 +72,6 @@ backdrop.cancel:
   en: "Put the corners back"
   ru: "Вернуть углы"
 
-tool.pencil:
-  en: "Pencil"
-  ru: "Карандаш"
-tool.pick:
-  en: "Pick a colour"
-  ru: "Взять цвет"
-
 menu.nothing_found:
   en: "Nothing found"
   ru: "Ничего не найдено"
@@ -92,12 +85,21 @@ settings.on:
 settings.off:
   en: "off"
   ru: "выкл"
+settings.to_list:
+  en: "Return to the list of patterns"
+  ru: "Вернуться к списку схем"
+settings.close:
+  en: "Close the settings"
+  ru: "Закрыть настройки"
 view.glow:
   en: "Volume"
   ru: "Объём"
 paper.open:
-  en: "Colour of the paper…"
-  ru: "Цвет фона…"
+  en: "Background colour"
+  ru: "Цвет фона"
+paper.revert:
+  en: "Put the old colour back"
+  ru: "Вернуть прежний цвет"
 paper.grey:
   en: "Grey"
   ru: "Серый"
@@ -128,8 +130,11 @@ grid.peyote:
   ru: "Мозаика"
 
 ruling.open:
-  en: "Ruling…"
-  ru: "Разметка…"
+  en: "Ruling"
+  ru: "Разметка"
+ruling.revert:
+  en: "Put the old ruling back"
+  ru: "Вернуть прежнюю разметку"
 ruling.step:
   en: "Step"
   ru: "Шаг"
@@ -148,12 +153,6 @@ ruling.offset_x:
 ruling.offset_y:
   en: "Row of a line"
   ru: "Ряд линии"
-ruling.accept:
-  en: "Accept"
-  ru: "Принять"
-ruling.cancel:
-  en: "Cancel"
-  ru: "Отмена"
 
 palette.bead:
   en: "Bead %{key}, %{rgb}, %{count} in the pattern"
@@ -446,8 +445,8 @@ keys.trash_open:
   en: "The menu of the pattern: restore or delete for good"
   ru: "Меню схемы: вернуть или удалить навсегда"
 keys.menu.close:
-  en: "Clear the query; with none, close the menu"
-  ru: "Очистить запрос; если его нет — закрыть меню"
+  en: "Clear the query; with none, step out of the level; at the top, close the menu"
+  ru: "Очистить запрос; если его нет — выйти из уровня; наверху — закрыть меню"
 keys.menu.down:
   en: "The next entry"
   ru: "Следующий пункт"
@@ -527,8 +526,11 @@ keys.layer.help:
   en: "The keys"
   ru: "Подсказка клавиш"
 sheet.open:
-  en: "Size of the sheet…"
-  ru: "Размер поля…"
+  en: "Size of the sheet"
+  ru: "Размер поля"
+sheet.revert:
+  en: "Put the old size back"
+  ru: "Вернуть прежний размер"
 sheet.size:
   en: "Columns × rows"
   ru: "Колонки × ряды"

@@ -40,7 +40,7 @@ on the field, columns 1 2 3       the file
    - Why: the empty space of an endless field has no end to fill to.
 
 7. **The grid is chosen in a `PlateMenu`** (`RULE ui.menu`): the two kinds,
-   then "Ruling…" (decision 21). While it is open nothing else of the
+   a level of the menu of the settings (decision 27). While it is open nothing else of the
    window answers (`src/ui/blocker.rs`).
 8. **The ground is in shade outside the work area** (decision 13). The
    paper of the work area is lighter. An empty cell has no outline; near the
@@ -94,8 +94,8 @@ on the field, columns 1 2 3       the file
     - Replaces the field of the sheet and twice the active area, and the
       field with no end of decision 2.
 14. **The size of the sheet is set in the menu of the settings,** as the
-    ruling is: the entry shows it, `columns×rows`, and opens two numbers on
-    top of accept and cancel. They start at the size of the first screen,
+    ruling is: the entry shows it, `columns×rows`, and its level shows two
+    numbers on top (decision 27). They start at the size of the first screen,
     show on the field at once and change the sheet around
     its middle (`Bounds::resized`), up to `MAX_SIDE`. A bead put past the
     sheet grows it, and the numbers with it (decision 13). A number is dragged or typed, so a finger reaches
@@ -103,8 +103,8 @@ on the field, columns 1 2 3       the file
     takes no smaller size, and moves as little as it takes to hold the beads
     (`Bounds::resized_over`).
     - Was: any size from 1, the beads left past a smaller sheet.
-    - The sheet is part of the pattern (decision 17): a size accepted is a
-      step of undo; one not accepted goes back.
+    - The sheet is part of the pattern (decision 17): a size changed is a
+      step of undo when its level is left.
     - Was: two fields in the tools, where changes one after another were
       one step, since a number dragged changed it in every frame.
 15. **There are no outlines of empty places.** Decision 20 replaces them.
@@ -173,11 +173,9 @@ on the field, columns 1 2 3       the file
     - The ruling is part of the pattern and its file (`ruling`), so a
       pattern opens with the lines it was counted by. A change is a step of
       undo. Format 1 changes itself (`EXC` of `RULE pattern.version`).
-    - "Ruling…" of the menu of the settings opens a menu with the four
-      numbers on top, then "Accept" and "Cancel", as the picker of a colour
-      (`src/ui/settings_menu.rs`). A number shows on the field at once; only
-      "Accept" keeps it. Cancel, Escape or a press beside the menu put it
-      back.
+    - "Ruling" of the menu of the settings is a level with the four
+      numbers on top (decision 27). A number shows on the field at once and
+      stays.
     - Why from cell (0, 0): it does not move. The middle of the sheet moves
       when a bead grows or shrinks it, and the lines would jump while
       drawing; the middle of the screen moves with the field.
@@ -198,10 +196,9 @@ on the field, columns 1 2 3       the file
       a new size of the window, which put it in the middle.
     - Why not the middle: the field stays where the person put it.
 24. **The paper is a colour of the pattern,** kept in its file (`paper`);
-    a new pattern has `DEFAULT_PAPER`. "Colour of the paper…" of the menu
-    of the settings opens a picker and four papers on top, then "Accept"
-    and "Cancel", as the ruling does. A colour shows on the field at once;
-    "Accept" keeps it as a step of undo.
+    a new pattern has `DEFAULT_PAPER`. "Background colour" of the menu
+    of the settings is a level with a picker and four papers on top
+    (decision 27). A colour shows on the field at once and stays.
     - The shade, the shadows and the hatch come from the paper
       (`Tones::of` of `obusina-canvas`): darker than a paper lighter than
       `LIGHT`, lighter than a darker one, so they are seen on both.
@@ -217,5 +214,31 @@ on the field, columns 1 2 3       the file
       around the bead were weighed and left
       (`experiments/mockups/src/mock/glow.rs`).
 26. **Each entry of the menu of the settings shows what it is now** right
-    of its label: the kind of grid, the step of the ruling, a swatch of the
-    paper, on or off (`plate_menu::Detail`).
+    of its label: the kind of grid, the turn, the step of the ruling, the
+    size of the sheet, a swatch of the paper, on or off
+    (`plate_menu::Detail`).
+27. **What changes the pattern is a level of the menu of the settings**
+    (`src/ui/settings_menu.rs`):
+
+    ```text
+    grid, turn ──► a value chosen is done at once; the menu stays in the level
+    ruling, sheet, background ──► the editor on top (MenuItem::notice);
+        a change shows at once and stays
+        ‹, Esc, the way back of android ──► the top, on the entry
+        "Put the old … back" ──► the value the level was entered with;
+                                 weak until the value changed
+    a level left, or the menu closed in it ──► one step of undo, none when
+                                                the value is the one it had
+    ```
+
+    The top of the menu ends with "Palette settings", which opens the
+    window of the palettes; "Volume"; "Return to the list of patterns";
+    "Close the settings". A locked pattern has the last three alone.
+    - Why the change stays and is put back by an entry, not accepted by
+      one: the value is seen on the field while it changes; one more entry
+      to keep it was a step nobody needs, and undo takes it back anyway.
+    - Was: a menu of its own for each, with "Accept" and "Cancel"; "Cancel"
+      closed the whole menu.
+    - The turn left the tools for its level: two buttons of the panel for
+      a thing set once. The pencil and the picker went with them: a press
+      paints, and the colour in hand is taken from the panel of beads.

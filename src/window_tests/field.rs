@@ -38,10 +38,10 @@ fn the_button_hides_the_shadows_until_the_next_start() {
     assert!(window.harness.state().settings.shadows());
 }
 
-/// The numbers change the ruling at once; "Accept" keeps it as one step of
-/// undo.
+/// The numbers change the ruling at once and it stays; leaving the level
+/// keeps it as one step of undo, and the menu stays, on its top.
 #[test]
-fn an_accepted_ruling_is_one_step() {
+fn a_changed_ruling_is_one_step_when_its_level_is_left() {
     let mut window = window();
     open_ruling(&mut window);
 
@@ -52,46 +52,65 @@ fn an_accepted_ruling_is_one_step() {
         offset: [0, -2],
     };
     assert_eq!(window.harness.state().pattern.ruling(), shown);
-    window.click(&t!("ruling.accept"));
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
 
-    assert_eq!(window.harness.state().pattern.ruling(), shown);
+    let app = window.harness.state();
+    assert!(app.menu.is_open(), "Escape left the level only");
+    assert!(app.menu.level().is_empty());
+    assert_eq!(app.pattern.ruling(), shown);
+    window.close_menu();
     window.click(&t!("edit.undo"));
     assert_eq!(window.harness.state().pattern.ruling(), Ruling::default());
     assert!(!window.harness.state().history.can_undo(), "one step");
 }
 
-/// "Cancel", Escape and a press beside the menu put the ruling back.
+/// A press beside the menu keeps the ruling of the level stood in.
 #[test]
-fn a_ruling_not_accepted_goes_back() {
-    for leave in ["cancel", "escape", "beside"] {
-        let mut window = window();
-        open_ruling(&mut window);
-        type_number(&mut window, &t!("ruling.step_y"), "3");
-        assert_eq!(window.harness.state().pattern.ruling().step, [5, 3]);
+fn a_ruling_stays_when_the_menu_closes_in_its_level() {
+    let mut window = window();
+    open_ruling(&mut window);
+    type_number(&mut window, &t!("ruling.step_y"), "3");
 
-        match leave {
-            "cancel" => window.click(&t!("ruling.cancel")),
-            "escape" => {
-                window.harness.key_press(egui::Key::Escape);
-                window.harness.run();
-            }
-            _ => {
-                let corner = egui::pos2(SIZE.x - 5.0, SIZE.y - 5.0);
-                super::palette::press_at(&mut window, corner);
-            }
-        }
+    let corner = egui::pos2(SIZE.x - 5.0, SIZE.y - 5.0);
+    super::palette::press_at(&mut window, corner);
 
-        let app = window.harness.state();
-        assert!(!app.menu.is_open(), "{leave}");
-        assert_eq!(app.pattern.ruling(), Ruling::default(), "{leave}");
-        assert!(!app.history.can_undo(), "{leave}");
-    }
+    let app = window.harness.state();
+    assert!(!app.menu.is_open());
+    assert_eq!(app.pattern.ruling().step, [5, 3]);
+    assert!(app.history.can_undo(), "one step");
 }
 
-/// A swatch under the picker changes the paper at once; "Accept" keeps it
-/// as one step of undo, and the paper is written in the file.
+/// "Put the old ruling back" is offered once the ruling changed; it puts
+/// back the one the level was entered with, and the menu stays in the
+/// level. Nothing is kept then.
 #[test]
-fn an_accepted_paper_is_one_step() {
+fn the_old_ruling_is_put_back() {
+    let mut window = window();
+    open_ruling(&mut window);
+    let revert = t!("ruling.revert").to_string();
+    let disabled = |window: &Window| {
+        use egui_kittest::kittest::NodeT;
+        let node = window.harness.get_by_label(&revert);
+        node.accesskit_node().is_disabled()
+    };
+    assert!(disabled(&window), "nothing to put back");
+
+    type_number(&mut window, &t!("ruling.step_y"), "3");
+    assert!(!disabled(&window), "offered once it changed");
+    window.click(&revert);
+
+    let app = window.harness.state();
+    assert_eq!(app.pattern.ruling(), Ruling::default());
+    assert_eq!(app.menu.level(), ["ruling"], "the menu stays in the level");
+    window.close_menu();
+    assert!(!window.harness.state().history.can_undo(), "no step");
+}
+
+/// A swatch under the picker changes the background at once; the way back
+/// out of its level keeps it as one step of undo.
+#[test]
+fn a_changed_background_is_one_step() {
     let mut window = window();
     window.click(&t!("settings.open"));
     window.click(&t!("paper.open"));
@@ -99,7 +118,7 @@ fn an_accepted_paper_is_one_step() {
     window.click(&t!("paper.black"));
     let black = obusina_pattern::Rgb([0x1e, 0x1e, 0x1e]);
     assert_eq!(window.harness.state().pattern.paper(), black);
-    window.click(&t!("ruling.accept"));
+    window.close_menu();
 
     assert_eq!(window.harness.state().pattern.paper(), black);
     window.click(&t!("edit.undo"));
@@ -108,18 +127,19 @@ fn an_accepted_paper_is_one_step() {
     assert!(!app.history.can_undo(), "one step");
 }
 
-/// "Cancel" puts the paper back.
+/// "Put the old colour back" puts back the background the level was
+/// entered with.
 #[test]
-fn a_paper_not_accepted_goes_back() {
+fn the_old_background_is_put_back() {
     let mut window = window();
     window.click(&t!("settings.open"));
     window.click(&t!("paper.open"));
     window.click(&t!("paper.linen"));
 
-    window.click(&t!("ruling.cancel"));
+    window.click(&t!("paper.revert"));
+    window.close_menu();
 
     let app = window.harness.state();
-    assert!(!app.menu.is_open());
     assert_eq!(app.pattern.paper(), obusina_pattern::DEFAULT_PAPER);
     assert!(!app.history.can_undo());
 }
@@ -140,4 +160,33 @@ fn the_glow_is_kept_until_the_next_start() {
 
     let window = window_in(directory, SIZE);
     assert!(!window.harness.state().settings.glow());
+}
+
+/// "Palette settings" closes the settings and opens the window of the
+/// palettes; "Return to the list" goes back to the list.
+#[test]
+fn the_settings_lead_to_the_palettes_and_to_the_list() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("palette.settings"));
+    let app = window.harness.state();
+    assert!(!app.menu.is_open());
+    assert!(app.palette_window.open);
+
+    let mut window = super::window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("settings.to_list"));
+    assert_eq!(window.harness.state().screen, crate::session::Screen::List);
+}
+
+/// "Close the settings" closes them, and nothing changes.
+#[test]
+fn the_settings_close_by_their_entry() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("settings.close"));
+
+    let app = window.harness.state();
+    assert!(!app.menu.is_open());
+    assert!(!app.history.can_undo());
 }

@@ -20,6 +20,7 @@ The list is shown, no menu is open, no field holds the keys. A letter typed sear
 
 | Key | Action |
 | --- | --- |
+| Escape | End the choice |
 | Ctrl+F | Search by name |
 | Right, Left, Down, Up | Walk the cards |
 | Enter | Open the card: the pattern, a new one, or the import |
@@ -106,7 +107,7 @@ Any other menu: the settings, a colour, the picture, a card of the list. The key
 
 | Key | Action |
 | --- | --- |
-| Escape | Clear the query; with none, close the menu |
+| Escape | Clear the query; with none, step out of the level; at the top, close the menu |
 | Down | The next entry |
 | Up | The entry before |
 | Right | Into the entry |

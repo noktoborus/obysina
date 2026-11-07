@@ -417,3 +417,22 @@ fn cards_of_patterns_of_other_sizes_all_get_pictures() {
 
     assert_eq!(window.harness.state().projects.thumbs.drawn(), 3);
 }
+
+/// Escape ends the choice of patterns, as the way back of android does,
+/// and the list stays.
+#[test]
+fn escape_ends_the_choice() {
+    let mut window = list();
+    window.click(&t!("projects.new"));
+    window.click(&t!("projects.back"));
+    let id = window.harness.state().projects.entries[0].pattern.id();
+    window.harness.state_mut().projects.chosen = Some([id].into());
+    window.harness.run();
+
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
+
+    let app = window.harness.state();
+    assert_eq!(app.projects.chosen, None);
+    assert_eq!(app.screen, Screen::List);
+}

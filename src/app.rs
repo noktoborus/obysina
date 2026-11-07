@@ -107,16 +107,6 @@ const DIGITS: [KeyboardShortcut; 10] = [
     plain(Key::Num9),
 ];
 
-/// What a press on the field does.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Tool {
-    /// Switches the bead pressed on: to the colour, or to empty when it has
-    /// the colour already.
-    Pencil,
-    /// Takes the colour of the bead under the pointer.
-    Pick,
-}
-
 /// The state of the window.
 pub struct App {
     /// Which screen is shown: the list or the editor.
@@ -136,8 +126,6 @@ pub struct App {
     pub(crate) pattern: Pattern,
     /// How the field is moved and zoomed.
     pub(crate) view: View,
-    /// What a press does.
-    pub(crate) tool: Tool,
     /// The colour in hand; `None` is an empty place.
     pub(crate) colour: Option<ColourId>,
     /// The steps to undo and redo.
@@ -218,7 +206,6 @@ impl App {
             view: View::default(),
             colour: first_colour(&pattern),
             pattern,
-            tool: Tool::Pencil,
             history: History::default(),
             message: None,
             menu: plate_menu::PlateMenu::new().with_id("settings-menu"),
@@ -306,12 +293,15 @@ impl App {
         }
     }
 
-    /// Turns the field a quarter; the beads stay where they are.
+    /// Turns the field to `degrees` clockwise, by quarters, keeping what is
+    /// in its middle where it stands; the beads stay where they are.
     ///
     /// The turn is kept in the pattern for its file, past the history: it
     /// moves no bead (the `EXC` of `RULE ui.undo`).
-    pub(crate) fn turn(&mut self, turn: obusina_canvas::Turn) {
-        self.view.turn(turn);
+    pub(crate) fn turn_to(&mut self, degrees: u16) {
+        while self.view.degrees() != degrees % 360 {
+            self.view.turn(obusina_canvas::Turn::Clockwise);
+        }
         if let Err(error) = self.pattern.set_turn(self.view.degrees()) {
             log::error!("the view gave a turn that is not a quarter: {error}");
         }
@@ -327,22 +317,17 @@ impl App {
         self.history.redo(&mut self.pattern);
     }
 
-    /// Does what the tool does to a bead pressed on. The second button does
-    /// nothing.
+    /// Switches the bead pressed on: to the colour in hand, or to empty when
+    /// it has that colour already. The second button does nothing.
     fn press(&mut self, cell: Cell, press: Press) {
         if press != Press::Primary {
             return;
         }
-        match self.tool {
-            Tool::Pencil => {
-                let switched = match self.pattern.get(cell) {
-                    present if present == self.colour => None,
-                    _ => self.colour,
-                };
-                self.history.paint(&mut self.pattern, &[cell], switched);
-            }
-            Tool::Pick => self.colour = self.pattern.get(cell),
-        }
+        let switched = match self.pattern.get(cell) {
+            present if present == self.colour => None,
+            _ => self.colour,
+        };
+        self.history.paint(&mut self.pattern, &[cell], switched);
     }
 
     /// The keys of the field, while it is the layer on top: `FIELD_KEYS`,
@@ -447,7 +432,9 @@ impl eframe::App for App {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
         self.take_done(ui.ctx());
         #[cfg(target_os = "android")]
-        crate::activity::take_back(crate::keys::layer(self, ui.ctx()) != Layer::List);
+        crate::activity::take_back(
+            crate::keys::layer(self, ui.ctx()) != Layer::List || self.projects.chosen.is_some(),
+        );
         crate::keys::global(self, ui.ctx());
         crate::ui::help::keys(self, ui.ctx());
         if self.screen == crate::session::Screen::List {

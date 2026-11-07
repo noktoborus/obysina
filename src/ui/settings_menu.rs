@@ -1,31 +1,36 @@
-//! The menu of the settings, a `PlateMenu` in the middle of the window: the
-//! kind of grid, the ruling and the paper of the pattern, and the glow of
-//! the beads. Each entry shows what it is now right of its label.
+//! The menu of the settings, a `PlateMenu` in the middle of the window. Each
+//! entry shows what it is now right of its label; what changes the pattern
+//! is a level of its own.
 //!
 //! ```text
-//! settings ──► grid <the kind> ›──► loom | peyote ──► the kind, a step of undo
-//!              ruling… <step>  ──► the four numbers on top, then
-//!                                    │──accept──► the ruling stays, a step of undo
-//!                                    └──cancel──► the ruling goes back
-//!              sheet… <w×h>    ──► the columns and the rows on top, then
-//!                                    │──accept──► the size stays, a step of undo
-//!                                    └──cancel──► the size goes back
-//!              paper… <swatch> ──► the picker and the swatches on top, then
-//!                                    │──accept──► the paper stays, a step of undo
-//!                                    └──cancel──► the paper goes back
-//!              glow <on | off> ──► on or off, a setting of the program;
-//!                                  the menu opens again on it
-//! a locked pattern: glow alone
-//! closed with no entry while a ruling, a size or a paper is changed ──► it goes back
+//! settings ──► grid <the kind>    › ──► ‹ grid │ loom ✔ │ peyote
+//!              turn <0°>          › ──► ‹ turn │ 0° ✔ │ 90° │ 180° │ 270°
+//!                  a choice: done at once, the menu stays in the level
+//!              ruling <step>      › ──► the four numbers on top
+//!              sheet <w×h>        › ──► the columns and the rows on top
+//!              background <▇>     › ──► the picker and the swatches on top
+//!                  a change shows on the field at once and stays;
+//!                  │ ‹, Esc, the way back of android ──► the top, on the entry
+//!                  └ put the old one back ──► the value the level was entered
+//!                                             with; only once it changed
+//!              palettes           ──► the window of the palettes
+//!              glow <on | off>    ──► on or off, a setting of the program
+//!              back to the list   ──► the pattern saved, the list
+//!              close the settings
+//! a locked pattern: glow, back to the list, close
+//! a ruling, a size or a background left or closed over ──► one step of undo,
+//!                                                          none when unchanged
 //! ```
 //!
-//! A number of the ruling or of the size and a colour of the paper show on
-//! the field at once.
+//! A level that edits a value shows its editor as the notice of the level
+//! (`MenuItem::notice`). The window follows the level the menu stands in
+//! (`PlateMenu::level`): it takes the value when the level is entered, and
+//! keeps the change as a step when the level is left or the menu closes.
 
 use std::sync::{Arc, Mutex};
 
 use egui::Color32;
-use obusina_pattern::{DEFAULT_PAPER, Grid, Rgb, Ruling};
+use obusina_pattern::{Bounds, DEFAULT_PAPER, Grid, Rgb, Ruling};
 use plate_menu::{Detail, MenuItem, Notice};
 use rust_i18n::t;
 
@@ -36,6 +41,8 @@ use crate::ui::access::Named;
 pub const MAX_RULING_STEP: u32 = 100;
 /// The farthest a line of the ruling is set from cell (0, 0).
 pub const MAX_RULING_OFFSET: i32 = 1000;
+/// The turns of the field the menu offers, in degrees clockwise.
+pub const TURNS: [u16; 4] = [0, 90, 180, 270];
 /// The papers offered under the picker: the one of a new pattern, white,
 /// linen and black, each with the key of its name.
 const PAPERS: [(Rgb, &str); 4] = [
@@ -49,75 +56,147 @@ const SWATCH: egui::Vec2 = egui::vec2(44.0, 30.0);
 /// The width of the swatch of the paper right of its entry.
 const DETAIL_SWATCH: f32 = 40.0;
 
-/// What the menu changes while it is open, put back when it is not
-/// accepted.
-pub enum Editing {
-    /// The ruling: the one the menu opened on, and the one the numbers of the
-    /// notice change.
-    Ruling {
-        before: Ruling,
-        editing: Arc<Mutex<Ruling>>,
-    },
-    /// The size of the sheet (`src/ui/sheet.rs`).
-    Sheet(crate::ui::sheet::Sizing),
-    /// The paper: the one the menu opened on, and the one the picker
-    /// changes.
-    Paper {
-        before: Rgb,
-        editing: Arc<Mutex<Color32>>,
-    },
+/// The levels that edit a value of the pattern.
+const RULING: &str = "ruling";
+const SHEET: &str = "sheet";
+const PAPER: &str = "paper";
+/// The entry of each of them that puts the old value back.
+const REVERT: &str = "revert";
+
+/// The editors of the levels, made when the menu opens, and the value a
+/// level was entered with while the menu stands in it.
+pub struct Editing {
+    /// The ruling the numbers change.
+    ruling: Arc<Mutex<Ruling>>,
+    /// The size of the sheet (`src/ui/sheet.rs`); none with no sheet.
+    sheet: Option<crate::ui::sheet::Sizing>,
+    /// The paper the picker changes.
+    paper: Arc<Mutex<Color32>>,
+    /// The level stood in and the value it was entered with.
+    entered: Option<Entered>,
+    /// Whether the entry that puts the value back was offered at the last
+    /// filling of the menu.
+    revert_offered: bool,
+}
+
+/// The value a level was entered with.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Entered {
+    Ruling(Ruling),
+    Sheet(Bounds),
+    Paper(Rgb),
+}
+
+impl Entered {
+    /// The level of the value.
+    fn level(&self) -> &'static str {
+        match self {
+            Entered::Ruling(_) => RULING,
+            Entered::Sheet(_) => SHEET,
+            Entered::Paper(_) => PAPER,
+        }
+    }
 }
 
 /// Opens the menu, no entry selected (`RULE ui.menu`).
 pub fn open(app: &mut App) {
-    open_on(app, None);
-}
-
-/// Opens the menu, on the entry `id` when one is given: the entry just
-/// chosen, when the menu opens again to show what it changed.
-fn open_on(app: &mut App, id: Option<&str>) {
-    let glow = match app.settings.glow() {
-        true => t!("settings.on"),
-        false => t!("settings.off"),
-    };
-    let mut items = match app.pattern.locked() {
-        true => Vec::new(),
-        false => pattern_items(app),
-    };
-    items.push(MenuItem::new("glow", t!("view.glow")).detail(glow));
-    let opened = match id {
-        Some(id) => app.menu.open_at(items, id),
-        None => app.menu.open(items),
-    };
-    if let Err(error) = opened {
+    app.settings_edit = Some(editors(app));
+    let items = items(app);
+    if let Err(error) = app.menu.open(items) {
         log::error!("the menu of the settings does not open: {error}");
     }
 }
 
+/// The editors of the levels, over the values the pattern has now.
+fn editors(app: &App) -> Editing {
+    Editing {
+        ruling: Arc::new(Mutex::new(app.pattern.ruling())),
+        sheet: app
+            .pattern
+            .sheet()
+            .map(|sheet| crate::ui::sheet::Sizing::new(sheet, app.pattern.bounds())),
+        paper: Arc::new(Mutex::new(colour(app.pattern.paper()))),
+        entered: None,
+        revert_offered: false,
+    }
+}
+
+/// The entries of the menu, as the pattern and the levels are now.
+fn items(app: &App) -> Vec<MenuItem> {
+    let glow = match app.settings.glow() {
+        true => t!("settings.on"),
+        false => t!("settings.off"),
+    };
+    let mut items = match (app.pattern.locked(), &app.settings_edit) {
+        (false, Some(editing)) => pattern_items(app, editing),
+        _ => Vec::new(),
+    };
+    items.extend([
+        MenuItem::new("glow", t!("view.glow")).detail(glow),
+        MenuItem::separator(),
+        MenuItem::new("to-list", t!("settings.to_list")),
+        MenuItem::new("close", t!("settings.close")),
+    ]);
+    items
+}
+
 /// The entries that change the pattern: none for a locked one.
-fn pattern_items(app: &App) -> Vec<MenuItem> {
+fn pattern_items(app: &App, editing: &Editing) -> Vec<MenuItem> {
     let grid = app.pattern.grid();
     let kinds = Grid::ALL
         .iter()
-        .map(|kind| {
-            let mark = if *kind == grid { "\u{2714}" } else { "" };
-            MenuItem::new(kind_id(*kind), name(*kind)).detail(mark)
+        .map(|kind| MenuItem::new(kind_id(*kind), name(*kind)).detail(mark(*kind == grid)))
+        .collect();
+    let turn = app.pattern.turn();
+    let turns = TURNS
+        .iter()
+        .map(|degrees| {
+            MenuItem::new(turn_id(*degrees), turn_name(*degrees)).detail(mark(*degrees == turn))
         })
         .collect();
+    let revert = editing.changed(app);
     let [columns, rows] = app.pattern.ruling().step;
     let mut items = vec![
         MenuItem::new("grid", t!("grid.kind"))
             .detail(name(grid))
             .opens_at(kind_id(grid))
             .children(kinds),
-        MenuItem::new("ruling", t!("ruling.open")).detail(format!("{columns}\u{d7}{rows}")),
+        MenuItem::new("turn", t!("turn.open"))
+            .detail(turn_name(turn))
+            .opens_at(turn_id(turn))
+            .children(turns),
+        MenuItem::new(RULING, t!("ruling.open"))
+            .detail(format!("{columns}\u{d7}{rows}"))
+            .notice(numbers(Arc::clone(&editing.ruling)))
+            .children(revert_entry(revert, t!("ruling.revert").to_string())),
     ];
-    if let Some(sheet) = app.pattern.sheet() {
-        items
-            .push(MenuItem::new("sheet", t!("sheet.open")).detail(crate::ui::sheet::detail(sheet)));
+    if let (Some(sheet), Some(sizing)) = (app.pattern.sheet(), &editing.sheet) {
+        items.push(
+            MenuItem::new(SHEET, t!("sheet.open"))
+                .detail(crate::ui::sheet::detail(sheet))
+                .notice(sizing.numbers())
+                .children(revert_entry(revert, t!("sheet.revert").to_string())),
+        );
     }
-    items.push(MenuItem::new("paper", t!("paper.open")).detail(swatch(app.pattern.paper())));
+    items.push(
+        MenuItem::new(PAPER, t!("paper.open"))
+            .detail(swatch(app.pattern.paper()))
+            .notice(picker(Arc::clone(&editing.paper)))
+            .children(revert_entry(revert, t!("paper.revert").to_string())),
+    );
+    items.push(MenuItem::new("palettes", t!("palette.settings")));
     items
+}
+
+/// The entry of a level that puts its value back: drawn weak until the value
+/// changed. A level shows it even then, so it is a level.
+fn revert_entry(changed: bool, label: String) -> Vec<MenuItem> {
+    vec![MenuItem::new(REVERT, label).enabled(changed)]
+}
+
+/// The mark of the value in use, right of its entry.
+fn mark(used: bool) -> &'static str {
+    if used { "\u{2714}" } else { "" }
 }
 
 /// The swatch of the paper right of its entry.
@@ -133,54 +212,15 @@ fn swatch(paper: Rgb) -> Detail {
     })
 }
 
-/// Opens the menu of the ruling: its numbers on top, then accept and cancel.
-fn open_ruling(app: &mut App) {
-    if !open_accept(app) {
-        return;
-    }
-    let before = app.pattern.ruling();
-    let editing = Arc::new(Mutex::new(before));
-    app.menu.notice(numbers(Arc::clone(&editing)));
-    app.settings_edit = Some(Editing::Ruling { before, editing });
-}
-
-/// Opens the menu of the size of the sheet: its two numbers on top, then
-/// accept and cancel.
-fn open_sheet(app: &mut App) {
-    let Some(before) = app.pattern.sheet() else {
-        return;
-    };
-    if !open_accept(app) {
-        return;
-    }
-    let sizing = crate::ui::sheet::Sizing::new(before, app.pattern.bounds());
-    app.menu.notice(sizing.numbers());
-    app.settings_edit = Some(Editing::Sheet(sizing));
-}
-
-/// Opens the menu of the paper: the picker and the swatches on top, then
-/// accept and cancel.
-fn open_paper(app: &mut App) {
-    if !open_accept(app) {
-        return;
-    }
-    let before = app.pattern.paper();
-    let editing = Arc::new(Mutex::new(colour(before)));
-    app.menu.notice(picker(Arc::clone(&editing)));
-    app.settings_edit = Some(Editing::Paper { before, editing });
-}
-
-/// Opens the menu on accept and cancel; false when it does not open.
-fn open_accept(app: &mut App) -> bool {
-    let items = vec![
-        MenuItem::new("accept", t!("ruling.accept")),
-        MenuItem::new("cancel", t!("ruling.cancel")),
-    ];
-    match app.menu.open(items) {
-        Ok(()) => true,
-        Err(error) => {
-            log::error!("the menu of accept and cancel does not open: {error}");
-            false
+impl Editing {
+    /// Whether the value of the level stood in differs from the one it was
+    /// entered with.
+    fn changed(&self, app: &App) -> bool {
+        match self.entered {
+            Some(Entered::Ruling(before)) => app.pattern.ruling() != before,
+            Some(Entered::Sheet(before)) => app.pattern.sheet() != Some(before),
+            Some(Entered::Paper(before)) => app.pattern.paper() != before,
+            None => false,
         }
     }
 }
@@ -220,7 +260,6 @@ fn numbers(editing: Arc<Mutex<Ruling>>) -> Notice {
 fn picker(editing: Arc<Mutex<Color32>>) -> Notice {
     Notice::widget(move |ui| {
         let mut paper = editing.lock().expect("the paper is never poisoned");
-        ui.label(egui::RichText::new(t!("paper.open")).strong());
         ui.spacing_mut().slider_width = ui.available_width();
         egui::color_picker::color_picker_color32(ui, &mut paper, egui::color_picker::Alpha::Opaque);
         ui.horizontal(|ui| {
@@ -240,65 +279,211 @@ fn picker(editing: Arc<Mutex<Color32>>) -> Notice {
 }
 
 /// Draws the menu while it is open, and does what is chosen. While nothing
-/// else of the window answers (`src/ui/blocker.rs`), the ruling and the
-/// paper show on the field as they change.
+/// else of the window answers (`src/ui/blocker.rs`), the ruling, the size
+/// and the paper show on the field as they change.
 pub fn show(app: &mut App, context: &egui::Context) {
     app.menu.nothing_found(t!("menu.nothing_found"));
     if app.menu.is_open() {
         crate::ui::blocker::under(context, "settings-menu", &app.menu);
     }
     let chosen = app.menu.show(context);
-    match &app.settings_edit {
-        Some(Editing::Ruling { editing, .. }) => {
-            let shown = *editing.lock().expect("the ruling is never poisoned");
-            app.pattern.set_ruling(shown);
-        }
-        Some(Editing::Sheet(sizing)) => {
-            let shown = sizing.sheet();
-            app.pattern.set_sheet(Some(shown));
-        }
-        Some(Editing::Paper { editing, .. }) => {
-            let shown = *editing.lock().expect("the paper is never poisoned");
-            app.pattern.set_paper(rgb(shown));
-        }
-        None => {}
+    if let Some(chosen) = chosen {
+        choose(app, context, &chosen.id);
     }
-    let Some(chosen) = chosen else {
-        if !app.menu.is_open() {
-            put_back(app);
-        }
-        return;
-    };
-    match chosen.id.as_str() {
-        "accept" => match app.settings_edit.take() {
-            Some(Editing::Ruling { before, .. }) => app.history.keep_ruling(&app.pattern, before),
-            Some(Editing::Sheet(sizing)) => app.history.keep_sheet(&app.pattern, sizing.before),
-            Some(Editing::Paper { before, .. }) => app.history.keep_paper(&app.pattern, before),
-            None => {}
-        },
-        "cancel" => put_back(app),
-        "ruling" => open_ruling(app),
-        "sheet" => open_sheet(app),
-        "paper" => open_paper(app),
+    follow(app);
+}
+
+/// Does what an entry chosen does; the menu closed on it, and opens again
+/// where it stood when it is to stay.
+fn choose(app: &mut App, context: &egui::Context, id: &str) {
+    match id {
+        REVERT => revert(app),
         "glow" => {
             app.keep_glow(!app.settings.glow());
-            open_on(app, Some("glow"));
+            reopen_at(app, "glow");
         }
-        kind => {
+        "palettes" => app.palette_window.open = true,
+        "to-list" => {
+            leave(app);
+            let time = context.input(|input| input.time);
+            app.back_to_list(context, time);
+        }
+        "close" => {}
+        kind if Grid::ALL.iter().any(|grid| kind_id(*grid) == kind) => {
             if let Some(grid) = Grid::ALL.into_iter().find(|grid| kind_id(*grid) == kind) {
                 app.set_grid(grid);
+            }
+            reopen_at(app, kind);
+        }
+        turn => {
+            if let Some(degrees) = TURNS.into_iter().find(|degrees| turn_id(*degrees) == turn) {
+                app.turn_to(degrees);
+                reopen_at(app, turn);
             }
         }
     }
 }
 
-/// Puts back the ruling, the size or the paper the menu opened on.
-fn put_back(app: &mut App) {
-    match app.settings_edit.take() {
-        Some(Editing::Ruling { before, .. }) => app.pattern.set_ruling(before),
-        Some(Editing::Sheet(sizing)) => app.pattern.set_sheet(Some(sizing.before)),
-        Some(Editing::Paper { before, .. }) => app.pattern.set_paper(before),
+/// Opens the menu again on the entry `id`, in its level.
+fn reopen_at(app: &mut App, id: &str) {
+    let items = items(app);
+    if let Err(error) = app.menu.open_at(items, id) {
+        log::error!("the menu of the settings does not open again: {error}");
+    }
+}
+
+/// Puts back the value the level was entered with, and opens the menu again
+/// in that level.
+fn revert(app: &mut App) {
+    let Some(editing) = &app.settings_edit else {
+        return;
+    };
+    let Some(entered) = editing.entered else {
+        return;
+    };
+    match entered {
+        Entered::Ruling(before) => {
+            *editing.ruling.lock().expect("the ruling is never poisoned") = before;
+            app.pattern.set_ruling(before);
+        }
+        Entered::Sheet(before) => {
+            if let Some(sizing) = &editing.sheet {
+                *sizing.size.lock().expect("the size is never poisoned") =
+                    [before.width(), before.height()];
+            }
+            app.pattern.set_sheet(Some(before));
+        }
+        Entered::Paper(before) => {
+            *editing.paper.lock().expect("the paper is never poisoned") = colour(before);
+            app.pattern.set_paper(before);
+        }
+    }
+    let items = items(app);
+    if let Err(error) = app.menu.open_in(items, entered.level()) {
+        log::error!("the menu of the settings does not open again: {error}");
+    }
+}
+
+/// Follows the level the menu stands in: a level left, or the menu closed,
+/// keeps its change as a step; a level entered takes its value; the value
+/// of the level stood in shows on the field. The entry that puts the value
+/// back is offered once the value changed.
+fn follow(app: &mut App) {
+    let level = app.menu.level();
+    let standing = level.first().map(String::as_str);
+    let entered = app
+        .settings_edit
+        .as_ref()
+        .and_then(|editing| editing.entered);
+    if let Some(entered) = entered
+        && standing != Some(entered.level())
+    {
+        leave(app);
+    }
+    if !app.menu.is_open() {
+        app.settings_edit = None;
+        return;
+    }
+    if let Some(standing) = standing {
+        enter(app, standing);
+    }
+    show_on_field(app);
+    let Some(editing) = &app.settings_edit else {
+        return;
+    };
+    let changed = editing.changed(app);
+    if changed != editing.revert_offered {
+        if let Some(editing) = &mut app.settings_edit {
+            editing.revert_offered = changed;
+        }
+        let items = items(app);
+        if let Err(error) = app.menu.refill(items) {
+            log::error!("the menu of the settings is not filled again: {error}");
+        }
+    }
+}
+
+/// Takes the value of the level `level` when it is entered.
+fn enter(app: &mut App, level: &str) {
+    let ruling = app.pattern.ruling();
+    let sheet = app.pattern.sheet();
+    let paper = app.pattern.paper();
+    let Some(editing) = &mut app.settings_edit else {
+        return;
+    };
+    if editing.entered.is_some() {
+        return;
+    }
+    editing.entered = match level {
+        RULING => {
+            *editing.ruling.lock().expect("the ruling is never poisoned") = ruling;
+            Some(Entered::Ruling(ruling))
+        }
+        SHEET => sheet.map(|sheet| {
+            editing.sheet = Some(crate::ui::sheet::Sizing::new(sheet, app.pattern.bounds()));
+            Entered::Sheet(sheet)
+        }),
+        PAPER => {
+            *editing.paper.lock().expect("the paper is never poisoned") = colour(paper);
+            Some(Entered::Paper(paper))
+        }
+        _ => None,
+    };
+    editing.revert_offered = false;
+    if editing.entered.is_some() && level == SHEET {
+        // The level shows the numbers of the new sizing.
+        let items = items(app);
+        if let Err(error) = app.menu.refill(items) {
+            log::error!("the menu of the settings is not filled again: {error}");
+        }
+    }
+}
+
+/// Puts the value of the editor of the level stood in on the pattern, so
+/// it shows on the field.
+fn show_on_field(app: &mut App) {
+    let Some(editing) = &app.settings_edit else {
+        return;
+    };
+    match editing.entered {
+        Some(Entered::Ruling(_)) => {
+            let shown = *editing.ruling.lock().expect("the ruling is never poisoned");
+            app.pattern.set_ruling(shown);
+        }
+        Some(Entered::Sheet(_)) => {
+            if let Some(sizing) = &editing.sheet {
+                let shown = sizing.sheet();
+                app.pattern.set_sheet(Some(shown));
+            }
+        }
+        Some(Entered::Paper(_)) => {
+            let shown = *editing.paper.lock().expect("the paper is never poisoned");
+            app.pattern.set_paper(rgb(shown));
+        }
         None => {}
+    }
+}
+
+/// Leaves the level stood in: its change is kept as one step of undo, none
+/// when the value is the one it was entered with.
+fn leave(app: &mut App) {
+    let Some(entered) = app
+        .settings_edit
+        .as_mut()
+        .and_then(|editing| editing.entered.take())
+    else {
+        return;
+    };
+    match entered {
+        Entered::Ruling(before) => app.history.keep_ruling(&app.pattern, before),
+        Entered::Sheet(before) => app.history.keep_sheet(&app.pattern, before),
+        Entered::Paper(before) => app.history.keep_paper(&app.pattern, before),
+    }
+    if app.menu.is_open() {
+        let items = items(app);
+        if let Err(error) = app.menu.refill(items) {
+            log::error!("the menu of the settings is not filled again: {error}");
+        }
     }
 }
 
@@ -317,6 +502,19 @@ fn name(grid: Grid) -> String {
         Grid::Peyote => t!("grid.peyote"),
     }
     .to_string()
+}
+
+/// The identifier of the entry of a turn.
+fn turn_id(degrees: u16) -> String {
+    format!("turn-{degrees}")
+}
+
+/// The name of a turn: none, or its degrees.
+fn turn_name(degrees: u16) -> String {
+    match degrees {
+        0 => t!("turn.none").to_string(),
+        degrees => format!("{degrees}\u{b0}"),
+    }
 }
 
 /// A colour of the pattern as the toolkit draws it.

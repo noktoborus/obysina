@@ -7,17 +7,6 @@
 pub const UNDO: &str = "\u{21a9}";
 /// Redo, the arrow bending on to the right.
 pub const REDO: &str = "\u{21aa}";
-/// A quarter turn of the field counter clockwise, the open circle arrow.
-///
-/// Undo and redo are the bent arrows so that these two, turning, are not
-/// read as them.
-pub const TURN_LEFT: &str = "\u{21ba}";
-/// A quarter turn of the field clockwise, the open circle arrow.
-pub const TURN_RIGHT: &str = "\u{21bb}";
-/// The pencil, which paints one bead at a time.
-pub const PENCIL: &str = "\u{270f}";
-/// The picker, which takes the colour of a bead.
-pub const PICK: &str = "\u{1f4a7}";
 /// The other palette, of two: the arrow both ways.
 pub const SWITCH: &str = "\u{2194}";
 /// The way back to the list of patterns, the arrow to the left.
@@ -58,8 +47,8 @@ pub const EMPTY: &str = "\u{1f6ab}";
 /// Every icon, for the test that the fonts carry them all.
 #[cfg(test)]
 pub const ALL: &[&str] = &[
-    UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH,
-    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY, LOCK, UNLOCK, MENU,
+    UNDO, REDO, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH, SETTINGS, SHADOW, PICTURE, DONE, CANCEL,
+    EMPTY, LOCK, UNLOCK, MENU,
 ];
 
 #[cfg(test)]

@@ -124,7 +124,7 @@ frame N+1  once every texture of the shapes is on the chip: tessellate,
 ```text
 a long press, the second button on a card ──► the choice, of that card
 the choice ──a tap or a long press on a card──► chosen or cleared
-           ──✖──► no choice
+           ──✖, Esc, the way back of android──► no choice
 the bar ──export │ to the trash │ lock or unlock │ the menu
 the menu ──one chosen──► the menu of a card
          ──more──► lock n │ unlock n │ export n │ move n to the trash

@@ -17,7 +17,7 @@
 use obusina_canvas::View;
 use obusina_pattern::{Pattern, PatternId};
 
-use crate::app::{App, Tool, first_colour};
+use crate::app::{App, first_colour};
 use crate::edit::History;
 use crate::work::Done;
 
@@ -79,7 +79,6 @@ impl App {
         self.pattern = pattern;
         self.history = history;
         self.view = view;
-        self.tool = Tool::Pencil;
         self.palette = 0;
         self.message = None;
         self.settings_edit = None;

@@ -433,11 +433,15 @@ REF  src/ui/button.rs
 
 RULE ui.menu : a choice among variants is a `plate_menu::PlateMenu` in the
      middle of the window, opened by a button of a panel
-EX+  the kinds of grid, `src/ui/grid_menu.rs`
+EX+  the kinds of grid, a level of `src/ui/settings_menu.rs`
 EX-  an `egui::Popup` or a `ComboBox` under the button
 THEN a menu opens by `open`, with no entry selected
 WHY  the user's word: a tap must not meet an entry lit for the keys
-THEN `open_at` only opens a menu again on the entry just chosen in it
+THEN `open_at` only opens a menu again on the entry just chosen in it;
+     `open_in` again in the level it stood in
+THEN a value of several settings is a level of the menu, its editor the
+     notice of the level; the way back out of it is `‹`, Esc, the way back
+     of android, never an entry "Cancel"
 
 RULE ui.keys : every key is a row of a table: `Binding`s of the layer,
      beside its code, or `keys::GLOBAL`; `keys::layer` says which layer is on

@@ -30,12 +30,7 @@ fn a_locked_pattern_opens_only_to_be_looked_at() {
     assert!(app.pattern.locked());
     assert_eq!(app.screen, crate::session::Screen::Editor);
 
-    for gone in [
-        t!("palette.empty"),
-        t!("edit.undo"),
-        t!("tool.pencil"),
-        t!("view.turn_left"),
-    ] {
+    for gone in [t!("palette.empty"), t!("edit.undo"), t!("edit.redo")] {
         assert!(window.harness.query_by_label(&gone).is_none(), "{gone}");
     }
     for kept in [
@@ -57,7 +52,15 @@ fn the_settings_of_a_locked_pattern_hold_only_the_volume() {
     window.click(&t!("settings.open"));
 
     window.harness.get_by_label(&t!("view.glow"));
-    for gone in [t!("grid.kind"), t!("ruling.open"), t!("paper.open")] {
+    window.harness.get_by_label(&t!("settings.to_list"));
+    window.harness.get_by_label(&t!("settings.close"));
+    for gone in [
+        t!("grid.kind"),
+        t!("turn.open"),
+        t!("ruling.open"),
+        t!("paper.open"),
+        t!("palette.settings"),
+    ] {
         assert!(window.harness.query_by_label(&gone).is_none(), "{gone}");
     }
 }

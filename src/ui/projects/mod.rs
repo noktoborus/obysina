@@ -369,6 +369,8 @@ fn take_answers(app: &mut App, context: &egui::Context) {
 /// What a key of the list does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ListAction {
+    /// Ends the choice of patterns, while there is one.
+    EndChoice,
     Search,
     /// Walks the cards by the arrow `Taken::index` of `ARROWS`.
     Walk,
@@ -387,6 +389,11 @@ const ARROWS: [egui::KeyboardShortcut; 4] = [
 
 /// The keys of the list (`Layer::List`).
 pub(crate) const LIST_KEYS: &[Binding<ListAction>] = &[
+    Binding {
+        keys: &[plain(Key::Escape)],
+        action: ListAction::EndChoice,
+        name: "projects.end_choice",
+    },
     Binding {
         keys: &[command(Key::F)],
         action: ListAction::Search,
@@ -454,6 +461,13 @@ fn keys(app: &mut App, ui: &egui::Ui) {
 /// The keys of the list, and a letter typed, which searches.
 fn list_keys(app: &mut App, ui: &egui::Ui) {
     let taken = crate::keys::take(ui.ctx(), LIST_KEYS);
+    if taken
+        .iter()
+        .any(|taken| taken.action == ListAction::EndChoice)
+    {
+        app.projects.chosen = None;
+        return;
+    }
     let typed: String = ui.input(|input| {
         input
             .events

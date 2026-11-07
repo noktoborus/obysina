@@ -42,7 +42,7 @@ fn the_sheet_starts_as_the_screen() {
 }
 
 /// A number typed in the menu gives the sheet that size, around its middle;
-/// "Accept" keeps it as one step of undo.
+/// it is kept as one step of undo when the menu closes.
 #[test]
 fn a_size_typed_in_the_menu_resizes_the_sheet() {
     let mut window = window();
@@ -50,7 +50,7 @@ fn a_size_typed_in_the_menu_resizes_the_sheet() {
 
     open_sheet(&mut window);
     type_number(&mut window, &t!("sheet.width"), "12");
-    window.click(&t!("ruling.accept"));
+    window.close_menu();
 
     let after = window.harness.state().pattern.sheet().expect("a sheet");
     assert_eq!(after.width(), 12);
@@ -77,16 +77,17 @@ fn the_sheet_is_never_smaller_than_the_beads() {
 
     open_sheet(&mut window);
     type_number(&mut window, &t!("sheet.width"), "3");
-    window.click(&t!("ruling.accept"));
+    window.close_menu();
 
     let sheet = window.harness.state().pattern.sheet().expect("a sheet");
     assert_eq!(sheet.width(), 8, "columns 2 to 9");
     assert!(sheet.contains(left) && sheet.contains(right), "{sheet:?}");
 }
 
-/// A size not accepted goes back, and no step is kept.
+/// "Put the old size back" puts back the sheet the level was entered with,
+/// and no step is kept.
 #[test]
-fn a_size_not_accepted_goes_back() {
+fn the_old_size_is_put_back() {
     let mut window = window();
     let before = window.harness.state().pattern.sheet().expect("a sheet");
 
@@ -102,7 +103,8 @@ fn a_size_not_accepted_goes_back() {
             .width(),
         12
     );
-    window.click(&t!("ruling.cancel"));
+    window.click(&t!("sheet.revert"));
+    window.close_menu();
 
     let app = window.harness.state();
     assert_eq!(app.pattern.sheet(), Some(before));
