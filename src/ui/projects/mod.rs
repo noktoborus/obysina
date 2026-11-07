@@ -7,12 +7,14 @@
 //!          ──"Import"─────────► a .obusina, .obusiny or .json, each pattern
 //!                               added, passed over or copied (src/library)
 //!          ──a tap on a card──► the pattern opened
-//!          ──a long press, the second button ──► its menu (menu.rs)
+//!          ──a long press, the second button ──► the choice, of that card
 //!          ──"Trash" │ "Export all" ──► the trash │ one .obusiny;
 //!            not while patterns are chosen: the bar on top acts on them
 //! the trash ──"Back"──► the list; a card ──► restore │ delete for good
 //!           ──"Empty the trash…" ──► asks
-//! select: a mark on the cards; a bar on top: the count, export, to the trash, ✖
+//! the choice: a mark on the cards, a tap or a long press marks or clears;
+//!   a bar on top: ✖, the count; to the trash, export, lock or unlock, the
+//!   menu of the chosen (menu.rs)
 //! a move to the trash ──► a toast with "Undo" for UNDO_SECONDS
 //! ```
 //!
@@ -130,6 +132,12 @@ impl Projects {
         self.entries
             .iter()
             .any(|entry| entry.pattern.id() == id && entry.pattern.locked())
+    }
+
+    /// The patterns chosen, in the order of their identifiers; none while
+    /// nothing is chosen.
+    fn chosen_ids(&self) -> Vec<PatternId> {
+        self.chosen.iter().flatten().copied().collect()
     }
 
     /// Whether the menu of a card or of the trash is open.
@@ -287,7 +295,14 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     }
     take_answers(app, &context);
     keys(app, ui);
-    egui::CentralPanel::default().show(ui, |ui| screen(app, ui));
+    // The root of eframe covers the whole window; the list stands in the
+    // part the system bars and the cut out of the camera leave free.
+    let fill = ui.visuals().panel_fill;
+    ui.painter().rect_filled(context.viewport_rect(), 0.0, fill);
+    let free = egui::UiBuilder::new().max_rect(context.content_rect());
+    ui.scope_builder(free, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| screen(app, ui));
+    });
     menu::show(app, &context);
 }
 
@@ -565,13 +580,13 @@ fn search_line(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// The bar on top while patterns are chosen: their count, export, to the
-/// trash, and the end of the choice.
+/// The bar on top while patterns are chosen: the end of the choice, their
+/// count; the menu of the chosen, the lock, export, to the trash.
 fn choice_bar(app: &mut App, ui: &mut egui::Ui, width: f32) {
-    let Some(chosen) = app.projects.chosen.clone() else {
+    if app.projects.chosen.is_none() {
         return;
-    };
-    let ids: Vec<PatternId> = chosen.into_iter().collect();
+    }
+    let ids = app.projects.chosen_ids();
     ui.allocate_ui(vec2(width, PLATE), |ui| {
         ui.set_min_size(vec2(width, PLATE));
         ui.horizontal_centered(|ui| {
@@ -583,12 +598,26 @@ fn choice_bar(app: &mut App, ui: &mut egui::Ui, width: f32) {
             ui.label(t!("projects.chosen", count = ids.len()));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let some = !ids.is_empty();
-                if crate::ui::button::icon(ui, icons::TRASH, &t!("projects.to_trash"), some)
+                if crate::ui::button::icon(ui, icons::MENU, &t!("projects.menu"), some).clicked() {
+                    menu::open_chosen(app);
+                }
+                let all_locked = some && ids.iter().all(|id| app.projects.locked(*id));
+                let (icon, name) = match all_locked {
+                    true => (icons::UNLOCK, t!("projects.unlock_chosen")),
+                    false => (icons::LOCK, t!("projects.lock_chosen")),
+                };
+                if crate::ui::button::icon(ui, icon, &name, some).clicked() {
+                    menu::done(app, |library| {
+                        ids.iter()
+                            .try_for_each(|id| library.set_locked(*id, !all_locked))
+                    });
+                }
+                if crate::ui::button::icon(ui, icons::TRASH, &t!("projects.trash_chosen"), some)
                     .clicked()
                 {
                     to_trash(app, &ids);
                 }
-                if crate::ui::button::icon(ui, icons::EXPORT, &t!("projects.export"), some)
+                if crate::ui::button::icon(ui, icons::EXPORT, &t!("projects.export_chosen"), some)
                     .clicked()
                 {
                     export(app, ui.ctx(), &ids);
@@ -659,7 +688,7 @@ fn list(
                                 chosen.insert(id);
                             }
                         } else if held {
-                            menu::open(app, Of::Live(id));
+                            app.projects.chosen = Some([id].into());
                         } else if response.clicked() {
                             app.open_by_id(id, time);
                         }
@@ -818,6 +847,13 @@ fn when(changed: SystemTime, today: chrono::DateTime<chrono::Local>) -> String {
     }
 }
 
+/// "patterns" after a count, as the object of a verb: "move 5 patterns".
+pub(crate) const PATTERNS_OF: [&str; 3] = [
+    "plural.patterns_of.one",
+    "plural.patterns_of.few",
+    "plural.patterns_of.many",
+];
+
 /// "patterns" after a count.
 fn patterns(count: usize) -> String {
     plural(count, PATTERNS)
@@ -834,7 +870,7 @@ const DAYS: [&str; 3] = ["plural.days.one", "plural.days.few", "plural.days.many
 
 /// The form of a word of `keys` after the number `count`, by the rule of
 /// the language: one, few or many in Russian, one or many in English.
-fn plural(count: usize, keys: [&str; 3]) -> String {
+pub(crate) fn plural(count: usize, keys: [&str; 3]) -> String {
     let form = if rust_i18n::locale().starts_with("ru") {
         let (tens, ones) = (count % 100, count % 10);
         if (11..=14).contains(&tens) {

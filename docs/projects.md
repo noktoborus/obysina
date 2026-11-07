@@ -102,9 +102,31 @@ frame N+1  once every texture of the shapes is on the chip: tessellate,
   what it writes into the window.
 - Where the renderer is not wgpu, a card shows its paper only.
 
+## The choice
+
+```text
+a long press, the second button on a card ──► the choice, of that card
+the choice ──a tap or a long press on a card──► chosen or cleared
+           ──✖──► no choice
+the bar ──export │ to the trash │ lock or unlock │ the menu
+the menu ──one chosen──► the menu of a card
+         ──more──► lock n │ unlock n │ export n │ move n to the trash
+```
+
+- Why a long press chooses and opens no menu: on a phone a pattern is
+  mostly acted on with others; the menu is one tap further, on the bar.
+- The lock of the bar and of the menu of more locks all the chosen while
+  one of them is not locked, else unlocks them.
+- The export of more is one `.obusiny`; of one, a `.obusina`.
+- The choice stays after a lock and an export; a move to the trash ends it.
+- The screen stands inside the safe area of android (`docs/panels.md`): the
+  root of eframe covers the whole window, so the list is drawn in
+  `Context::content_rect`.
+
 ## A locked pattern
 
-"Forbid changes" of the menu of a card locks a pattern; "Unlock the card"
+"Forbid changes" of the menu of a card or the lock of the bar of the
+choice locks a pattern; "Unlock the card"
 lets it change again. The lock is a field of the pattern and its file,
 `locked` (`crates/obusina-pattern/README.md`), so a pattern exported locked
 opens locked elsewhere.

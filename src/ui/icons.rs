@@ -46,6 +46,10 @@ pub const CANCEL: &str = "\u{2716}";
 /// A pattern locked against changes, the closed lock; drawn red left of the
 /// name of its card.
 pub const LOCK: &str = "\u{1f512}";
+/// Lets the patterns chosen change again, the open lock.
+pub const UNLOCK: &str = "\u{1f513}";
+/// The menu of the patterns chosen, the trigram for heaven.
+pub const MENU: &str = "\u{2630}";
 
 /// The empty place `0`, no colour, which takes beads away. The fonts of the
 /// toolkit carry no eraser; the no entry sign is the nearest.
@@ -55,7 +59,7 @@ pub const EMPTY: &str = "\u{1f6ab}";
 #[cfg(test)]
 pub const ALL: &[&str] = &[
     UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH,
-    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY, LOCK,
+    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY, LOCK, UNLOCK, MENU,
 ];
 
 #[cfg(test)]

@@ -78,8 +78,7 @@ fn a_pattern_moved_to_the_trash_comes_back_by_undo() {
     window.click(&t!("projects.back"));
     window.harness.run();
 
-    window.harness.get_by_label(&name).click_secondary();
-    window.harness.run();
+    window.card_menu(&name);
     tap(&mut window, &t!("projects.to_trash"));
     assert!(window.harness.state().projects.entries.is_empty());
     assert_eq!(window.harness.state().projects.trash.len(), 1);
@@ -142,7 +141,7 @@ fn the_chosen_are_exported_from_the_bar() {
     let all = t!("projects.export_all");
     assert!(window.harness.query_by_label_contains(&all).is_none());
 
-    tap(&mut window, &t!("projects.export"));
+    tap(&mut window, &t!("projects.export_chosen"));
 
     let kept = window.harness.state().projects.saver.kept().to_vec();
     assert!(
@@ -153,6 +152,113 @@ fn the_chosen_are_exported_from_the_bar() {
     let patterns = crate::library::archive::read(&kept[0].1).expect("it reads");
     assert_eq!(patterns.len(), 1);
     assert_eq!(patterns[0].id(), first);
+}
+
+/// A long press chooses a card, it opens no menu; a tap then marks another,
+/// and the menu has no "Select".
+#[test]
+fn a_long_press_starts_the_choice() {
+    let mut window = list();
+    for _ in 0..2 {
+        window.click(&t!("projects.new"));
+        window.click(&t!("projects.back"));
+    }
+    // Both are named by the same minute: the cards are told by their order.
+    let name = window.harness.state().projects.entries[0]
+        .pattern
+        .name()
+        .to_owned();
+
+    window
+        .harness
+        .get_all_by_label(&name)
+        .next()
+        .expect("a card")
+        .click_secondary();
+    window.harness.run_steps(5);
+    let projects = &window.harness.state().projects;
+    assert_eq!(projects.chosen.as_ref().map(|chosen| chosen.len()), Some(1));
+    assert!(!projects.menu_open(), "no menu");
+
+    window
+        .harness
+        .get_all_by_label(&name)
+        .nth(1)
+        .expect("a card")
+        .click();
+    window.harness.run_steps(5);
+    let projects = &window.harness.state().projects;
+    assert_eq!(projects.chosen.as_ref().map(|chosen| chosen.len()), Some(2));
+    assert_eq!(window.harness.state().screen, Screen::List, "nothing opens");
+}
+
+/// The menu of two chosen has no rename and no duplicate; its items say the
+/// count; its export is one .obusiny; its lock locks both.
+#[test]
+fn the_menu_of_the_chosen_says_their_count() {
+    let mut window = list();
+    for _ in 0..2 {
+        window.click(&t!("projects.new"));
+        window.click(&t!("projects.back"));
+    }
+    let ids: std::collections::BTreeSet<_> = window
+        .harness
+        .state()
+        .projects
+        .entries
+        .iter()
+        .map(|entry| entry.pattern.id())
+        .collect();
+    window.harness.state_mut().projects.chosen = Some(ids);
+    window.harness.state_mut().projects.saver.hold();
+    window.harness.run();
+    tap(&mut window, &t!("projects.menu"));
+
+    for gone in [t!("projects.rename"), t!("projects.duplicate")] {
+        assert!(window.harness.query_by_label(&gone).is_none(), "{gone}");
+    }
+    let what = crate::ui::projects::plural(2, crate::ui::projects::PATTERNS_OF);
+    window.harness.get_by_label(&t!(
+        "projects.to_trash_many",
+        count = 2,
+        what = what.clone()
+    ));
+    tap(
+        &mut window,
+        &t!("projects.export_many", count = 2, what = what.clone()),
+    );
+    let kept = window.harness.state().projects.saver.kept().to_vec();
+    assert!(kept[0].0.ends_with(".obusiny"), "{}", kept[0].0);
+    assert_eq!(
+        crate::library::archive::read(&kept[0].1)
+            .expect("it reads")
+            .len(),
+        2
+    );
+
+    tap(&mut window, &t!("projects.menu"));
+    tap(
+        &mut window,
+        &t!("projects.lock_many", count = 2, what = what),
+    );
+    let entries = &window.harness.state().projects.entries;
+    assert!(entries.iter().all(|entry| entry.pattern.locked()));
+}
+
+/// The lock of the bar of the choice locks the chosen; then it unlocks them.
+#[test]
+fn the_lock_of_the_bar_locks_and_unlocks() {
+    let mut window = list();
+    window.click(&t!("projects.new"));
+    window.click(&t!("projects.back"));
+    let id = window.harness.state().projects.entries[0].pattern.id();
+    window.harness.state_mut().projects.chosen = Some([id].into());
+    window.harness.run();
+
+    tap(&mut window, &t!("projects.lock_chosen"));
+    assert!(window.harness.state().projects.entries[0].pattern.locked());
+    tap(&mut window, &t!("projects.unlock_chosen"));
+    assert!(!window.harness.state().projects.entries[0].pattern.locked());
 }
 
 /// The arrows walk the cards, from the first: "New pattern", then
@@ -194,4 +300,23 @@ fn escape_goes_back_from_the_trash() {
         window.harness.state().projects.view,
         crate::ui::projects::View::List
     );
+}
+
+/// The list stands inside the safe area that android gives: the cut out of
+/// the camera on top, the bar of the system at the bottom.
+#[test]
+fn the_list_keeps_out_of_the_cut_out() {
+    let mut window = list();
+    let insets = egui::SafeAreaInsets(egui::epaint::MarginF32 {
+        left: 30.0,
+        top: 40.0,
+        right: 0.0,
+        bottom: 0.0,
+    });
+    window.harness.input_mut().safe_area_insets = Some(insets);
+    window.harness.run();
+
+    let card = window.harness.get_by_label(&t!("projects.new")).rect();
+    assert!(card.top() >= 40.0, "{card:?}");
+    assert!(card.left() >= 30.0, "{card:?}");
 }

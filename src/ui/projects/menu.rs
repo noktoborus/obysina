@@ -2,10 +2,12 @@
 //! before the trash is emptied; and what each choice does.
 //!
 //! ```text
-//! a card ──► rename │ duplicate │ lock │ unlock │ export to a file… │ select
-//!            │ move to the trash
-//!            lock: the pattern opens only to be looked at (`App::locked`)
-//!            rename: the name in a field on top, then accept, cancel
+//! one chosen ──► rename │ duplicate │ lock │ unlock │ export to a file…
+//!               │ move to the trash
+//!               lock: the pattern opens only to be looked at (`App::locked`)
+//!               rename: the name in a field on top, then accept, cancel
+//! n chosen ──► lock n │ unlock n │ export n, one .obusiny │ move n to the trash
+//!              lock while one of them is not locked, else unlock
 //! a card of the trash ──► restore │ delete for good… ──► delete │ keep
 //! "Empty the trash…" ──► empty │ keep
 //! ```
@@ -25,16 +27,56 @@ use crate::ui::access::Named;
 pub enum Of {
     /// A pattern of the list.
     Live(PatternId),
+    /// The patterns chosen, more than one (`Projects::chosen`).
+    Chosen,
     /// A pattern of the trash.
     Trashed(PatternId),
     /// The whole trash.
     AllTrash,
 }
 
+/// Opens the menu of the patterns chosen: the menu of a card when one is.
+pub fn open_chosen(app: &mut App) {
+    let ids = app.projects.chosen_ids();
+    match ids.as_slice() {
+        [] => {}
+        [one] => open(app, Of::Live(*one)),
+        _ => open(app, Of::Chosen),
+    }
+}
+
 /// Opens the menu of `of`.
 pub fn open(app: &mut App, of: Of) {
     let projects = &mut app.projects;
     let (notice, items) = match of {
+        Of::Chosen => {
+            let ids = projects.chosen_ids();
+            let count = ids.len();
+            let what = super::plural(count, super::PATTERNS_OF);
+            let lock = match ids.iter().all(|id| projects.locked(*id)) {
+                true => MenuItem::new(
+                    "unlock",
+                    t!("projects.unlock_many", count = count, what = what),
+                ),
+                false => {
+                    MenuItem::new("lock", t!("projects.lock_many", count = count, what = what))
+                }
+            };
+            (
+                t!("projects.chosen", count = count).to_string(),
+                vec![
+                    lock,
+                    MenuItem::new(
+                        "export",
+                        t!("projects.export_many", count = count, what = what),
+                    ),
+                    MenuItem::new(
+                        "trash",
+                        t!("projects.to_trash_many", count = count, what = what),
+                    ),
+                ],
+            )
+        }
         Of::Live(id) => (
             projects.name_of(id),
             vec![
@@ -45,7 +87,6 @@ pub fn open(app: &mut App, of: Of) {
                     false => MenuItem::new("lock", t!("projects.lock")),
                 },
                 MenuItem::new("export", t!("projects.export")),
-                MenuItem::new("select", t!("projects.select")),
                 MenuItem::new("trash", t!("projects.to_trash")),
             ],
         ),
@@ -146,8 +187,23 @@ pub fn show(app: &mut App, context: &egui::Context) {
         ("lock", Of::Live(id)) => done(app, |library| library.set_locked(id, true)),
         ("unlock", Of::Live(id)) => done(app, |library| library.set_locked(id, false)),
         ("export", Of::Live(id)) => super::export(app, context, &[id]),
-        ("select", Of::Live(id)) => app.projects.chosen = Some([id].into()),
         ("trash", Of::Live(id)) => super::to_trash(app, &[id]),
+        ("lock" | "unlock", Of::Chosen) => {
+            let ids = app.projects.chosen_ids();
+            let locked = chosen.id == "lock";
+            done(app, |library| {
+                ids.iter()
+                    .try_for_each(|id| library.set_locked(*id, locked))
+            });
+        }
+        ("export", Of::Chosen) => {
+            let ids = app.projects.chosen_ids();
+            super::export_many(app, context, &ids);
+        }
+        ("trash", Of::Chosen) => {
+            let ids = app.projects.chosen_ids();
+            super::to_trash(app, &ids);
+        }
         ("restore", Of::Trashed(id)) => {
             done(app, |library| library.restore(id).map(|_| ()));
         }

@@ -1,5 +1,5 @@
-//! Tests of a locked pattern: "Forbid changes" of the menu of a card, and a
-//! pattern that opens only to be looked at.
+//! Tests of a locked pattern: "Forbid changes" of the menu of a card and of
+//! the bar of the choice, and a pattern that opens only to be looked at.
 
 use egui::PointerButton;
 use egui_kittest::kittest::Queryable;
@@ -7,17 +7,17 @@ use rust_i18n::t;
 
 use super::{FREE, Window, window};
 
-/// Back on the list, locks the pattern by the menu of its card and opens it
-/// again.
+/// Back on the list, locks the pattern by the menu of its card, ends the
+/// choice and opens it again.
 fn locked() -> Window {
     let mut window = window();
     let name = window.harness.state().pattern.name().to_owned();
     window.click(&t!("projects.back"));
     window.harness.run();
-    window.harness.get_by_label(&name).click_secondary();
-    window.harness.run_steps(5);
+    window.card_menu(&name);
     window.harness.get_by_label(&t!("projects.lock")).click();
     window.harness.run_steps(5);
+    window.end_choice();
     window.harness.get_by_label(&name).click();
     window.harness.run_steps(5);
     window
@@ -70,10 +70,10 @@ fn escape_leaves_a_locked_pattern_and_unlock_lets_it_change() {
     window.harness.run();
     assert_eq!(window.harness.state().screen, crate::session::Screen::List);
 
-    window.harness.get_by_label(&name).click_secondary();
-    window.harness.run_steps(5);
+    window.card_menu(&name);
     window.harness.get_by_label(&t!("projects.unlock")).click();
     window.harness.run_steps(5);
+    window.end_choice();
     window.harness.get_by_label(&name).click();
     window.harness.run_steps(5);
     assert!(!window.harness.state().pattern.locked());

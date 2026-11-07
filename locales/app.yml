@@ -305,9 +305,6 @@ projects.duplicate:
 projects.export:
   en: "Export to a file…"
   ru: "Экспорт в файл…"
-projects.select:
-  en: "Select"
-  ru: "Выбрать"
 projects.to_trash:
   en: "Move to the trash"
   ru: "Переместить в корзину"
@@ -384,6 +381,15 @@ error.export:
   en: "The file could not be saved"
   ru: "Файл не сохранён"
 
+plural.patterns_of.one:
+  en: "pattern"
+  ru: "схему"
+plural.patterns_of.few:
+  en: "patterns"
+  ru: "схемы"
+plural.patterns_of.many:
+  en: "patterns"
+  ru: "схем"
 plural.patterns.one:
   en: "pattern"
   ru: "схема"
@@ -532,6 +538,33 @@ projects.lock:
 projects.unlock:
   en: "Unlock the card"
   ru: "Разблокировать карточку"
+projects.menu:
+  en: "Menu of the chosen"
+  ru: "Меню выбранных"
+projects.lock_chosen:
+  en: "Forbid changes of the chosen"
+  ru: "Запретить изменять выбранные"
+projects.unlock_chosen:
+  en: "Unlock the chosen"
+  ru: "Разблокировать выбранные"
+projects.export_chosen:
+  en: "Export the chosen"
+  ru: "Экспортировать выбранные"
+projects.trash_chosen:
+  en: "Move the chosen to the trash"
+  ru: "Переместить выбранные в корзину"
+projects.lock_many:
+  en: "Forbid changes of %{count} %{what}"
+  ru: "Запретить изменять %{count} %{what}"
+projects.unlock_many:
+  en: "Unlock %{count} %{what}"
+  ru: "Разблокировать %{count} %{what}"
+projects.export_many:
+  en: "Export %{count} %{what} to a file…"
+  ru: "Экспортировать %{count} %{what} в файл…"
+projects.to_trash_many:
+  en: "Move %{count} %{what} to the trash"
+  ru: "Переместить в корзину %{count} %{what}"
 keys.layer.viewer:
   en: "A locked pattern"
   ru: "Схема без изменений"

@@ -142,6 +142,23 @@ impl Window {
         (first.x - second.x).abs() < 1.0 && second.y > first.y
     }
 
+    /// Opens the menu of the card named `name` on the list: a long press
+    /// chooses it, the menu of the bar on top opens.
+    fn card_menu(&mut self, name: &str) {
+        self.harness.get_by_label(name).click_secondary();
+        self.harness.run_steps(5);
+        self.harness.get_by_label(&t!("projects.menu")).click();
+        self.harness.run_steps(5);
+    }
+
+    /// Ends the choice of the list.
+    fn end_choice(&mut self) {
+        self.harness
+            .get_by_label(&t!("projects.end_choice"))
+            .click();
+        self.harness.run_steps(5);
+    }
+
     /// Clicks the widget named `name`.
     fn click(&mut self, name: &str) {
         self.harness.get_by_label(name).click();
