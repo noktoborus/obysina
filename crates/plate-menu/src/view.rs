@@ -275,6 +275,18 @@ impl PlateMenu {
         Ok(())
     }
 
+    /// Opens the menu in the level of the entry `id`, its entries shown and
+    /// none selected; at the top when no entry of that identifier carries
+    /// entries. A caller whose choice in a level closed the menu opens it
+    /// again where it stood.
+    pub fn open_in(&mut self, items: Vec<MenuItem>, id: &str) -> Result<()> {
+        self.open(items)?;
+        if let Some(state) = self.state.as_mut() {
+            state.enter(id);
+        }
+        Ok(())
+    }
+
     /// Puts other entries in place of the ones the menu is showing.
     ///
     /// The query, the level and the selection are kept: a list that is read
@@ -312,6 +324,16 @@ impl PlateMenu {
         egui::LayerId::new(Order::Foreground, self.id)
     }
 
+    /// The identifiers of the levels the menu stands in, the outermost
+    /// first; none at the top, or while it is closed. A caller that edits a
+    /// value in a level knows by it when the level is entered and left.
+    pub fn level(&self) -> Vec<String> {
+        self.state
+            .as_ref()
+            .map(crate::state::MenuState::level)
+            .unwrap_or_default()
+    }
+
     /// Closes the menu without choosing anything.
     pub fn close(&mut self) {
         self.state = None;
@@ -340,8 +362,9 @@ impl PlateMenu {
 
     /// Draws the menu and returns the entry that was chosen this frame.
     ///
-    /// The menu closes itself on `Esc` with no query typed, on a click beside
-    /// it and when an entry is chosen.
+    /// The menu closes itself on `Esc` with no query typed at the top level,
+    /// on a click beside it and when an entry is chosen. In a level, `Esc`
+    /// steps out of it.
     ///
     /// What was held down is read before anything is answered and belongs to
     /// the choice: a key that the menu takes out of the input is gone by the
@@ -390,7 +413,7 @@ impl PlateMenu {
                 .collect();
             for walk in walks {
                 match walk {
-                    Walk::Close if !state.clear_query() => close = true,
+                    Walk::Close if !state.step_out() => close = true,
                     Walk::Close | Walk::Stay => {}
                     Walk::Down => state.move_selection(1),
                     Walk::Up => state.move_selection(-1),
@@ -536,11 +559,16 @@ impl PlateMenu {
         };
 
         let mut notice_rect = Rect::NOTHING;
+        let level_notice = self
+            .state
+            .as_ref()
+            .and_then(|state| state.level_notice().cloned());
         let response = area.show(context, |ui| {
             Frame::popup(ui.style())
                 .show(ui, |ui| {
                     ui.set_width(width);
-                    if let Some(notice) = &self.notice {
+                    let notice = level_notice.as_ref().or(self.notice.as_ref());
+                    if let Some(notice) = notice {
                         notice_rect = ui.scope(|ui| notice.show(ui)).response.rect;
                     }
                     header(ui, &query, caret);
@@ -1611,6 +1639,83 @@ mod tests {
 
         press(&context, &mut menu, egui::Key::Escape);
         assert!(!menu.is_open());
+    }
+
+    /// In a level, `Esc` steps out of it onto the entry it was entered from;
+    /// at the top it closes the menu.
+    #[test]
+    fn escape_steps_out_of_a_level_before_it_closes_the_menu() {
+        let context = context(600.0);
+        let mut menu = PlateMenu::new();
+        let mut entries = items(3);
+        entries[1] = MenuItem::new("level", "a level").children(items(2));
+        menu.open_at(entries, "id1")
+            .expect("the menu opens in the level");
+        frame(&context, &mut menu, Vec::new());
+        assert_eq!(menu.level(), ["level"]);
+
+        press(&context, &mut menu, egui::Key::Escape);
+        assert!(menu.is_open(), "the level went, the menu stays");
+        assert!(menu.level().is_empty());
+        assert_eq!(menu.selected(), Some(1), "on the entry of the level");
+
+        press(&context, &mut menu, egui::Key::Escape);
+        assert!(!menu.is_open());
+        assert!(menu.level().is_empty(), "a closed menu stands in no level");
+    }
+
+    /// A menu opened in a level stands in it, nothing selected.
+    #[test]
+    fn a_menu_opens_in_a_level() {
+        let mut entries = items(2);
+        entries[1] = MenuItem::new("level", "a level").children(items(3));
+        let mut menu = PlateMenu::new();
+
+        menu.open_in(entries.clone(), "level")
+            .expect("the menu opens");
+        assert_eq!(menu.level(), ["level"]);
+        assert_eq!(menu.selected(), None);
+
+        menu.open_in(entries, "id0").expect("the menu opens");
+        assert!(
+            menu.level().is_empty(),
+            "an entry with no level opens the top"
+        );
+    }
+
+    /// The notice of a level stands above its entries, and goes when the
+    /// level is left.
+    #[test]
+    fn a_level_shows_its_own_notice() {
+        use std::sync::Arc;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let context = context(600.0);
+        let drawn = Arc::new(AtomicUsize::new(0));
+        let counted = Arc::clone(&drawn);
+        let level = MenuItem::new("level", "a level")
+            .notice(Notice::widget(move |ui| {
+                counted.fetch_add(1, Ordering::Relaxed);
+                ui.label("the editor of the level");
+            }))
+            .children(items(1));
+        let mut menu = PlateMenu::new();
+        menu.open(vec![level.clone()]).expect("the menu opens");
+        frame(&context, &mut menu, Vec::new());
+        assert_eq!(drawn.load(Ordering::Relaxed), 0, "not drawn at the top");
+
+        menu.open_at(vec![level], "id0")
+            .expect("the menu opens in the level");
+        frame(&context, &mut menu, Vec::new());
+        let inside = drawn.load(Ordering::Relaxed);
+        assert!(inside > 0, "drawn in its level");
+
+        press(&context, &mut menu, egui::Key::Escape);
+        frame(&context, &mut menu, Vec::new());
+        assert!(menu.level().is_empty());
+        assert!(
+            drawn.load(Ordering::Relaxed) <= inside + 1,
+            "gone once the level is left"
+        );
     }
 
     /// `Home` and `End` walk the list while nothing is typed and move the caret

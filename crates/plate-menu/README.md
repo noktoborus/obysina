@@ -37,6 +37,7 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | `max_plates(n)` | plates at once; default is what `HEIGHT_SHARE` of the window holds, less the two strips when not all fit |
 | `open(items)` | opens with no entry selected: `Enter` chooses nothing until a key, a click or a query selects one; resets `notice` and `beside` |
 | `open_at(items, id)` | opens on that entry, in the level that carries it; on none when no entry carries it |
+| `open_in(items, id)` | opens in the level of that entry, nothing selected; at the top when it carries no entries: a choice in a level closed the menu, and it opens again where it stood |
 | `refill(items)` | new entries; the query, the level and the selection stay |
 | `notice(text)`, `notice(Notice::widget(f))` | the lines above everything, or a widget of the caller drawn there |
 | `nothing_found(text)` | the line of a query that finds nothing; kept across `open` |
@@ -44,6 +45,7 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | `beside(Closes \| Ignored)` | what a click beside the menu does |
 | `show(context)` | draws a frame; `Some(Chosen)` on the frame an entry is chosen |
 | `close()`, `is_open()`, `selected()` | `selected()` is `None` while no entry is selected |
+| `level()` | the identifiers of the levels the menu stands in, the outermost first; none at the top: a caller that edits a value in a level knows when it is entered and left |
 | `holds(id)` | whether an entry of that id stands in the menu, at any level: is the menu standing still the one a caller opened |
 | `layer_id()` | the layer, the same open or closed |
 
@@ -65,6 +67,7 @@ and never read: what `Shift+Enter` means is the caller's.
 | `children(items)` | a level below |
 | `choosable(true)` | an entry with children is chosen; `Right` and its zone `›` step in |
 | `opens_at(id)` | where the selection lands in the level below |
+| `notice(text)`, `notice(Notice::widget(f))` | above the plates while the level below is shown, in place of the notice of the menu: the editor of a value |
 
 ## The plates
 
@@ -161,8 +164,11 @@ holds nothing that takes one. The width of the menu counts the box.
  │█Port        ›█│ ───────────────► │ ‹ Port        │
  │ Theme       › │                  │█ttyUSB0      █│  or opens_at(id)
  │ Quit          │ ◄─────────────── │ ttyUSB1       │
- └───────────────┘ Left, Enter on ‹ └───────────────┘
+ └───────────────┘  Left, Esc, ‹   └───────────────┘
 ```
+
+`Left`, `Esc` and the plate `‹` step out of a level onto the entry it was
+entered from; `Esc` at the top closes the menu.
 
 | entry | `Enter` | `Right` | click |
 | --- | --- | --- | --- |
@@ -284,7 +290,7 @@ time:
 | `Right`, the zone `›` | step into the entry |
 | `Left` | step out, or clear the query |
 | `Enter`, click | choose, with whatever is held |
-| `Esc` | clear the query; without one, close |
+| `Esc` | clear the query; without one, step out of the level; at the top, close |
 | text, a paste | into the query at the caret |
 | `Backspace` | the character before the caret; with nothing found, back to what finds something |
 | `Ctrl+Backspace` | clear the query |

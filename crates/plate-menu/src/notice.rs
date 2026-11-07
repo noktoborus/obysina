@@ -16,6 +16,18 @@ pub enum Notice {
     Widget(Arc<dyn Fn(&mut egui::Ui) + Send + Sync>),
 }
 
+impl PartialEq for Notice {
+    fn eq(&self, other: &Notice) -> bool {
+        match (self, other) {
+            (Notice::Text(text), Notice::Text(other)) => text == other,
+            (Notice::Widget(show), Notice::Widget(other)) => Arc::ptr_eq(show, other),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Notice {}
+
 impl Notice {
     /// A notice drawn by `show`.
     pub fn widget(show: impl Fn(&mut egui::Ui) + Send + Sync + 'static) -> Notice {

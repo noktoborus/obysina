@@ -1,6 +1,7 @@
 //! Entries of a menu.
 
 use crate::detail::Detail;
+use crate::notice::Notice;
 
 /// One entry of a menu.
 ///
@@ -35,6 +36,9 @@ pub struct MenuItem {
     /// Identifier of the entry the selection lands on when this one is stepped
     /// into, empty for the first entry of the level.
     pub opens_at: String,
+    /// What stands above the plates while the entries of this one are
+    /// shown, in place of the notice of the menu.
+    pub notice: Option<Notice>,
     /// True for a line between entries.
     pub separator: bool,
 }
@@ -54,6 +58,7 @@ impl MenuItem {
             choosable: false,
             children: Vec::new(),
             opens_at: String::new(),
+            notice: None,
             separator: false,
         }
     }
@@ -138,6 +143,15 @@ impl MenuItem {
     /// on the first.
     pub fn opens_at(mut self, id: impl Into<String>) -> Self {
         self.opens_at = id.into();
+        self
+    }
+
+    /// What stands above the plates while the entries of this one are shown:
+    /// a text, or a widget of the caller, in place of the notice of the
+    /// menu. A level that edits a value shows its editor so.
+    pub fn notice(mut self, notice: impl Into<Notice>) -> Self {
+        let notice = notice.into();
+        self.notice = (!notice.is_blank()).then_some(notice);
         self
     }
 

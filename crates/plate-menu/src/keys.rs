@@ -4,7 +4,8 @@
 /// What a key does in the menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Walk {
-    /// Clears the query; with none, closes the menu.
+    /// Clears the query; with none, steps out of the level; at the top,
+    /// closes the menu.
     Close,
     /// The next entry, wrapping.
     Down,

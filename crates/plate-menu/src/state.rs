@@ -132,6 +132,28 @@ impl MenuState {
         !self.query.trim().is_empty() && search(&self.items, &self.query).is_empty()
     }
 
+    /// Identifiers of the levels walked into, the outermost first; none at
+    /// the top.
+    pub fn level(&self) -> Vec<String> {
+        let mut level = Vec::new();
+        let mut path = Vec::new();
+        for index in &self.path {
+            path.push(*index);
+            if let Some(item) = item_at(&self.items, &path) {
+                level.push(item.id.clone());
+            }
+        }
+        level
+    }
+
+    /// The notice of the level shown, while no query is typed.
+    pub fn level_notice(&self) -> Option<&crate::notice::Notice> {
+        if !self.query.is_empty() || self.path.is_empty() {
+            return None;
+        }
+        item_at(&self.items, &self.path)?.notice.as_ref()
+    }
+
     /// Labels of the levels walked into, for the line above the entries.
     pub fn trail(&self) -> Vec<String> {
         let mut trail = Vec::new();
@@ -331,15 +353,20 @@ impl MenuState {
     }
 
     /// Steps back out of the current level, or clears the query at the top.
-    /// True when something changed.
+    /// True when something changed. The selection lands on the entry the
+    /// level was stepped into from.
     pub fn step_out(&mut self) -> bool {
         if self.clear_query() {
             return true;
         }
+        let left = self.path.clone();
         if self.path.pop().is_none() {
             return false;
         }
         self.select_first();
+        if let Some(index) = self.rows().iter().position(|row| row.path == left) {
+            self.selected = index;
+        }
         true
     }
 
@@ -510,6 +537,22 @@ impl MenuState {
         }
         self.path = standing;
         false
+    }
+
+    /// Stands in the level of the entry `id`, its entries shown and none
+    /// selected. False, and nothing changed, when no entry of that
+    /// identifier carries entries.
+    pub fn enter(&mut self, id: &str) -> bool {
+        let Some(path) = path_of(&self.items, id) else {
+            return false;
+        };
+        if !item_at(&self.items, &path).is_some_and(MenuItem::has_children) {
+            return false;
+        }
+        self.path = path;
+        self.select_first();
+        self.rest();
+        true
     }
 
     /// Puts the selection on the first entry, never on the row that leads back.
