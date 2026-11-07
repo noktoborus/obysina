@@ -61,5 +61,13 @@ another key does not install over it.
 give the rest. Without it the release is unsigned. No key lives in the
 repository.
 
+A release of GitHub is signed by `.github/workflows/build.yml` with the
+release key of the secrets of the repository: `OBUSINA_KEYSTORE_BASE64`,
+the keystore in base64, and `OBUSINA_KEYSTORE_PASSWORD`,
+`OBUSINA_KEY_ALIAS`, `OBUSINA_KEY_PASSWORD`. It is written to the
+temporary directory of the runner for the build and deleted after it. The
+keystore itself is kept off line, with a copy: a package signed with
+another key does not install over the one released.
+
 The versions of the SDK, the NDK and the libraries are in
 `app/build.gradle.kts` and `build.gradle.kts`.

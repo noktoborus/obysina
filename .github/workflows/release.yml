@@ -1,0 +1,77 @@
+# A release, on a tag `vx.y.z` that `make VERSION=x.y.z` made and that was
+# pushed: the builds of build.yml, the package of android signed with the
+# key of the secrets; a release of GitHub with the package and the program
+# for Windows; and the site of the browser on GitHub Pages.
+#
+# The repository needs, once: the four secrets that build.yml names, and
+# GitHub Actions as the source of its Pages (Settings, Pages).
+
+name: release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: the tag is the version of Cargo.toml (RULE version)
+        id: version
+        run: |
+          written=$(sed -n '/^\[workspace.package\]/,/^\[/ s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          test "v$written" = "$GITHUB_REF_NAME" \
+            || { echo "the tag $GITHUB_REF_NAME is not the version $written"; exit 1; }
+          echo "version=$written" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    uses: ./.github/workflows/build.yml
+    with:
+      signed: true
+    secrets: inherit
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: built
+      - name: the files of the release, named by the version
+        run: |
+          mkdir release
+          cp built/android/obusina-release.apk "release/obusina-$VERSION.apk"
+          cp built/windows/obusina.exe "release/obusina-$VERSION-windows-x86_64.exe"
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Obusina ${{ env.VERSION }}
+          files: release/*
+          fail_on_unmatched_files: true
+
+  pages:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: web
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

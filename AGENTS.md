@@ -22,6 +22,15 @@ RULE version = `version` of `[workspace.package]` of Cargo.toml, set by
 THEN the android package reads it from there; it is written nowhere else
 REF  Makefile, target `version`
 
+RULE release : a tag `vx.y.z` pushed is a release, by
+     `.github/workflows/release.yml`: on the page of releases only, the
+     site of the browser on GitHub Pages
+THEN the builds are `.github/workflows/build.yml`, for every push and for a
+     release; a step of a build is a target of the Makefile, so it runs here
+     the same
+EX-  a command of a build written in a workflow and nowhere in the Makefile
+REF  .github/workflows/
+
 RULE app.id = ru.styxheim.obusina
 WHY  the desktop matches a window to the program by one name. A window that
      names no entry gets the default icon and shows up twice in the task list.

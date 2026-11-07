@@ -110,6 +110,21 @@ Android needs the NDK, the SDK, a JDK and `cargo-ndk`, named by
 installs every tool these need. A release is signed as `android/README.md`
 says.
 
+## Releases
+
+```text
+make VERSION=x.y.z ──► a commit of the version, the tag vx.y.z
+git push && git push origin vx.y.z ──► .github/workflows/release.yml
+    ├─ the package of android, signed with the key of the secrets
+    ├─ the program for Windows       ──► a release of GitHub, with both
+    └─ the site of the browser       ──► GitHub Pages
+```
+
+Every push runs the checks and the three builds, unsigned
+(`.github/workflows/ci.yml`). The key of the releases of android is in the
+secrets of the repository (`android/README.md`). A release is published
+only on the page of releases.
+
 In a browser the program keeps nothing: a browser gives it no directory,
 so it opens on a new pattern, and what is to be kept is exported to a file.
 The page `web/index.html` shows a bar of loading while the module is
