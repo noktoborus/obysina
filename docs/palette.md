@@ -111,7 +111,11 @@ model (`crates/obusina-pattern/README.md`). Its tests are
       digit: it takes beads away. The fonts of egui carry no eraser; the
       sign was picked from the list of `glyphs` of zyterm (`RULE
       icon.search` there).
+    - The place `0` is drawn empty: the ground of the panel, `window_fill`,
+      and the thin outline `SquareButton` draws round a fill.
     - Was: the digit `0`.
+    - Was: filled with `extreme_bg_color`, black in the dark theme, so it
+      read as a black colour.
 11. **A pattern has several palettes.** Together they hold more colours than
     the keys of one. "+" and "-" of the keyboard or the numpad show the next
     and the previous palette, in a circle. The digits choose in the palette
