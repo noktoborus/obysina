@@ -7,7 +7,13 @@ BINDIR = $(DESTDIR)$(PREFIX)/bin
 APPDIR = $(DESTDIR)$(PREFIX)/share/applications
 ICONDIR = $(DESTDIR)$(PREFIX)/share/icons/hicolor
 
-.PHONY: build build-windows build-android apk apk-release aab install uninstall mockups
+.PHONY: build build-windows build-android apk apk-release aab install uninstall mockups version
+
+# `make VERSION=x.y.z` sets the version of the program and tags it, and does
+# nothing else (the target `version` at the end).
+ifdef VERSION
+.DEFAULT_GOAL := version
+endif
 
 build:
 	cargo build --release
@@ -80,3 +86,25 @@ uninstall:
 	sudo rm -f $(APPDIR)/$(ID).desktop
 	sudo rm -f $(ICONDIR)/scalable/apps/$(ID).svg
 	sudo update-desktop-database $(APPDIR) 2>/dev/null || true
+
+# The version of the program, `make VERSION=x.y.z`: `version` of
+# `[workspace.package]` of Cargo.toml, which the android package reads too.
+# Cargo.toml and Cargo.lock go in one commit, and the tag `vx.y.z` on it; the
+# tag is not pushed. It needs a clean tree and a tag that is not there yet.
+# 1.0.0 and on are refused while AGENTS.md still has the EXC of RULE
+# pattern.version that holds only before 1.0.0.
+version:
+	@echo "$(VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$$' \
+		|| { echo "give VERSION=x.y.z"; exit 1; }
+	@test -z "$$(git status --porcelain)" \
+		|| { echo "the tree has changes: commit them first"; exit 1; }
+	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null \
+		|| { echo "v$(VERSION) is a tag already"; exit 1; }
+	@case "$(VERSION)" in 0.*) ;; *) ! grep -q 'EXC  before version 1.0.0' AGENTS.md \
+		|| { echo "delete the EXC of RULE pattern.version first"; exit 1; };; esac
+	sed -i '/^\[workspace.package\]/,/^\[/ s/^version = ".*"/version = "$(VERSION)"/' Cargo.toml
+	grep -q '^version = "$(VERSION)"' Cargo.toml
+	cargo update --workspace --offline
+	git commit -q -m "Set the version to $(VERSION)" Cargo.toml Cargo.lock
+	git tag -a "v$(VERSION)" -m "Obusina $(VERSION)"
+	@echo "v$(VERSION): git push && git push origin v$(VERSION)"

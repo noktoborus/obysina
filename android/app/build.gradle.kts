@@ -11,6 +11,19 @@ val abis = listOf("arm64-v8a", "x86_64")
 val minimum = 26
 /// The root of the cargo workspace.
 val workspace = rootProject.projectDir.parentFile
+/// The version of the program: `version` of `[workspace.package]` of the
+/// Cargo.toml of the workspace, which `make VERSION=x.y.z` sets.
+val release = Regex("""(?ms)^\[workspace\.package\]$.*?^version = "(\d+)\.(\d+)\.(\d+)"$""")
+    .find(workspace.resolve("Cargo.toml").readText())
+    ?.destructured
+    ?.let { (major, minor, patch) -> listOf(major, minor, patch).map(String::toInt) }
+    ?: error("no version x.y.z in [workspace.package] of Cargo.toml")
+/// The code of the version, which android counts up: two digits for the
+/// minor number and two for the patch.
+val releaseCode = release.let { (major, minor, patch) ->
+    require(minor < 100 && patch < 100) { "the minor and the patch number are below 100" }
+    major * 10000 + minor * 100 + patch
+}
 
 android {
     namespace = "ru.styxheim.obusina"
@@ -22,8 +35,8 @@ android {
         applicationId = "ru.styxheim.obusina"
         minSdk = minimum
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = releaseCode
+        versionName = release.joinToString(".")
         ndk { abiFilters += abis }
     }
 

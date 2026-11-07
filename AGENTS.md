@@ -17,6 +17,11 @@ RULE product = Obusina, an editor of bead patterns
 REF  README.md
 REF  ARCHITECTURE.md
 
+RULE version = `version` of `[workspace.package]` of Cargo.toml, set by
+     `make VERSION=x.y.z`, which commits it and tags it `vx.y.z`
+THEN the android package reads it from there; it is written nowhere else
+REF  Makefile, target `version`
+
 RULE app.id = ru.styxheim.obusina
 WHY  the desktop matches a window to the program by one name. A window that
      names no entry gets the default icon and shows up twice in the task list.
@@ -134,8 +139,8 @@ WHY  a pattern is the work of a person, not a file of the program.
 EXC  before version 1.0.0, by the user's word: no old format has to be read.
      A change of shape may change format 1 itself, its loader and its file
      in `tests/patterns/`, instead of adding format 2.
-THEN the commit that sets `[workspace.package] version` to 1.0.0 deletes this
-     EXC; from then on every format is read
+THEN a commit before `make VERSION=1.0.0` deletes this EXC; the Makefile
+     refuses 1.0.0 while it stands; from then on every format is read
 RULE pattern.loader : only the loader knows old formats
 THEN one loader per format, `crates/obusina-pattern/src/load/v<N>.rs`; it
      turns its file into the current `Pattern`. The model and the writer know
