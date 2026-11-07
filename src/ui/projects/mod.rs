@@ -84,7 +84,7 @@ pub struct Projects {
     pub(crate) chosen: Option<BTreeSet<PatternId>>,
     /// The card the keys stand on: an index among the cards shown, the
     /// cards of actions first.
-    focus: Option<usize>,
+    pub(crate) focus: Option<usize>,
     /// The toast that undoes the last move to the trash, and what it moved.
     undo: Option<(ToastId, Vec<PatternId>)>,
     /// What is to be told in a toast.

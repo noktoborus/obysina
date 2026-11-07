@@ -35,7 +35,8 @@ pub struct Lines<'a> {
 
 /// One card: its picture (`thumbs.rs`), or the paper of the pattern until
 /// it is drawn; its name, its size and `last`; the mark of a
-/// choice when `mark` is given; the frame of the keys when `focused`.
+/// choice when `mark` is given; when `focused`, the keys stand on it: it is
+/// filled with the colour of the selection.
 pub fn card(
     ui: &mut egui::Ui,
     size: Vec2,
@@ -46,13 +47,13 @@ pub fn card(
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let painter = ui.painter_at(rect);
     let visuals = ui.style().interact(&response);
-    painter.rect_filled(rect, 6.0, ui.visuals().extreme_bg_color);
-    let stroke = if focused {
-        egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)
-    } else {
-        visuals.bg_stroke
+    let selection = ui.visuals().selection;
+    let ground = match focused {
+        true => selection.bg_fill,
+        false => ui.visuals().extreme_bg_color,
     };
-    painter.rect_stroke(rect, 6.0, stroke, egui::StrokeKind::Inside);
+    painter.rect_filled(rect, 6.0, ground);
+    painter.rect_stroke(rect, 6.0, visuals.bg_stroke, egui::StrokeKind::Inside);
     let inner = size.x - 2.0 * CARD_MARGIN;
     let frame = Rect::from_min_size(
         rect.min + Vec2::splat(CARD_MARGIN),
@@ -63,8 +64,10 @@ pub fn card(
         let uv = Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0));
         painter.image(texture, frame, uv, Color32::WHITE);
     }
-    let text = ui.visuals().text_color();
-    let weak = ui.visuals().weak_text_color();
+    let (text, weak) = match focused {
+        true => (selection.stroke.color, selection.stroke.color),
+        false => (ui.visuals().text_color(), ui.visuals().weak_text_color()),
+    };
     let mut line = frame.bottom() + 6.0;
     let room = rect.width() - 16.0;
     for (words, colour, height) in [
@@ -106,7 +109,7 @@ pub fn card(
 }
 
 /// A card that does something rather than open a pattern: its icon over its
-/// words.
+/// words; filled with the colour of the selection when the keys stand on it.
 pub fn action_card(
     ui: &mut egui::Ui,
     size: Vec2,
@@ -116,25 +119,28 @@ pub fn action_card(
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let visuals = ui.style().interact(&response);
     let painter = ui.painter_at(rect);
-    let stroke = if focused {
-        egui::Stroke::new(2.0, ui.visuals().selection.stroke.color)
-    } else {
-        visuals.fg_stroke
+    let selection = ui.visuals().selection;
+    let ink = match focused {
+        true => selection.stroke.color,
+        false => visuals.fg_stroke.color,
     };
-    painter.rect_stroke(rect, 6.0, stroke, egui::StrokeKind::Inside);
+    if focused {
+        painter.rect_filled(rect, 6.0, selection.bg_fill);
+    }
+    painter.rect_stroke(rect, 6.0, visuals.fg_stroke, egui::StrokeKind::Inside);
     painter.text(
         rect.center() - vec2(0.0, 14.0),
         egui::Align2::CENTER_CENTER,
         icon,
         egui::FontId::proportional(36.0),
-        visuals.fg_stroke.color,
+        ink,
     );
     painter.text(
         rect.center() + vec2(0.0, 26.0),
         egui::Align2::CENTER_CENTER,
         words,
         egui::FontId::proportional(14.0),
-        visuals.fg_stroke.color,
+        ink,
     );
     response.named(words)
 }

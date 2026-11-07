@@ -154,3 +154,18 @@ fn the_chosen_are_exported_from_the_bar() {
     assert_eq!(patterns.len(), 1);
     assert_eq!(patterns[0].id(), first);
 }
+
+/// The arrows walk the cards, from the first: "New pattern", then
+/// "Import"; the card the keys stand on is drawn filled.
+#[test]
+fn the_arrows_walk_the_cards() {
+    let mut window = list();
+
+    window.harness.key_press(egui::Key::ArrowRight);
+    window.harness.run();
+    assert_eq!(window.harness.state().projects.focus, Some(0));
+
+    window.harness.key_press(egui::Key::ArrowRight);
+    window.harness.run();
+    assert_eq!(window.harness.state().projects.focus, Some(1));
+}
