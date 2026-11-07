@@ -14,8 +14,16 @@ struct Kept<K> {
     texture: TextureHandle,
 }
 
-/// The texture `name`, drawn by `draw` again only when `key` changed since
-/// the last time it was asked for.
+/// The textures of one name kept at most, the last asked for.
+///
+/// Why more than one: the pictures of the cards of the list are drawn at a
+/// bead size each, and a picture is drawn a frame after its textures are
+/// asked for. With one texture a name, the cards took the texture from each
+/// other, and no picture was ever drawn.
+pub const KEPT: usize = 32;
+
+/// The texture `name`, drawn by `draw` again only when none of the last
+/// [`KEPT`] asked for under `name` was drawn from `key`.
 pub fn cached<K>(
     context: &Context,
     name: &'static str,
@@ -27,20 +35,22 @@ where
     K: Clone + PartialEq + Send + Sync + 'static,
 {
     let id = egui::Id::unique(name);
-    if let Some(kept) = context.data(|data| data.get_temp::<Kept<K>>(id))
-        && kept.key == key
-    {
-        return kept.texture;
-    }
-    let texture = context.load_texture(name, draw(), options);
+    let found = context.data_mut(|data| {
+        let kept = data.get_temp_mut_or_default::<Vec<Kept<K>>>(id);
+        let at = kept.iter().position(|kept| kept.key == key)?;
+        Some(kept.remove(at).texture)
+    });
+    // Loaded out of `data_mut`: the context is locked within it.
+    let texture = found.unwrap_or_else(|| context.load_texture(name, draw(), options));
     context.data_mut(|data| {
-        data.insert_temp(
-            id,
-            Kept {
-                key,
-                texture: texture.clone(),
-            },
-        );
+        let kept = data.get_temp_mut_or_default::<Vec<Kept<K>>>(id);
+        kept.push(Kept {
+            key,
+            texture: texture.clone(),
+        });
+        if kept.len() > KEPT {
+            kept.remove(0);
+        }
     });
     texture
 }

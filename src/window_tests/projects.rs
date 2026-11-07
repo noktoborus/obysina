@@ -383,3 +383,35 @@ fn a_finger_may_drift_as_it_holds_a_card() {
 fn a_finger_that_moves_far_chooses_nothing() {
     assert!(!hold_a_finger(&[60.0]));
 }
+
+/// Patterns of other sizes, whose cards draw beads of other sizes, all get
+/// their pictures: they do not draw the textures of each other away.
+#[test]
+fn cards_of_patterns_of_other_sizes_all_get_pictures() {
+    let mut window = list();
+    for side in [5, 9, 14] {
+        let mut pattern = crate::app::new_pattern();
+        pattern.set_id(obusina_pattern::PatternId::new());
+        let corner = obusina_pattern::Cell {
+            column: side,
+            row: side / 2,
+        };
+        pattern.set(corner, Some(super::id_at(0)));
+        pattern.set_sheet(Some(obusina_pattern::Bounds {
+            min: obusina_pattern::Cell { column: 0, row: 0 },
+            max: corner,
+        }));
+        let library = window.harness.state().library.as_ref().expect("a library");
+        library
+            .save(&pattern, &crate::edit::History::default())
+            .expect("saved");
+    }
+    window.harness.state_mut().projects.refresh();
+
+    for _ in 0..6 {
+        window.harness.run_steps(2);
+        let _ = window.harness.render();
+    }
+
+    assert_eq!(window.harness.state().projects.thumbs.drawn(), 3);
+}

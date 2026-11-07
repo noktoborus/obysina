@@ -53,7 +53,9 @@ The field of beads: an egui widget that draws an
   the field moves back as little as it takes and stays at that side.
 - Nothing is tessellated. One white bead is drawn into a texture by the
   distance to a rounded box, again only when the size of a bead changes
-  (`sprite.rs`); a round bead is a second texture, its white shaded. A bead
+  (`sprite.rs`); a round bead is a second texture, its white shaded. The
+  last `KEPT` sizes are kept, so pictures of patterns of other sizes do not
+  draw each other's texture away. A bead
   on the screen is one quad of it, tinted its colour; so is a shadow,
   tinted by the tones of the paper. A bead of a colour not seen, removed or
   hidden (`Colour::seen`), is a quad of a second texture: its outline and
