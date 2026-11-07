@@ -11,6 +11,10 @@ A button of a fixed size for egui, its label in the middle.
   white, whichever reads on it (`contrast`).
 - `.marked(true)`: lower, with a bar under it of one colour whatever its
   fill; the bar lies on the ground of the panel. Read as selected.
+- `.volume(true)`: a fill round in its light, as a round bead of
+  `obusina-canvas` is: lighter in the middle, darker to the sides and the
+  bottom. A white button is drawn once into a texture for each size and
+  tinted with the fill.
 - `.hatched(true)`: diagonal lines over it, the label kept clear, the fill
   left out: a thing with no colour to show.
 - `.text_size(points)`: the size of the label.
@@ -18,7 +22,7 @@ A button of a fixed size for egui, its label in the middle.
   such as an icon.
 - In a disabled `Ui` it is drawn faded and gives no clicks.
 
-![Plain, selected, disabled, an icon, light, dark and selected fills, marked light and dark, hatched, hatched and marked][picture-kinds]
+![Plain, selected, disabled, an icon, light, dark and selected fills, marked light and dark, hatched, hatched and marked, red and white with volume][picture-kinds]
 
 [picture-kinds]: img/kinds.png
 

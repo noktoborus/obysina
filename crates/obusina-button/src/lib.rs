@@ -2,6 +2,8 @@
 #![doc = include_str!("../README.md")]
 #![deny(missing_docs)]
 
+mod volume;
+
 use egui::{
     Color32, Pos2, Rect, Response, RichText, Sense, Stroke, StrokeKind, TextWrapMode, Ui, Vec2,
     Widget, WidgetText,
@@ -35,6 +37,7 @@ pub struct SquareButton<'a> {
     selected: bool,
     marked: bool,
     hatched: bool,
+    volume: bool,
     name: Option<&'a str>,
 }
 
@@ -49,6 +52,7 @@ impl<'a> SquareButton<'a> {
             selected: false,
             marked: false,
             hatched: false,
+            volume: false,
             name: None,
         }
     }
@@ -84,6 +88,14 @@ impl<'a> SquareButton<'a> {
     /// with no colour to show. A fill is not drawn.
     pub fn hatched(mut self, hatched: bool) -> Self {
         self.hatched = hatched;
+        self
+    }
+
+    /// Draws a fill round in its light, as a round bead is: lighter in the
+    /// middle, darker to the sides and the bottom. A button with no fill is
+    /// not changed.
+    pub fn volume(mut self, volume: bool) -> Self {
+        self.volume = volume;
         self
     }
 
@@ -139,13 +151,22 @@ impl Widget for SquareButton<'_> {
             let bar = Rect::from_min_max(Pos2::new(rect.min.x, rect.max.y - BAR), rect.max);
             painter.rect_filled(bar, 1.0, bar_colour);
         }
-        painter.rect(
-            face,
-            visuals.corner_radius,
-            fill,
-            stroke,
-            StrokeKind::Inside,
-        );
+        let round = self.volume && !self.hatched && self.fill.is_some();
+        if round {
+            let radius = visuals.corner_radius.average();
+            let texture = volume::texture(ui.ctx(), face.size(), radius);
+            let whole = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+            painter.image(texture.id(), face, whole, fill);
+            painter.rect_stroke(face, visuals.corner_radius, stroke, StrokeKind::Inside);
+        } else {
+            painter.rect(
+                face,
+                visuals.corner_radius,
+                fill,
+                stroke,
+                StrokeKind::Inside,
+            );
+        }
         if self.hatched {
             hatch(painter, face, text);
             let room = Rect::from_center_size(face.center(), LABEL_ROOM);

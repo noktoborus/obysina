@@ -13,7 +13,7 @@ const SIZE: egui::Vec2 = egui::vec2(44.0, 36.0);
 
 /// A row of buttons: plain, selected, disabled, an icon, and filled ones,
 /// light, dark and selected; marked, light and dark; hatched, and hatched
-/// and marked.
+/// and marked; red and white with volume.
 fn buttons(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         ui.add(SquareButton::new("A", SIZE));
@@ -47,13 +47,24 @@ fn buttons(ui: &mut egui::Ui) {
                 .hatched(true),
         );
         ui.add(SquareButton::new("H", SIZE).hatched(true).marked(true));
+        ui.add(
+            SquareButton::new("I", SIZE)
+                .fill(egui::Color32::from_rgb(0xc0, 0x30, 0x30))
+                .volume(true),
+        );
+        ui.add(
+            SquareButton::new("J", SIZE)
+                .fill(egui::Color32::from_rgb(0xf2, 0xef, 0xe6))
+                .volume(true)
+                .marked(true),
+        );
     });
 }
 
 #[test]
 fn kinds() {
     let mut harness = Harness::builder()
-        .with_size(egui::vec2(580.0, 60.0))
+        .with_size(egui::vec2(680.0, 60.0))
         .with_theme(egui::Theme::Dark)
         .build_ui(buttons);
     harness.run();

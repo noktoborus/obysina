@@ -23,22 +23,31 @@ pub fn toggle(ui: &mut Ui, on: bool, icon: &str, hint: &str) -> Response {
     ui.add(square(icon).selected(on).name(hint)).tip(hint)
 }
 
-/// A button filled with a colour, `label` on it; `name` is what a screen
-/// reader reads.
-pub fn swatch(ui: &mut Ui, fill: Color32, label: &str, selected: bool, name: &str) -> Response {
-    ui.add(square(label).fill(fill).selected(selected).name(name))
+/// A button filled with a colour, `label` on it, round in its light with
+/// `volume`, as the beads; `name` is what a screen reader reads.
+pub fn swatch(
+    ui: &mut Ui,
+    (fill, volume): (Color32, bool),
+    label: &str,
+    selected: bool,
+    name: &str,
+) -> Response {
+    let button = square(label).fill(fill).volume(volume);
+    ui.add(button.selected(selected).name(name))
 }
 
-/// A swatch of the panel of beads: filled with its colour, or hatched with
-/// none to show; the one in hand marked by a bar under it.
+/// A swatch of the panel of beads: filled with its colour, round in its
+/// light with `volume`, or hatched with none to show; the one in hand marked
+/// by a bar under it.
 pub fn colour(
     ui: &mut Ui,
-    fill: Option<Color32>,
+    (fill, volume): (Option<Color32>, bool),
     label: &str,
     in_hand: bool,
     name: &str,
 ) -> Response {
-    ui.add(face(square(label), fill).marked(in_hand).name(name))
+    let button = face(square(label), fill).volume(volume);
+    ui.add(button.marked(in_hand).name(name))
 }
 
 /// The empty place of the panel of beads, as wide as two swatches and the

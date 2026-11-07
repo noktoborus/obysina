@@ -352,7 +352,10 @@ fn cell(
     let lit = state.dragging.is_some() && place == state.drop_to;
     let swatch = match shown(app, place) {
         Some(colour) => match colour.seen() {
-            Some(seen) => button::swatch(ui, color32(seen), &number, lit, &number),
+            Some(seen) => {
+                let face = (color32(seen), app.settings.glow());
+                button::swatch(ui, face, &number, lit, &number)
+            }
             None => button::hatched(ui, &number, lit, &number),
         },
         None => button::toggle(ui, lit, "+", "+"),

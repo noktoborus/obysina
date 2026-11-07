@@ -116,6 +116,10 @@ model (`crates/obusina-pattern/README.md`). Its tests are
     - Was: the digit `0`.
     - Was: filled with `extreme_bg_color`, black in the dark theme, so it
       read as a black colour.
+    - With the volume on (the menu of the settings), every swatch of the
+      panel and of the window is round in its light, as the beads of its
+      colour are (`SquareButton::volume`). The place `0` stays flat: it
+      holds no colour.
 11. **A pattern has several palettes.** Together they hold more colours than
     the keys of one. "+" and "-" of the keyboard or the numpad show the next
     and the previous palette, in a circle. The digits choose in the palette

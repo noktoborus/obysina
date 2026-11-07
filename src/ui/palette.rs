@@ -189,7 +189,8 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
                 .and_then(obusina_pattern::Colour::seen)
                 .map(|Rgb([red, green, blue])| Color32::from_rgb(red, green, blue));
             let in_hand = app.colour == Some(id);
-            if button::colour(ui, fill, &(place + 1).to_string(), in_hand, &name).clicked() {
+            let face = (fill, app.settings.glow());
+            if button::colour(ui, face, &(place + 1).to_string(), in_hand, &name).clicked() {
                 tap(app, Some(id));
             }
         }
@@ -200,7 +201,7 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry, wide: bool) {
             let response = if wide {
                 button::wide(ui, fill, icons::EMPTY, in_hand, &name)
             } else {
-                button::colour(ui, Some(fill), icons::EMPTY, in_hand, &name)
+                button::colour(ui, (Some(fill), false), icons::EMPTY, in_hand, &name)
             };
             if response.clicked() {
                 tap(app, None);
