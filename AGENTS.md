@@ -141,15 +141,6 @@ RULE pattern.lib : the model and its file live in `obusina-pattern`; it knows
 RULE pattern.write : a write goes to a temporary file, then a rename
 WHY  an interrupted write must not leave half a pattern
 
-RULE pattern.version : a pattern file carries `format`, an integer. Every
-     format this program ever wrote is read.
-WHY  a pattern is the work of a person, not a file of the program.
-     `RULE config.legacy` does not apply to it.
-EXC  before version 1.0.0, by the user's word: no old format has to be read.
-     A change of shape may change format 1 itself, its loader and its file
-     in `tests/patterns/`, instead of adding format 2.
-THEN a commit before `make VERSION=1.0.0` deletes this EXC; the Makefile
-     refuses 1.0.0 while it stands; from then on every format is read
 RULE pattern.loader : only the loader knows old formats
 THEN one loader per format, `crates/obusina-pattern/src/load/v<N>.rs`; it
      turns its file into the current `Pattern`. The model and the writer know
