@@ -230,18 +230,6 @@ fn a_sheet_of_no_cells_is_refused() {
 }
 
 #[test]
-fn a_write_leaves_a_whole_file() {
-    let directory = tempfile::tempdir().expect("a scratch directory");
-    let path = directory.path().join("pattern.json");
-    let pattern = Pattern::from_json(&file(FORMAT)).expect("the file reads");
-
-    obusina_pattern::write(&path, &pattern).expect("the pattern writes");
-
-    assert_eq!(obusina_pattern::read(&path).expect("it reads"), pattern);
-    assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
-}
-
-#[test]
 fn format_1_reads_its_ruling() {
     let pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
 

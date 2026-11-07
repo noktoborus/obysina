@@ -1,17 +1,14 @@
 //! The directory of pictures: `<n>.<ext>`, a copy of the picture, and
 //! `<n>.yaml`, how it lies over the field of its pattern.
 
-use std::path::{Path, PathBuf};
-
 use serde::{Deserialize, Serialize};
 
 use crate::error::{BackdropError, Result};
 use crate::kind::Kind;
+use unifs::Files;
 
 /// The extension of a description.
 const DESCRIPTION: &str = "yaml";
-/// The extension a file is written under before it takes its place.
-const PARTIAL: &str = "partial";
 
 /// How a picture lies over the field of its pattern.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -48,18 +45,13 @@ pub struct Kept {
 /// files at once; the caller runs it away from the frame.
 #[derive(Debug, Clone)]
 pub struct Store {
-    dir: PathBuf,
+    files: Files,
 }
 
 impl Store {
-    /// The store in `dir`.
-    pub fn new(dir: PathBuf) -> Store {
-        Store { dir }
-    }
-
-    /// The directory.
-    pub fn dir(&self) -> &Path {
-        &self.dir
+    /// The store in the directory of `files`.
+    pub fn new(files: Files) -> Store {
+        Store { files }
     }
 
     /// The picture of a pattern: the one of the highest number when there
@@ -68,7 +60,8 @@ impl Store {
     /// holds nothing.
     pub async fn find(&self, pattern: &str) -> Result<Option<Kept>> {
         let found = self
-            .described()?
+            .described()
+            .await?
             .into_iter()
             .filter(|kept| kept.backdrop.pattern == pattern)
             .max_by_key(|kept| kept.number);
@@ -77,8 +70,12 @@ impl Store {
 
     /// The bytes of a picture of the store.
     pub async fn read(&self, kept: &Kept) -> Result<Vec<u8>> {
-        let path = self.dir.join(&kept.file);
-        std::fs::read(&path).map_err(|source| BackdropError::Read { path, source })
+        self.files
+            .read(&kept.file)
+            .await?
+            .ok_or_else(|| BackdropError::Missing {
+                file: kept.file.clone(),
+            })
     }
 
     /// Puts a picture under a pattern, with a number no picture of the store
@@ -86,14 +83,10 @@ impl Store {
     /// are.
     pub async fn put(&self, bytes: &[u8], backdrop: Backdrop) -> Result<Kept> {
         let kind = Kind::of(bytes).ok_or(BackdropError::Kind)?;
-        std::fs::create_dir_all(&self.dir).map_err(|source| BackdropError::Write {
-            path: self.dir.clone(),
-            source,
-        })?;
         let old = self.find(&backdrop.pattern).await?;
-        let number = self.numbers()?.into_iter().max().unwrap_or(0) + 1;
+        let number = self.numbers().await?.into_iter().max().unwrap_or(0) + 1;
         let file = format!("{number}.{}", kind.extension());
-        write(&self.dir.join(&file), bytes)?;
+        self.files.write(&file, bytes).await?;
         let kept = Kept {
             number,
             file,
@@ -113,95 +106,79 @@ impl Store {
                 number: kept.number,
                 source,
             })?;
-        write(&self.description(kept.number), text.as_bytes())
+        let description = description(kept.number);
+        Ok(self.files.write(&description, text.as_bytes()).await?)
     }
 
     /// Takes a picture and its description away.
     pub async fn remove(&self, kept: &Kept) -> Result<()> {
-        for path in [self.description(kept.number), self.dir.join(&kept.file)] {
-            match std::fs::remove_file(&path) {
-                Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(source) => return Err(BackdropError::Write { path, source }),
-            }
-        }
-        Ok(())
-    }
-
-    /// The file of the description of a number.
-    fn description(&self, number: u64) -> PathBuf {
-        self.dir.join(format!("{number}.{DESCRIPTION}"))
+        self.files.remove(&description(kept.number)).await?;
+        Ok(self.files.remove(&kept.file).await?)
     }
 
     /// The number of every file of the store, read or not.
-    fn numbers(&self) -> Result<Vec<u64>> {
+    async fn numbers(&self) -> Result<Vec<u64>> {
         Ok(self
-            .files()?
+            .names()
+            .await?
             .iter()
-            .filter_map(|path| path.file_stem()?.to_str()?.parse().ok())
+            .filter_map(|name| stem(name).parse().ok())
             .collect())
     }
 
-    /// Every file of the directory; none when it is not there.
-    fn files(&self) -> Result<Vec<PathBuf>> {
-        let entries = match std::fs::read_dir(&self.dir) {
-            Ok(entries) => entries,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(source) => {
-                return Err(BackdropError::Read {
-                    path: self.dir.clone(),
-                    source,
-                });
-            }
-        };
-        Ok(entries
-            .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-            .collect())
+    /// The name of every file of the directory; none when it is not there.
+    async fn names(&self) -> Result<Vec<String>> {
+        let listed = self.files.list("").await?;
+        Ok(listed.into_iter().map(|listed| listed.name).collect())
     }
 
     /// Every picture with a description this version reads, and a file of
     /// the picture beside it.
-    fn described(&self) -> Result<Vec<Kept>> {
-        let files = self.files()?;
-        let kept = files
-            .iter()
-            .filter(|path| path.extension().is_some_and(|ext| ext == DESCRIPTION))
-            .filter_map(|path| {
-                let number: u64 = path.file_stem()?.to_str()?.parse().ok()?;
-                let text = std::fs::read_to_string(path).ok()?;
-                let backdrop: Backdrop = serde_yaml_ng::from_str(&text).ok()?;
-                let file = files
-                    .iter()
-                    .find(|other| {
-                        other.file_stem().and_then(|stem| stem.to_str())
-                            == Some(&number.to_string())
-                            && other.extension().is_some_and(|ext| {
-                                Kind::EXTENSIONS.iter().any(|known| ext == *known)
-                            })
-                    })?
-                    .file_name()?
-                    .to_str()?
-                    .to_owned();
-                Some(Kept {
+    async fn described(&self) -> Result<Vec<Kept>> {
+        let names = self.names().await?;
+        let mut kept = Vec::new();
+        for name in &names {
+            if extension(name) != Some(DESCRIPTION) {
+                continue;
+            }
+            let Ok(number) = stem(name).parse::<u64>() else {
+                continue;
+            };
+            let Some(text) = self.files.read(name).await? else {
+                continue;
+            };
+            let Ok(backdrop) = serde_yaml_ng::from_slice::<Backdrop>(&text) else {
+                continue;
+            };
+            let picture = names.iter().find(|other| {
+                stem(other) == number.to_string()
+                    && extension(other).is_some_and(|ext| Kind::EXTENSIONS.contains(&ext))
+            });
+            if let Some(file) = picture {
+                kept.push(Kept {
                     number,
-                    file,
+                    file: file.clone(),
                     backdrop,
-                })
-            })
-            .collect();
+                });
+            }
+        }
         Ok(kept)
     }
 }
 
-/// Writes a file through a partial file beside it and a rename.
-fn write(path: &Path, bytes: &[u8]) -> Result<()> {
-    let partial = path.with_extension(PARTIAL);
-    let failed = |source| BackdropError::Write {
-        path: path.to_path_buf(),
-        source,
-    };
-    std::fs::write(&partial, bytes).map_err(failed)?;
-    std::fs::rename(&partial, path).map_err(failed)
+/// The file of the description of a number.
+fn description(number: u64) -> String {
+    format!("{number}.{DESCRIPTION}")
+}
+
+/// The name of a file before its last dot.
+fn stem(name: &str) -> &str {
+    name.rsplit_once('.').map_or(name, |(stem, _)| stem)
+}
+
+/// The name of a file after its last dot.
+fn extension(name: &str) -> Option<&str> {
+    name.rsplit_once('.').map(|(_, extension)| extension)
 }
 
 #[cfg(test)]
@@ -224,8 +201,15 @@ mod tests {
 
     fn store() -> (tempfile::TempDir, Store) {
         let dir = tempfile::tempdir().expect("a scratch directory");
-        let store = Store::new(dir.path().join("backdrops"));
+        let store = Store::new(Files::at(dir.path().join("backdrops")));
         (dir, store)
+    }
+
+    /// The names of the files of the store.
+    fn names(store: &Store) -> Vec<String> {
+        let mut names = block_on(store.names()).expect("it lists");
+        names.sort();
+        names
     }
 
     #[test]
@@ -256,7 +240,7 @@ mod tests {
         let second = block_on(store.put(JPEG, backdrop("a"))).expect("it is put");
 
         assert_eq!(second.number, 2);
-        assert!(!store.dir().join(&first.file).exists());
+        assert!(!names(&store).contains(&first.file));
         assert_eq!(block_on(store.find("a")).expect("it reads"), Some(second));
     }
 
@@ -280,7 +264,7 @@ mod tests {
         block_on(store.remove(&kept)).expect("it is removed");
 
         assert_eq!(block_on(store.find("a")).expect("it reads"), None);
-        assert_eq!(std::fs::read_dir(store.dir()).expect("the dir").count(), 0);
+        assert!(names(&store).is_empty());
     }
 
     /// What another version wrote is passed over, not an error.
@@ -288,7 +272,7 @@ mod tests {
     fn a_description_of_another_shape_is_passed_over() {
         let (_dir, store) = store();
         let kept = block_on(store.put(PNG, backdrop("a"))).expect("it is put");
-        std::fs::write(store.dir().join("1.yaml"), "pattern: a\nzoom: 3\n").expect("written");
+        block_on(store.files.write("1.yaml", b"pattern: a\nzoom: 3\n")).expect("written");
 
         assert_eq!(block_on(store.find("a")).expect("it reads"), None);
         let next = block_on(store.put(PNG, backdrop("a"))).expect("it is put");

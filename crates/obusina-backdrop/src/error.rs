@@ -1,28 +1,21 @@
 //! What can go wrong with the store of pictures.
 
-use std::path::PathBuf;
-
 /// One failure of the store.
 #[derive(Debug, thiserror::Error)]
 pub enum BackdropError {
-    /// A file or the directory cannot be read.
-    #[error("{} cannot be read", path.display())]
-    Read {
-        /// The file or the directory.
-        path: PathBuf,
-        /// What the file system said.
+    /// A file or the directory cannot be read or written.
+    #[error("the files of the store")]
+    Files {
+        /// What the files said.
         #[source]
-        source: std::io::Error,
+        source: unifs::Error,
     },
 
-    /// A file or the directory cannot be written.
-    #[error("{} cannot be written", path.display())]
-    Write {
-        /// The file or the directory.
-        path: PathBuf,
-        /// What the file system said.
-        #[source]
-        source: std::io::Error,
+    /// The picture of a description is not there.
+    #[error("the picture {file} is not there")]
+    Missing {
+        /// Its file.
+        file: String,
     },
 
     /// A description cannot be written as YAML.
@@ -42,3 +35,9 @@ pub enum BackdropError {
 
 /// The result of the store.
 pub type Result<T> = std::result::Result<T, BackdropError>;
+
+impl From<unifs::Error> for BackdropError {
+    fn from(source: unifs::Error) -> Self {
+        BackdropError::Files { source }
+    }
+}

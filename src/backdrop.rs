@@ -26,7 +26,7 @@ use obusina_pattern::{Bounds, Cell, Pattern, PatternId};
 
 use crate::error::{AppError, Result};
 use crate::pick::Picked;
-use crate::task::Tasks;
+use crate::task::{MaybeSend, Tasks};
 
 /// The longest side a picture is drawn at, in pixels: a larger one is drawn
 /// smaller. The file in the store keeps all of it.
@@ -34,7 +34,6 @@ pub const PICTURE_SIDE: u32 = 4096;
 /// How much of a new picture shows.
 pub const DEFAULT_OPACITY: f32 = 0.6;
 /// The name of the directory of pictures in the cache.
-#[cfg(not(target_arch = "wasm32"))]
 pub const DIRECTORY: &str = "backdrops";
 
 /// What a job of the store answers.
@@ -82,11 +81,11 @@ pub struct Backdrop {
 }
 
 impl Backdrop {
-    /// The picture of the store of `dir`. Nothing is read until the first
-    /// frame ([`Backdrop::update`]).
-    pub fn new(dir: Option<std::path::PathBuf>) -> Backdrop {
+    /// The picture of the store in the directory of `files`. Nothing is
+    /// read until the first frame ([`Backdrop::update`]).
+    pub fn new(files: Option<unifs::Files>) -> Backdrop {
         Backdrop {
-            store: dir.map(Store::new),
+            store: files.map(Store::new),
             tasks: Tasks::new(),
             answers: channel(),
             asked: false,
@@ -373,8 +372,8 @@ impl Backdrop {
     /// Runs a write of the store; a failure comes back as an answer.
     fn write<F, W>(&self, context: &egui::Context, work: W)
     where
-        W: FnOnce(Store) -> F + Send + 'static,
-        F: std::future::Future<Output = obusina_backdrop::Result<()>> + Send,
+        W: FnOnce(Store) -> F + MaybeSend + 'static,
+        F: std::future::Future<Output = obusina_backdrop::Result<()>> + MaybeSend,
     {
         let Some(store) = self.store.clone() else {
             return;
@@ -387,8 +386,9 @@ impl Backdrop {
         });
     }
 
-    /// The queue of the jobs of the store, for a test that holds them back.
-    #[cfg(test)]
+    /// The queue of the jobs of the store: a test holds them back; the
+    /// window waits for them when it closes.
+    #[cfg(any(test, not(target_arch = "wasm32")))]
     pub fn tasks(&mut self) -> &mut Tasks {
         &mut self.tasks
     }

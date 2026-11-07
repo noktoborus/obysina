@@ -10,6 +10,7 @@ license.workspace = true
 serde.workspace = true
 serde_yaml_ng.workspace = true
 thiserror.workspace = true
+unifs.workspace = true
 
 [dev-dependencies]
 pollster.workspace = true

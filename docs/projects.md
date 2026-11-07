@@ -6,7 +6,9 @@ from it in the editor and goes back to it saved. Nothing is saved by hand.
 ## Where the patterns are
 
 `src/library/mod.rs` keeps each pattern as a file of its own in the data of
-the program, its history beside it:
+the program, its history beside it. The files are of `unifs`
+(`crates/unifs/README.md`): every call is async, and the window runs it away
+from the frame (`src/work.rs`):
 
 ```text
 <data>/patterns/<id>.json          the pattern (crates/obusina-pattern/README.md)
@@ -18,6 +20,21 @@ the program, its history beside it:
 | --- | --- |
 | Linux, Windows | the data directory of `APP_ID` |
 | Android | the internal data path; a `pattern.json` of the version before is taken in once |
+| Browser | `data/` of the private file system of the origin (OPFS) |
+
+```text
+a card tapped ──► open, a job ──► a later frame: the pattern opens
+back to the list ──► save, a job ──► the list read again, a job after it
+a change of the list (rename, trash, lock…) ──► a job ──► the list read again
+```
+
+- The jobs are done in the order they were given, one after another: a
+  save given before the list is read again is on the disk when it is read.
+- A save is counted done when it is given. One that fails is told on the
+  field, and the pattern is saved again after the next rest.
+- When the window closes or android pauses the program, it waits for what
+  was given to be written, `FILES_WAIT` at the longest. A browser cannot
+  wait: a write it was given goes on after the frame.
 
 - The time of the last change is the time of the file. The list is in that
   order, the latest first.

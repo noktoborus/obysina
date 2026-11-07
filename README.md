@@ -141,8 +141,11 @@ Every push runs the checks and the three builds, unsigned
 secrets of the repository (`android/README.md`). A release is published
 only on the page of releases.
 
-In a browser the program keeps nothing: a browser gives it no directory,
-so it opens on a new pattern, and what is to be kept is exported to a file.
-The page `web/index.html` shows a bar of loading while the module is
+In a browser the patterns, the settings and the pictures are kept in the
+private file system of the site (OPFS, `crates/unifs`), as on a disk: the
+list, the trash and the saves work as elsewhere. They stay in that browser
+on that device; to move them, export and import. The browser is asked to
+keep them when its disk runs short. Two tabs of the site write over each
+other. The page `web/index.html` shows a bar of loading while the module is
 fetched (`web/loading.mjs`); the addresses are relative, so the site works
 under any path.

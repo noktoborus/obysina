@@ -104,7 +104,7 @@ fn put_back(pattern: &mut Pattern, palettes: &[Palette]) {
 }
 
 /// What was done and what was undone.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct History {
     done: Vec<Edit>,
     undone: Vec<Edit>,

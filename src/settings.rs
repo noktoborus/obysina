@@ -1,5 +1,5 @@
 //! The settings of the program: `settings.yaml` in the configuration
-//! directory (`RULE config.dir`). They keep the place of each panel, how the
+//! directory (`RULE config.dir`), read and written through `unifs`. They keep the place of each panel, how the
 //! places of a palette stand, whether the empty places show their shadows
 //! and whether the beads glow.
 //!
@@ -7,29 +7,25 @@
 //! and the program starts from the defaults (`RULE config.legacy`).
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 
 use obusina_panel::{Orientation, Placement};
 use serde::{Deserialize, Serialize};
+use unifs::Files;
 
 use crate::error::{AppError, Result};
 
 /// The name of the file in the configuration directory.
-#[cfg(not(target_arch = "wasm32"))]
 pub const FILE: &str = "settings.yaml";
 /// The name a file that cannot be read is kept aside under.
 pub const UNREADABLE: &str = "settings.yaml.unreadable";
-/// The name a new file is written under before it takes the place of the
-/// old one (`RULE config.write`).
-const PARTIAL: &str = "settings.yaml.partial";
 
 /// The settings, and the file they are kept in.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
-    /// The file; `None` when the settings are not kept.
+    /// The configuration directory; `None` when the settings are not kept.
     #[serde(skip)]
-    path: Option<PathBuf>,
+    files: Option<Files>,
     /// The place of each panel, by its name.
     panels: BTreeMap<String, Panel>,
     /// How the places of a palette stand.
@@ -43,7 +39,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            path: None,
+            files: None,
             panels: BTreeMap::new(),
             palette_view: PaletteView::default(),
             shadows: true,
@@ -84,17 +80,18 @@ enum Layout {
 }
 
 impl Settings {
-    /// The settings of the file at `path`, and what went wrong reading it.
-    /// A file that is not there gives the defaults and no error.
-    pub fn load(path: Option<PathBuf>) -> (Settings, Option<AppError>) {
-        let (settings, error) = match &path {
-            Some(path) if path.exists() => match read(path) {
+    /// The settings of the file in the configuration directory `files`, and
+    /// what went wrong reading it. A file that is not there gives the
+    /// defaults and no error.
+    pub async fn load(files: Option<Files>) -> (Settings, Option<AppError>) {
+        let (settings, error) = match &files {
+            Some(files) => match read(files).await {
                 Ok(settings) => (settings, None),
                 Err(error) => (Settings::default(), Some(error)),
             },
-            _ => (Settings::default(), None),
+            None => (Settings::default(), None),
         };
-        (Settings { path, ..settings }, error)
+        (Settings { files, ..settings }, error)
     }
 
     /// The place kept for the panel `name`.
@@ -102,8 +99,8 @@ impl Settings {
         self.panels.get(name).map(|panel| (*panel).into())
     }
 
-    /// Keeps the place of the panel `name` and writes the file.
-    pub fn keep_panel(&mut self, name: &str, placement: Placement) -> Result<()> {
+    /// Keeps the place of the panel `name`; gives the write of the file.
+    pub fn keep_panel(&mut self, name: &str, placement: Placement) -> Option<Write> {
         self.panels.insert(name.to_owned(), placement.into());
         self.write()
     }
@@ -113,10 +110,11 @@ impl Settings {
         self.palette_view
     }
 
-    /// Keeps how the places of a palette stand and writes the file.
-    pub fn keep_palette_view(&mut self, view: PaletteView) -> Result<()> {
+    /// Keeps how the places of a palette stand; gives the write of the file
+    /// when it changed.
+    pub fn keep_palette_view(&mut self, view: PaletteView) -> Option<Write> {
         if view == self.palette_view {
-            return Ok(());
+            return None;
         }
         self.palette_view = view;
         self.write()
@@ -127,11 +125,11 @@ impl Settings {
         self.shadows
     }
 
-    /// Keeps whether the empty places show their shadows and writes the
-    /// file.
-    pub fn keep_shadows(&mut self, shadows: bool) -> Result<()> {
+    /// Keeps whether the empty places show their shadows; gives the write of
+    /// the file when it changed.
+    pub fn keep_shadows(&mut self, shadows: bool) -> Option<Write> {
         if shadows == self.shadows {
-            return Ok(());
+            return None;
         }
         self.shadows = shadows;
         self.write()
@@ -142,41 +140,61 @@ impl Settings {
         self.glow
     }
 
-    /// Keeps whether the beads glow and writes the file.
-    pub fn keep_glow(&mut self, glow: bool) -> Result<()> {
+    /// Keeps whether the beads glow; gives the write of the file when it
+    /// changed.
+    pub fn keep_glow(&mut self, glow: bool) -> Option<Write> {
         if glow == self.glow {
-            return Ok(());
+            return None;
         }
         self.glow = glow;
         self.write()
     }
 
-    /// Writes the file, through a partial file and a rename.
-    fn write(&self) -> Result<()> {
-        let Some(path) = &self.path else {
-            return Ok(());
-        };
+    /// The write of the file as the settings are now; none when they are not
+    /// kept.
+    fn write(&self) -> Option<Write> {
+        let files = self.files.clone()?;
         let text = serde_yaml_ng::to_string(self).expect("the settings are plain data");
-        let partial = path.with_file_name(PARTIAL);
-        let written = path
-            .parent()
-            .map_or(Ok(()), std::fs::create_dir_all)
-            .and_then(|()| std::fs::write(&partial, text))
-            .and_then(|()| std::fs::rename(&partial, path));
-        written.map_err(|source| AppError::SettingsWrite { source })
+        Some(Write { files, text })
     }
 }
 
-/// Reads the file at `path`. A file that does not parse is renamed to
-/// [`UNREADABLE`].
-fn read(path: &Path) -> Result<Settings> {
-    let text = std::fs::read_to_string(path).map_err(|source| AppError::SettingsRead { source })?;
-    serde_yaml_ng::from_str(&text).map_err(|source| {
-        if let Err(error) = std::fs::rename(path, path.with_file_name(UNREADABLE)) {
-            log::warn!("the unreadable settings stay in place: {error}");
+/// A write of the file of the settings, to be run away from the frame.
+#[derive(Debug)]
+pub struct Write {
+    files: Files,
+    text: String,
+}
+
+impl Write {
+    /// Writes the file whole (`RULE config.write`).
+    pub async fn run(self) -> Result<()> {
+        self.files
+            .write(FILE, self.text.as_bytes())
+            .await
+            .map_err(|source| AppError::SettingsWrite { source })
+    }
+}
+
+/// Reads the file of `files`; the defaults when it is not there. A file
+/// that does not parse is renamed to [`UNREADABLE`].
+async fn read(files: &Files) -> Result<Settings> {
+    let bytes = files
+        .read(FILE)
+        .await
+        .map_err(|source| AppError::SettingsRead { source })?;
+    let Some(bytes) = bytes else {
+        return Ok(Settings::default());
+    };
+    match serde_yaml_ng::from_slice(&bytes) {
+        Ok(settings) => Ok(settings),
+        Err(source) => {
+            if let Err(error) = files.rename(FILE, UNREADABLE).await {
+                log::warn!("the unreadable settings stay in place: {error}");
+            }
+            Err(AppError::SettingsInvalid { source })
         }
-        AppError::SettingsInvalid { source }
-    })
+    }
 }
 
 impl From<Placement> for Panel {
@@ -220,20 +238,28 @@ impl From<Layout> for Orientation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::executor::block_on;
+
+    /// The configuration directory of a scratch directory.
+    fn config() -> (tempfile::TempDir, Files) {
+        let directory = tempfile::tempdir().expect("a scratch directory");
+        let files = Files::at(directory.path().join("config"));
+        (directory, files)
+    }
 
     #[test]
     fn a_place_kept_is_read_back() {
-        let directory = tempfile::tempdir().expect("a scratch directory");
-        let path = directory.path().join("config").join(FILE);
+        let (_directory, files) = config();
         let placement = Placement {
             folded: true,
             ..Placement::new(egui::vec2(0.25, 1.0), Orientation::Horizontal)
         };
-        let (mut settings, error) = Settings::load(Some(path.clone()));
+        let (mut settings, error) = block_on(Settings::load(Some(files.clone())));
         assert!(error.is_none());
-        settings.keep_panel("tools", placement).expect("written");
+        let write = settings.keep_panel("tools", placement).expect("kept");
+        block_on(write.run()).expect("written");
 
-        let (again, error) = Settings::load(Some(path));
+        let (again, error) = block_on(Settings::load(Some(files)));
         assert!(error.is_none());
         assert_eq!(again.panel("tools"), Some(placement));
         assert_eq!(again.panel("palette"), None);
@@ -241,26 +267,28 @@ mod tests {
 
     #[test]
     fn a_file_that_does_not_parse_is_kept_aside() {
-        let directory = tempfile::tempdir().expect("a scratch directory");
-        let path = directory.path().join(FILE);
-        std::fs::write(&path, "panels: [this is not a map").expect("written");
+        let (_directory, files) = config();
+        block_on(files.write(FILE, b"panels: [this is not a map")).expect("written");
 
-        let (settings, error) = Settings::load(Some(path.clone()));
+        let (settings, error) = block_on(Settings::load(Some(files.clone())));
 
         assert!(matches!(error, Some(AppError::SettingsInvalid { .. })));
         assert_eq!(settings.panel("tools"), None);
-        assert!(!path.exists());
-        assert!(directory.path().join(UNREADABLE).exists());
+        assert_eq!(block_on(files.read(FILE)).expect("it reads"), None);
+        assert!(
+            block_on(files.read(UNREADABLE))
+                .expect("it reads")
+                .is_some()
+        );
     }
 
     /// A key the file does not carry reads as its default (`RULE config.default`).
     #[test]
     fn an_empty_file_gives_the_defaults() {
-        let directory = tempfile::tempdir().expect("a scratch directory");
-        let path = directory.path().join(FILE);
-        std::fs::write(&path, "{}\n").expect("written");
+        let (_directory, files) = config();
+        block_on(files.write(FILE, b"{}\n")).expect("written");
 
-        let (settings, error) = Settings::load(Some(path));
+        let (settings, error) = block_on(Settings::load(Some(files)));
 
         assert!(error.is_none());
         assert_eq!(settings.panel("tools"), None);
@@ -268,16 +296,16 @@ mod tests {
 
     #[test]
     fn the_view_of_the_palette_is_read_back() {
-        let directory = tempfile::tempdir().expect("a scratch directory");
-        let path = directory.path().join(FILE);
-        let (mut settings, _) = Settings::load(Some(path.clone()));
+        let (_directory, files) = config();
+        let (mut settings, _) = block_on(Settings::load(Some(files.clone())));
         assert_eq!(settings.palette_view(), PaletteView::Line);
 
-        settings
+        let write = settings
             .keep_palette_view(PaletteView::Block)
-            .expect("written");
+            .expect("kept");
+        block_on(write.run()).expect("written");
 
-        let (again, error) = Settings::load(Some(path));
+        let (again, error) = block_on(Settings::load(Some(files)));
         assert!(error.is_none());
         assert_eq!(again.palette_view(), PaletteView::Block);
     }

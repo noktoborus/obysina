@@ -13,8 +13,9 @@ over four corners, kept apart from the pattern. The store is the crate
    number no other picture of it had; `<n>.yaml` beside it says how it lies
    and names the pattern by its identifier (`PatternId`).
    - The cache: `ProjectDirs::cache_dir` on the desktop, `cache` beside the
-     data of the program on android. The system may clear it: the picture is
-     then gone, the pattern is not.
+     data of the program on android, `cache/` of the private file system of
+     the origin in a browser. The system may clear it: the picture is then
+     gone, the pattern is not.
    - Why not in the pattern: a picture in the JSON makes the file large and
      its diff unreadable (`RULE pattern.diff`).
 2. **A pattern has one picture.** A new one takes the place of the old one,
@@ -56,9 +57,9 @@ over four corners, kept apart from the pattern. The store is the crate
     least `LEAST_TURN`; dragged further, it stops at the last place that
     keeps them so. Corners already wrong, from a file written by hand, move
     freely, so they can be mended.
-13. **The store works away from the frame.** Its calls are `async`, so the
-    store of the browser (OPFS), whose files answer in futures, stands
-    behind the same calls. The window runs them one after another on a
+13. **The store works away from the frame.** Its calls are `async`, as the
+    calls of `unifs` it keeps its files by are: the same code keeps them on
+    a disk and in the private file system of a browser. The window runs them one after another on a
     thread of its own, on the web as futures of the browser (`Tasks`); the
     picture is decoded there too. The answers come in a later frame.
     - Why one after another: a write of the corners must not pass the put of

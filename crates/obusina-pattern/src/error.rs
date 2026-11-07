@@ -1,30 +1,8 @@
 //! What can go wrong with a pattern and its file.
 
-use std::path::PathBuf;
-
 /// One failure of a pattern or its file.
 #[derive(Debug, thiserror::Error)]
 pub enum PatternError {
-    /// The file cannot be read.
-    #[error("the pattern file {} cannot be read", path.display())]
-    Read {
-        /// The file.
-        path: PathBuf,
-        /// What the file system said.
-        #[source]
-        source: std::io::Error,
-    },
-
-    /// The file cannot be written.
-    #[error("the pattern file {} cannot be written", path.display())]
-    Write {
-        /// The file.
-        path: PathBuf,
-        /// What the file system said.
-        #[source]
-        source: std::io::Error,
-    },
-
     /// The text is not JSON, or not the shape its format says.
     #[error("the pattern is not valid JSON of its format")]
     Json {

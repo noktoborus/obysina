@@ -11,7 +11,7 @@ mod pattern;
 mod ruling;
 
 pub use error::{PatternError, Result};
-pub use file::{FORMAT, read, write};
+pub use file::FORMAT;
 pub use grid::{Bounds, Cell, Grid};
 pub use id::PatternId;
 pub use palette::{Colour, ColourId, MAX_COLOURS, Palette, Rgb};

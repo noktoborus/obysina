@@ -37,9 +37,9 @@ fn window() -> Window {
 /// Where the window of a test keeps what it keeps, in `directory`.
 fn places(directory: &std::path::Path) -> crate::app::Places {
     crate::app::Places {
-        data: Some(directory.join("data")),
-        settings: Some(directory.join(crate::settings::FILE)),
-        pictures: Some(directory.join(crate::backdrop::DIRECTORY)),
+        data: Some(unifs::Files::at(directory.join("data"))),
+        settings: Some(unifs::Files::at(directory)),
+        pictures: Some(unifs::Files::at(directory.join(crate::backdrop::DIRECTORY))),
         file: None,
     }
 }
@@ -65,6 +65,7 @@ fn reopened(window: &mut Window) -> App {
     assert_eq!(window.harness.state().screen, crate::session::Screen::List);
     let mut again = App::start(places(window.directory.path()));
     again.open_by_id(id, 0.0);
+    again.settle();
     assert_eq!(again.screen, crate::session::Screen::Editor);
     again
 }
@@ -330,10 +331,11 @@ fn a_newer_file_is_never_written_over() {
     let path = directory.path().join("pattern.json");
     std::fs::write(&path, "{\"format\": 99}").expect("the file is written");
 
-    let app = App::start(crate::app::Places {
+    let mut app = App::start(crate::app::Places {
         file: Some(path.clone()),
         ..places(directory.path())
     });
+    app.settle();
 
     assert_eq!(app.screen, crate::session::Screen::List);
     assert_eq!(app.projects.told(), [t!("error.pattern.newer").to_string()]);

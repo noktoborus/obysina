@@ -1,8 +1,6 @@
 //! The window: the list of patterns, or the field of beads of the pattern
 //! open and the floating panels over it (`src/session.rs`).
 
-use std::path::PathBuf;
-
 use egui::{Key, KeyboardShortcut};
 use obusina_canvas::{Canvas, Press, View};
 use obusina_pattern::{Cell, Colour, ColourId, DEFAULT_BEAD_RATIO, Grid, Pattern, Rgb};
@@ -129,7 +127,9 @@ pub struct App {
     /// The list of patterns as the screen shows it.
     pub(crate) projects: crate::ui::projects::Projects,
     /// The store of the pictures under the patterns.
-    pub(crate) pictures: Option<PathBuf>,
+    pub(crate) pictures: Option<unifs::Files>,
+    /// The work on the files, away from the frame (`src/work.rs`).
+    pub(crate) work: crate::work::Work,
     /// What was saved last of the pattern open.
     pub(crate) saved: crate::session::Saved,
     /// The pattern being edited; a new one while the list is shown first.
@@ -172,33 +172,48 @@ pub struct App {
     pub(crate) help: Option<Layer>,
 }
 
-/// Where the window keeps what it keeps; `None` where the platform gives no
-/// place.
+/// Where the window keeps what it keeps, as directories of `unifs`; `None`
+/// where the platform gives no place.
 #[derive(Debug, Default, Clone)]
 pub struct Places {
     /// The directory of the patterns (`src/library/mod.rs`).
-    pub data: Option<PathBuf>,
-    /// The file of the settings.
-    pub settings: Option<PathBuf>,
+    pub data: Option<unifs::Files>,
+    /// The configuration directory, of the file of the settings.
+    pub settings: Option<unifs::Files>,
     /// The store of the pictures under the patterns.
-    pub pictures: Option<PathBuf>,
+    pub pictures: Option<unifs::Files>,
     /// A file named on the command line: taken in as a copy and opened.
-    pub file: Option<PathBuf>,
+    pub file: Option<std::path::PathBuf>,
 }
 
 impl App {
-    /// The window on the list of patterns kept in `places`. A file named on
-    /// the command line is taken in as a copy and opened. With no place for
-    /// patterns, a new pattern opens and nothing is saved.
+    /// The window on the list of patterns kept in `places`, once the
+    /// settings are read. A file named on the command line is taken in as a
+    /// copy and opened. With no place for patterns, a new pattern opens and
+    /// nothing is saved.
+    pub async fn load(places: Places) -> App {
+        let settings = Settings::load(places.settings.clone()).await;
+        App::new(places, settings)
+    }
+
+    /// [`App::load`], waited for: the desktop and android read the settings
+    /// before the window opens.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn start(places: Places) -> App {
-        let (settings, settings_error) = Settings::load(places.settings);
-        let library = places.data.as_deref().map(crate::session::library);
+        let settings = futures::executor::block_on(Settings::load(places.settings.clone()));
+        App::new(places, settings)
+    }
+
+    /// The window over the settings read.
+    fn new(places: Places, (settings, settings_error): (Settings, Option<AppError>)) -> App {
+        let library = places.data.clone().map(crate::library::Library::new);
         let pattern = new_pattern();
         let mut app = App {
             screen: crate::session::Screen::List,
             library,
             projects: crate::ui::projects::Projects::default(),
             pictures: places.pictures.clone(),
+            work: crate::work::Work::default(),
             saved: crate::session::Saved::default(),
             view: View::default(),
             colour: first_colour(&pattern),
@@ -222,10 +237,18 @@ impl App {
         if let Some(error) = settings_error {
             app.projects.tell(say(&error));
         }
-        match (&app.library, places.file) {
-            (Some(_), Some(file)) => app.take_in_file(&file, 0.0),
-            (Some(_), None) => {}
-            (None, _) => app.open_pattern(new_pattern(), History::default(), 0.0),
+        if app.library.is_none() {
+            app.open_pattern(new_pattern(), History::default(), 0.0);
+        }
+        app.work(|library| async move {
+            if let Err(error) = library.take_in_old().await {
+                log::error!("the pattern before the list stays: {error}");
+            }
+            Vec::new()
+        });
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(file) = places.file {
+            app.take_in_file(&file);
         }
         app
     }
@@ -246,31 +269,27 @@ impl App {
 
     /// Keeps how the places of a palette stand for the next start.
     pub(crate) fn keep_palette_view(&mut self, view: crate::settings::PaletteView) {
-        if let Err(error) = self.settings.keep_palette_view(view) {
-            self.message = Some(say(&error));
-        }
+        let write = self.settings.keep_palette_view(view);
+        self.write_settings(write);
     }
 
     /// Shows or hides the shadows of the empty places, and keeps that for the
     /// next start.
     pub(crate) fn keep_shadows(&mut self, shadows: bool) {
-        if let Err(error) = self.settings.keep_shadows(shadows) {
-            self.message = Some(say(&error));
-        }
+        let write = self.settings.keep_shadows(shadows);
+        self.write_settings(write);
     }
 
     /// Draws the beads round or flat, and keeps that for the next start.
     pub(crate) fn keep_glow(&mut self, glow: bool) {
-        if let Err(error) = self.settings.keep_glow(glow) {
-            self.message = Some(say(&error));
-        }
+        let write = self.settings.keep_glow(glow);
+        self.write_settings(write);
     }
 
     /// Keeps the place of the panel `name` for the next start.
     pub(crate) fn keep_panel(&mut self, name: &str, placement: obusina_panel::Placement) {
-        if let Err(error) = self.settings.keep_panel(name, placement) {
-            self.message = Some(say(&error));
-        }
+        let write = self.settings.keep_panel(name, placement);
+        self.write_settings(write);
     }
 
     /// Changes the kind of grid, as a step that can be undone.
@@ -426,6 +445,7 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
+        self.take_done(ui.ctx());
         #[cfg(target_os = "android")]
         crate::activity::take_back(crate::keys::layer(self, ui.ctx()) != Layer::List);
         crate::keys::global(self, ui.ctx());
@@ -462,13 +482,33 @@ impl eframe::App for App {
     /// it on suspend, as on a close and every `auto_save_interval`.
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
         self.save_now(f64::MAX);
+        self.wait_for_files();
     }
 
     /// Saves the pattern open when the window is closed.
     fn on_exit(&mut self) {
         self.save_now(f64::MAX);
+        self.wait_for_files();
     }
 }
+
+impl App {
+    /// Waits until what was given to be written is written, `FILES_WAIT` at
+    /// the longest: the process may end right after. A browser cannot wait;
+    /// a write it was given goes on after the frame.
+    fn wait_for_files(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.work.tasks().wait(FILES_WAIT);
+            self.backdrop.tasks().wait(FILES_WAIT);
+        }
+    }
+}
+
+/// The longest the window waits for its files to be written when it closes
+/// or android pauses it.
+#[cfg(not(target_arch = "wasm32"))]
+const FILES_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// The colour in hand at the start: the first of the first palette shown.
 pub(crate) fn first_colour(pattern: &Pattern) -> Option<ColourId> {

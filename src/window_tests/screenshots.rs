@@ -162,9 +162,8 @@ fn window(directory: &std::path::Path, size: Vec2) -> (Harness<'static, App>, Ve
     for design in [zigzag(), band(), rings(), heart()] {
         let mut pattern = pattern(&design);
         pattern.set_locked(design.name == "Zigzag");
-        library
-            .save(&pattern, &crate::edit::History::default())
-            .expect("saved");
+        let history = crate::edit::History::default();
+        futures::executor::block_on(library.save(&pattern, &history)).expect("saved");
         ids.push(pattern.id());
     }
     app.keep_glow(true);

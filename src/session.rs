@@ -9,17 +9,17 @@
 //!             the window closed, android pauses the program ──► save
 //! ```
 //!
-//! A save writes the pattern and its history (`src/library/mod.rs`). Nothing
-//! is saved when nothing changed since the last save.
-
-use std::path::Path;
+//! A save writes the pattern and its history (`src/library/mod.rs`) away
+//! from the frame (`src/work.rs`). Nothing is saved when nothing changed
+//! since the last save. A save is counted done when it is given: one that
+//! fails is told, and the pattern is saved again after the next rest.
 
 use obusina_canvas::View;
 use obusina_pattern::{Pattern, PatternId};
 
-use crate::app::{App, Tool, first_colour, say};
+use crate::app::{App, Tool, first_colour};
 use crate::edit::History;
-use crate::library::Library;
+use crate::work::Done;
 
 /// The seconds with no change after which a changed pattern is saved.
 pub const AUTOSAVE_IDLE: f64 = 6.0;
@@ -50,6 +50,13 @@ pub struct Saved {
 }
 
 impl Saved {
+    /// A save that failed at `time`: the pattern is saved again once it
+    /// rested `AUTOSAVE_IDLE` seconds from now.
+    pub(crate) fn failed(&mut self, time: f64) {
+        self.revision = u64::MAX;
+        self.changed_at = time;
+    }
+
     /// A pattern just opened or written, at `time`.
     fn of(pattern: &Pattern, history: &History, time: f64) -> Saved {
         Saved {
@@ -85,28 +92,28 @@ impl App {
         self.screen = Screen::Editor;
     }
 
-    /// Opens the pattern of the list of this identifier.
-    pub(crate) fn open_by_id(&mut self, id: PatternId, time: f64) {
-        let Some(library) = &self.library else {
-            return;
-        };
-        match library.open(id) {
-            Ok((pattern, history)) => self.open_pattern(pattern, history, time),
-            Err(error) => self.projects.tell(say(&error)),
-        }
+    /// Opens the pattern of the list of this identifier, once it is read.
+    pub(crate) fn open_by_id(&mut self, id: PatternId, _time: f64) {
+        self.work(move |library| async move {
+            match library.open(id).await {
+                Ok((pattern, history)) => vec![Done::Opened { pattern, history }],
+                Err(error) => vec![Done::Failed(error)],
+            }
+        });
     }
 
-    /// Makes a new pattern, named by the time now, adds it to the list and
-    /// opens it.
+    /// Makes a new pattern, named by the time now, opens it and adds it to
+    /// the list.
     pub(crate) fn create_pattern(&mut self, time: f64) {
         let mut pattern = crate::app::new_pattern();
         pattern.set_name(chrono::Local::now().format("%Y-%m-%d %H:%M").to_string());
-        if let Some(library) = &self.library
-            && let Err(error) = library.add(&pattern)
-        {
-            self.projects.tell(say(&error));
-            return;
-        }
+        let added = pattern.clone();
+        self.work(move |library| async move {
+            match library.add(&added).await {
+                Ok(()) => Vec::new(),
+                Err(error) => vec![Done::SaveFailed(error)],
+            }
+        });
         self.open_pattern(pattern, History::default(), time);
     }
 
@@ -115,13 +122,17 @@ impl App {
         if self.screen != Screen::Editor || self.pattern.revision() == self.saved.revision {
             return;
         }
-        let Some(library) = &self.library else {
+        if self.library.is_none() {
             return;
-        };
-        match library.save(&self.pattern, &self.history) {
-            Ok(()) => self.saved = Saved::of(&self.pattern, &self.history, time),
-            Err(error) => self.message = Some(say(&error)),
         }
+        let (pattern, history) = (self.pattern.clone(), self.history.clone());
+        self.saved = Saved::of(&self.pattern, &self.history, time);
+        self.work(move |library| async move {
+            match library.save(&pattern, &history).await {
+                Ok(()) => Vec::new(),
+                Err(error) => vec![Done::SaveFailed(error)],
+            }
+        });
     }
 
     /// Saves the pattern open when it rested `AUTOSAVE_IDLE` seconds since
@@ -170,67 +181,24 @@ impl App {
 
     /// Takes in a file named on the command line as a copy in the list, and
     /// opens it; what was taken in is told on the list.
-    pub(crate) fn take_in_file(&mut self, path: &Path, time: f64) {
-        let bytes = match std::fs::read(path) {
-            Ok(bytes) => bytes,
-            Err(source) => {
-                let error = crate::error::AppError::LibraryRead {
-                    path: path.to_path_buf(),
-                    source,
-                };
-                self.projects.tell(say(&error));
-                return;
-            }
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn take_in_file(&mut self, path: &std::path::Path) {
+        let (Some(directory), Some(name)) = (path.parent(), path.file_name()) else {
+            return;
         };
-        if let Some(id) = self.import_bytes(&bytes) {
-            self.open_by_id(id, time);
-        }
-    }
-
-    /// Imports the patterns of a file; tells what came in, and gives the
-    /// pattern to open: the first one added, or the one the list had of it.
-    pub(crate) fn import_bytes(&mut self, bytes: &[u8]) -> Option<PatternId> {
-        let library = self.library.as_ref()?;
-        let imported = crate::library::archive::read(bytes).and_then(|patterns| {
-            let first = patterns.first().map(Pattern::id);
-            library.import(patterns).map(|report| (report, first))
+        let files = unifs::Files::at(directory);
+        let name = name.to_string_lossy().into_owned();
+        self.work(move |library| async move {
+            match files.read(&name).await {
+                Ok(Some(bytes)) => crate::work::import(library, bytes, true).await,
+                Ok(None) => vec![Done::Failed(crate::error::AppError::NoPatterns)],
+                Err(error) => vec![Done::Failed(error.into())],
+            }
         });
-        match imported {
-            Ok((report, first)) => {
-                self.projects.tell_import(&report);
-                self.projects.refresh();
-                report
-                    .added()
-                    .next()
-                    .or(first.filter(|id| library.has(*id)))
-            }
-            Err(error) => {
-                self.projects.tell(say(&error));
-                None
-            }
-        }
+    }
+
+    /// Imports the patterns of a file; what came in is told on the list.
+    pub(crate) fn import_bytes(&mut self, bytes: Vec<u8>) {
+        self.work(move |library| crate::work::import(library, bytes, false));
     }
 }
-
-/// The library of the data directory, with the patterns of the trash past
-/// their days deleted, and the pattern file the version before kept in the
-/// data directory of android taken in: it is the work of the person.
-pub fn library(dir: &Path) -> Library {
-    let library = Library::new(dir.to_path_buf());
-    let before = dir.join(OLD_PATTERN);
-    if before.exists() {
-        match obusina_pattern::read(&before).map(|pattern| library.import(vec![pattern])) {
-            Ok(Ok(_)) => {
-                let _ = std::fs::rename(&before, dir.join(OLD_PATTERN_TAKEN));
-            }
-            Ok(Err(error)) => log::error!("the pattern before the list stays: {error}"),
-            Err(error) => log::error!("the pattern before the list stays: {error}"),
-        }
-    }
-    library
-}
-
-/// The one pattern the version before the list kept on android.
-const OLD_PATTERN: &str = "pattern.json";
-/// What it is renamed to once it is in the list.
-const OLD_PATTERN_TAKEN: &str = "pattern.json.taken";

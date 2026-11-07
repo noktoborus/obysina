@@ -3,9 +3,6 @@
 //! Reading goes through [`crate::load`], one loader for each format ever
 //! written. Writing knows only [`FORMAT`]: an older shape is never written.
 
-use std::io::Write as _;
-use std::path::Path;
-
 use serde::Serialize;
 use serde_json::value::RawValue;
 
@@ -158,31 +155,4 @@ impl Pattern {
             })
             .collect()
     }
-}
-
-/// Reads a pattern file.
-pub fn read(path: &Path) -> Result<Pattern> {
-    let text = std::fs::read_to_string(path).map_err(|source| PatternError::Read {
-        path: path.to_path_buf(),
-        source,
-    })?;
-    Pattern::from_json(&text)
-}
-
-/// Writes a pattern file: to a temporary file beside it, then a rename.
-pub fn write(path: &Path, pattern: &Pattern) -> Result<()> {
-    let text = pattern.to_json()?;
-    let failed = |source| PatternError::Write {
-        path: path.to_path_buf(),
-        source,
-    };
-    let directory = match path.parent() {
-        Some(parent) if !parent.as_os_str().is_empty() => parent,
-        _ => Path::new("."),
-    };
-    let mut file = tempfile::NamedTempFile::new_in(directory).map_err(failed)?;
-    file.write_all(text.as_bytes()).map_err(failed)?;
-    file.as_file().sync_all().map_err(failed)?;
-    file.persist(path).map_err(|error| failed(error.error))?;
-    Ok(())
 }

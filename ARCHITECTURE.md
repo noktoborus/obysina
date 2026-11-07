@@ -11,23 +11,35 @@
 
 ## Crates
 
+A crate depends only on crates of the layers below its own
+(`RULE crate.layers`):
+
 ```
-obusina-android (cdylib, android only) ──► obusina
-obusina (binary and library)
- ├── obusina-backdrop
- ├── obusina-button
- ├── obusina-canvas ──► obusina-pattern
- ├── obusina-panel
- ├── obusina-pattern
- └── plate-menu         (a copy of the crate of zyterm)
-egui-notify            (a copy of egui-notify 0.24.0, by [patch.crates-io];
-                        the toasts of the list of patterns)
-experiments/glyphs     (nothing depends on it)
-experiments/mockups    (nothing depends on it) ──► ../showcase
+4 entry        obusina-android (cdylib, android only)
+                   │
+3 application  obusina (binary and library)
+                   │
+2 drawing      obusina-canvas  obusina-panel  obusina-button  plate-menu  egui-notify
+                   │
+1 model        obusina-pattern  obusina-backdrop
+                                    │
+0 platform                        unifs
 ```
+
+| Dependency | Layers |
+| --- | --- |
+| `obusina-android -> obusina` | 4 → 3 |
+| `obusina -> every crate below` | 3 → 0, 1, 2 |
+| `obusina-canvas -> obusina-pattern` | 2 → 1 |
+| `obusina-backdrop -> unifs` | 1 → 0 |
+
+`plate-menu` is a copy of the crate of zyterm. `egui-notify` is a copy of
+egui-notify 0.24.0, put in place by `[patch.crates-io]`. `experiments/glyphs`
+and `experiments/mockups` are no layer: nothing depends on them.
 
 | Crate | Purpose |
 | --- | --- |
+| `unifs` | the files of the program by one async API: a directory of the disk, or OPFS in a browser |
 | `obusina-pattern` | the model: grid, palettes, colours, beads; the JSON file and its loaders |
 | `obusina-canvas` | the field of beads: draws a pattern, moves and zooms, says which bead is pressed |
 | `obusina-backdrop` | the pictures under the patterns and how each lies, kept in a directory of the cache |
@@ -38,8 +50,6 @@ experiments/mockups    (nothing depends on it) ──► ../showcase
 | `obusina` | the window, the list of patterns, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |
 
-`obusina-canvas -> obusina-pattern` is the one dependency between library
-crates (`RULE crate.deps`).
 
 ## The model
 

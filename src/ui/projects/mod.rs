@@ -37,7 +37,7 @@ mod thumbs;
 
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use egui::{Key, Vec2, vec2};
 use egui_notify::ToastId;
@@ -51,9 +51,11 @@ use crate::library::{Entry, Report, Trashed, archive};
 use crate::pick::{Choice, Kinds, Picker, Saved, Saver};
 use crate::ui::access::Named;
 use crate::ui::icons;
+use crate::work::Done;
 use cards::{CARD_LEAST, CARD_MARGIN, CARD_TEXT, GAP, Lines, PLATE, THUMB_RATIO};
 pub use menu::Of;
 use thumbs::Thumbs;
+use unifs::SystemTime;
 
 /// The seconds the toast that undoes a move to the trash stays.
 pub const UNDO_SECONDS: u64 = 5;
@@ -145,6 +147,20 @@ impl Projects {
         self.chosen.iter().flatten().copied().collect()
     }
 
+    /// Takes the list and the trash as they were read: the chosen that are
+    /// gone are no more chosen, and an empty trash shows the list.
+    pub(crate) fn listed(&mut self, entries: Vec<Entry>, trash: Vec<Trashed>) {
+        self.entries = entries;
+        self.trash = trash;
+        if self.trash.is_empty() {
+            self.view = View::List;
+        }
+        let ids: BTreeSet<PatternId> = self.entries.iter().map(|e| e.pattern.id()).collect();
+        if let Some(chosen) = &mut self.chosen {
+            chosen.retain(|id| ids.contains(id));
+        }
+    }
+
     /// Whether the menu of a card or of the trash is open.
     pub(crate) fn menu_open(&self) -> bool {
         self.menu.is_open()
@@ -225,9 +241,11 @@ pub fn action(app: &mut App, _context: &egui::Context, pressed: ToastId) {
         app.projects.undo = Some((undo, ids));
         return;
     }
-    menu::done(app, |library| {
-        ids.iter()
-            .try_for_each(|id| library.restore(*id).map(|_| ()))
+    app.change(move |library| async move {
+        for id in ids {
+            library.restore(id).await?;
+        }
+        Ok(())
     });
 }
 
@@ -238,7 +256,8 @@ fn to_trash(app: &mut App, ids: &[PatternId]) {
         many => many.len().to_string(),
     };
     let moved = ids.to_vec();
-    menu::done(app, |library| library.to_trash(&moved, SystemTime::now()));
+    let now = SystemTime::now();
+    app.change(move |library| async move { library.to_trash(&moved, now).await });
     let toast = app
         .toasts
         .basic(t!("projects.in_trash", what = what))
@@ -293,7 +312,7 @@ fn file_name(name: &str, extension: &str) -> String {
 pub fn show(app: &mut App, ui: &mut egui::Ui) {
     let context = ui.ctx().clone();
     if app.projects.stale {
-        read(app, &context);
+        read(app);
     }
     for text in std::mem::take(&mut app.projects.told) {
         app.toasts.basic(text);
@@ -311,38 +330,30 @@ pub fn show(app: &mut App, ui: &mut egui::Ui) {
     menu::show(app, &context);
 }
 
-/// Reads the list and the trash again; the patterns of the trash past their
-/// days go, with their pictures.
-fn read(app: &mut App, context: &egui::Context) {
+/// Asks for the list and the trash again; the patterns of the trash past
+/// their days go, with their pictures. The answer comes in a later frame
+/// (`Projects::listed`).
+fn read(app: &mut App) {
     app.projects.stale = false;
-    let Some(library) = &app.library else {
-        return;
-    };
-    let gone = library.purge_old(SystemTime::now());
-    app.projects.entries = library.list();
-    app.projects.trash = library.trash();
-    if !gone.is_empty() {
-        app.backdrop.forget(context, gone);
-    }
-    if app.projects.trash.is_empty() {
-        app.projects.view = View::List;
-    }
-    let ids: BTreeSet<PatternId> = app
-        .projects
-        .entries
-        .iter()
-        .map(|e| e.pattern.id())
-        .collect();
-    if let Some(chosen) = &mut app.projects.chosen {
-        chosen.retain(|id| ids.contains(id));
-    }
+    let now = SystemTime::now();
+    app.work(move |library| async move {
+        let gone = library.purge_old(now).await;
+        match (library.list().await, library.trash().await) {
+            (Ok(entries), Ok(trash)) => vec![Done::Listed {
+                entries,
+                trash,
+                gone,
+            }],
+            (Err(error), _) | (_, Err(error)) => vec![Done::Failed(error)],
+        }
+    });
 }
 
 /// Takes the file chosen to import, and the answer of a save.
 fn take_answers(app: &mut App, context: &egui::Context) {
     match app.projects.picker.take() {
         Some(Choice::Picked(picked)) => {
-            app.import_bytes(&picked.bytes);
+            app.import_bytes(picked.bytes);
         }
         Some(Choice::Failed) => app.projects.tell(t!("error.pick").to_string()),
         Some(Choice::GivenUp) | None => {}
@@ -612,10 +623,7 @@ fn choice_bar(app: &mut App, ui: &mut egui::Ui, width: f32) {
                     false => (icons::LOCK, t!("projects.lock_chosen")),
                 };
                 if crate::ui::button::icon(ui, icon, &name, some).clicked() {
-                    menu::done(app, |library| {
-                        ids.iter()
-                            .try_for_each(|id| library.set_locked(*id, !all_locked))
-                    });
+                    menu::lock(app, ids.clone(), !all_locked);
                 }
                 if crate::ui::button::icon(ui, icons::TRASH, &t!("projects.trash_chosen"), some)
                     .clicked()
@@ -849,7 +857,7 @@ fn size_words(pattern: &Pattern) -> String {
 /// When a file changed, as the list says it: today and yesterday with the
 /// time, else the date.
 fn when(changed: SystemTime, today: chrono::DateTime<chrono::Local>) -> String {
-    let changed: chrono::DateTime<chrono::Local> = changed.into();
+    let changed = local(changed);
     let days = today.date_naive() - changed.date_naive();
     let time = changed.format("%H:%M").to_string();
     match days.num_days() {
@@ -865,6 +873,18 @@ pub(crate) const PATTERNS_OF: [&str; 3] = [
     "plural.patterns_of.few",
     "plural.patterns_of.many",
 ];
+
+/// A time of the files, in the zone of the system. The time of `unifs` is
+/// the one of the browser there, which chrono does not take as it is.
+fn local(time: SystemTime) -> chrono::DateTime<chrono::Local> {
+    let since = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
+    let seconds = i64::try_from(since.as_secs()).unwrap_or(i64::MAX);
+    chrono::DateTime::from_timestamp(seconds, since.subsec_nanos())
+        .unwrap_or_default()
+        .with_timezone(&chrono::Local)
+}
 
 /// "patterns" after a count.
 fn patterns(count: usize) -> String {

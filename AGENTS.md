@@ -55,6 +55,14 @@ RULE platform_code : platform specific code is `cfg` gated
 EX+  #[cfg(target_os = "android")] fn data_dir(app: &AndroidApp) -> PathBuf
 EX-  two source trees, one per platform
 
+RULE platform.files : a file is read and written through `unifs`, by async
+     calls; the code above it is the same on every platform
+WHY  a browser has no `std::fs`; its private file system answers in promises
+THEN the window runs a call away from the frame (`src/work.rs`); its answer
+     comes in a later frame
+THEN a build script and a test read and write their files as they like
+EX-  `std::fs::read` in the code of the program or of a crate above `unifs`
+
 RULE android = eframe with `android-game-activity`; `android/` is the
      `cdylib` android loads, its `android_main` calls `obusina::android`
 WHY  eframe gives accesskit on android only with the game activity
@@ -92,18 +100,27 @@ EX-  a crate of `crates/*` carrying a `[[bin]]`
 RULE crate.purpose : one crate is one purpose, builds and is tested on its own
 THEN split a crate that grew a second purpose
 
-RULE crate.deps : a library crate depends on no other library crate of this
-     workspace
-WHY  a crate that needs a sibling is not one purpose any more
-THEN move the shared part into the binary, or make it its own crate both use
-EX+  obusina-canvas -> obusina-pattern    the one allowed exception, it draws it
-EX+  obusina-panel, obusina-button, plate-menu, egui-notify, which know egui
-     only
-EX-  obusina-pattern -> obusina-config
+RULE crate.layers : every crate of the workspace stands in one layer; a crate
+     depends only on crates of the layers below its own
+     0 platform       unifs
+     1 model          obusina-pattern, obusina-backdrop
+     2 drawing        obusina-canvas, obusina-panel, obusina-button,
+                      plate-menu, egui-notify
+     3 application    obusina
+     4 entry          obusina-android
+WHY  a dependency that goes down keeps each layer whole without the ones
+     above it; one within a layer or up mixes them
+THEN a new crate takes a layer, here and in ARCHITECTURE.md; a crate that
+     needs one of its own layer or above is split, or the shared part moves
+     to a layer below
+EX+  obusina-backdrop -> unifs, obusina-canvas -> obusina-pattern
+EX-  unifs -> obusina-pattern            up
+EX-  obusina-panel -> obusina-button     within a layer
 REF  ARCHITECTURE.md
 
 RULE crate.knowledge : a library crate knows nothing of the interface, the
-     configuration files or the types of other crates
+     configuration files or the types of crates not below it
+     (`RULE crate.layers`)
 EX+  obusina_pattern::Pattern, the crate's own type
 EX+  a widget crate that knows egui and nothing of this application
 EX-  obusina_pattern::Pattern reading `settings.yaml`
@@ -142,7 +159,7 @@ THEN every member says `license.workspace = true`; none has a licence of its own
 RULE pattern.format = JSON through serde_json
 RULE pattern.lib : the model and its file live in `obusina-pattern`; it knows
      no toolkit
-RULE pattern.write : a write goes to a temporary file, then a rename
+RULE pattern.write : a write is whole: `unifs::Files::write`
 WHY  an interrupted write must not leave half a pattern
 
 RULE pattern.loader : only the loader knows old formats
@@ -458,7 +475,7 @@ RULE config.dir = the platform configuration directory, resolved with the
      `directories` crate from `app.id`; on android, the internal data path of
      the `AndroidApp`
 RULE config.format = yaml through serde_yaml_ng
-RULE config.write : a write goes through a temporary file and a rename
+RULE config.write : a write is whole: `unifs::Files::write`
 WHY  an interrupted write must not leave half a settings file
 
 RULE config.legacy : no code reads what an older version wrote to the

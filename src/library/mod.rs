@@ -12,13 +12,16 @@
 //!
 //! The time of the last change of a pattern is the time of its file. A file
 //! that cannot be read is passed over and logged: it stays where it is.
+//!
+//! The files are of `unifs`, so every call is `async` and the same on every
+//! platform; the window runs them away from the frame (`src/work.rs`).
 
 pub mod archive;
 
-use std::path::{Path, PathBuf};
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use obusina_pattern::{Pattern, PatternId};
+use unifs::{Files, SystemTime};
 
 use crate::edit::History;
 use crate::error::{AppError, Result};
@@ -85,76 +88,88 @@ impl Report {
 }
 
 /// The patterns in a directory of the data of the program.
+#[derive(Debug, Clone)]
 pub struct Library {
-    dir: PathBuf,
+    files: Files,
 }
 
 impl Library {
-    /// The library in `dir`; its directories are made when it is first
-    /// written.
-    pub fn new(dir: PathBuf) -> Library {
-        Library { dir }
+    /// The library in the directory of `files`; its directories are made
+    /// when it is first written.
+    pub fn new(files: Files) -> Library {
+        Library { files }
     }
 
     /// The patterns of the list, the last changed first.
-    pub fn list(&self) -> Vec<Entry> {
-        let mut entries: Vec<Entry> = self
-            .ids_in(PATTERNS)
-            .into_iter()
-            .filter_map(|id| {
-                let path = self.pattern_path(PATTERNS, id);
-                let pattern = read_logged(&path)?;
-                let changed = modified(&path);
-                Some(Entry { pattern, changed })
-            })
-            .collect();
+    pub async fn list(&self) -> Result<Vec<Entry>> {
+        let mut entries = Vec::new();
+        for listed in self.files.list(PATTERNS).await? {
+            let Some(id) = pattern_id(&listed.name) else {
+                continue;
+            };
+            if let Some(pattern) = self.read_logged(&pattern_path(PATTERNS, id)).await {
+                entries.push(Entry {
+                    pattern,
+                    changed: listed.modified,
+                });
+            }
+        }
         entries.sort_by_key(|entry| std::cmp::Reverse(entry.changed));
-        entries
+        Ok(entries)
     }
 
     /// The patterns of the trash, the last trashed first.
-    pub fn trash(&self) -> Vec<Trashed> {
-        let mut trashed: Vec<Trashed> = self
-            .ids_in(TRASH)
-            .into_iter()
-            .filter_map(|id| {
-                let pattern = read_logged(&self.pattern_path(TRASH, id))?;
-                let since = self.trashed_at(id);
-                Some(Trashed { pattern, since })
-            })
-            .collect();
+    pub async fn trash(&self) -> Result<Vec<Trashed>> {
+        let mut trashed = Vec::new();
+        for id in self.ids_in(TRASH).await? {
+            if let Some(pattern) = self.read_logged(&pattern_path(TRASH, id)).await {
+                let since = self.trashed_at(id).await;
+                trashed.push(Trashed { pattern, since });
+            }
+        }
         trashed.sort_by_key(|trashed| std::cmp::Reverse(trashed.since));
-        trashed
+        Ok(trashed)
     }
 
     /// True when the list has a pattern of this identifier.
-    pub fn has(&self, id: PatternId) -> bool {
-        self.pattern_path(PATTERNS, id).exists()
+    pub async fn has(&self, id: PatternId) -> Result<bool> {
+        Ok(self
+            .files
+            .modified(&pattern_path(PATTERNS, id))
+            .await?
+            .is_some())
     }
 
     /// The pattern of the list of this identifier, and its history.
-    pub fn open(&self, id: PatternId) -> Result<(Pattern, History)> {
-        let path = self.pattern_path(PATTERNS, id);
-        let text = std::fs::read_to_string(&path).map_err(|source| AppError::LibraryRead {
-            path: path.clone(),
-            source,
-        })?;
+    pub async fn open(&self, id: PatternId) -> Result<(Pattern, History)> {
+        let path = pattern_path(PATTERNS, id);
+        let bytes = self.files.read(&path).await?.ok_or(AppError::NoPattern)?;
+        let text = String::from_utf8_lossy(&bytes);
         let pattern = Pattern::from_json(&text)?;
-        let history = std::fs::read_to_string(self.history_path(PATTERNS, id))
+        let history = self
+            .files
+            .read(&history_path(PATTERNS, id))
+            .await
             .ok()
-            .and_then(|file| crate::history_file::read(&file, &text))
+            .flatten()
+            .and_then(|file| crate::history_file::read(&String::from_utf8_lossy(&file), &text))
             .unwrap_or_default();
         Ok((pattern, history))
     }
 
     /// Writes a pattern of the list and its history; the pattern first, so
     /// a history left behind by a failure is of another text and is not read.
-    pub fn save(&self, pattern: &Pattern, history: &History) -> Result<()> {
+    pub async fn save(&self, pattern: &Pattern, history: &History) -> Result<()> {
         let text = pattern.to_json()?;
         let id = pattern.id();
-        write(&self.pattern_path(PATTERNS, id), text.as_bytes())?;
+        self.files
+            .write(&pattern_path(PATTERNS, id), text.as_bytes())
+            .await?;
         match crate::history_file::write(history, &text) {
-            Ok(file) => write(&self.history_path(PATTERNS, id), file.as_bytes()),
+            Ok(file) => Ok(self
+                .files
+                .write(&history_path(PATTERNS, id), file.as_bytes())
+                .await?),
             Err(error) => {
                 log::error!("a history does not turn into text: {error}");
                 Ok(())
@@ -163,217 +178,214 @@ impl Library {
     }
 
     /// Adds a pattern to the list with no history.
-    pub fn add(&self, pattern: &Pattern) -> Result<()> {
-        self.save(pattern, &History::default())
+    pub async fn add(&self, pattern: &Pattern) -> Result<()> {
+        self.save(pattern, &History::default()).await
     }
 
     /// A copy of a pattern of the list under a new identifier, named `name`,
     /// with no history; it is added to the list.
-    pub fn duplicate(&self, id: PatternId, name: &str) -> Result<Pattern> {
-        let (mut pattern, _) = self.open(id)?;
+    pub async fn duplicate(&self, id: PatternId, name: &str) -> Result<Pattern> {
+        let (mut pattern, _) = self.open(id).await?;
         pattern.set_id(PatternId::new());
         pattern.set_name(name);
-        self.add(&pattern)?;
+        self.add(&pattern).await?;
         Ok(pattern)
     }
 
     /// Gives a pattern of the list a new name; its history stays.
-    pub fn rename(&self, id: PatternId, name: &str) -> Result<()> {
-        let (mut pattern, history) = self.open(id)?;
+    pub async fn rename(&self, id: PatternId, name: &str) -> Result<()> {
+        let (mut pattern, history) = self.open(id).await?;
         pattern.set_name(name);
-        self.save(&pattern, &history)
+        self.save(&pattern, &history).await
     }
 
     /// Locks a pattern against changes, or lets it be changed again.
-    pub fn set_locked(&self, id: PatternId, locked: bool) -> Result<()> {
-        let (mut pattern, history) = self.open(id)?;
+    pub async fn set_locked(&self, id: PatternId, locked: bool) -> Result<()> {
+        let (mut pattern, history) = self.open(id).await?;
         pattern.set_locked(locked);
-        self.save(&pattern, &history)
+        self.save(&pattern, &history).await
     }
 
     /// Moves patterns of the list to the trash at `now`, with their
     /// histories.
-    pub fn to_trash(&self, ids: &[PatternId], now: SystemTime) -> Result<()> {
+    pub async fn to_trash(&self, ids: &[PatternId], now: SystemTime) -> Result<()> {
         let seconds = now
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         for id in ids {
-            write(&self.trashed_path(*id), seconds.to_string().as_bytes())?;
-            self.move_files(*id, PATTERNS, TRASH)?;
+            self.files
+                .write(&trashed_path(*id), seconds.to_string().as_bytes())
+                .await?;
+            self.move_files(*id, PATTERNS, TRASH).await?;
         }
         Ok(())
     }
 
     /// Puts a pattern of the trash back in the list. When the list has a
     /// pattern of its identifier, it comes back under a new one.
-    pub fn restore(&self, id: PatternId) -> Result<PatternId> {
-        if self.has(id) {
-            let path = self.pattern_path(TRASH, id);
-            let mut pattern = obusina_pattern::read(&path)?;
+    pub async fn restore(&self, id: PatternId) -> Result<PatternId> {
+        if self.has(id).await? {
+            let bytes = self
+                .files
+                .read(&pattern_path(TRASH, id))
+                .await?
+                .ok_or(AppError::NoPattern)?;
+            let mut pattern = Pattern::from_json(&String::from_utf8_lossy(&bytes))?;
             pattern.set_id(PatternId::new());
-            self.add(&pattern)?;
-            self.purge(id)?;
+            self.add(&pattern).await?;
+            self.purge(id).await?;
             return Ok(pattern.id());
         }
-        self.move_files(id, TRASH, PATTERNS)?;
-        remove(&self.trashed_path(id))?;
+        self.move_files(id, TRASH, PATTERNS).await?;
+        self.files.remove(&trashed_path(id)).await?;
         Ok(id)
     }
 
     /// Deletes a pattern of the trash for good.
-    pub fn purge(&self, id: PatternId) -> Result<()> {
-        remove(&self.pattern_path(TRASH, id))?;
-        remove(&self.history_path(TRASH, id))?;
-        remove(&self.trashed_path(id))
+    pub async fn purge(&self, id: PatternId) -> Result<()> {
+        self.files.remove(&pattern_path(TRASH, id)).await?;
+        self.files.remove(&history_path(TRASH, id)).await?;
+        Ok(self.files.remove(&trashed_path(id)).await?)
     }
 
     /// Deletes for good the patterns of the trash that went there
     /// [`TRASH_DAYS`] before `now`, and gives their identifiers.
-    pub fn purge_old(&self, now: SystemTime) -> Vec<PatternId> {
+    pub async fn purge_old(&self, now: SystemTime) -> Vec<PatternId> {
         let most = Duration::from_secs(TRASH_DAYS * DAY);
-        self.ids_in(TRASH)
-            .into_iter()
-            .filter(|id| {
-                now.duration_since(self.trashed_at(*id))
-                    .is_ok_and(|gone| gone >= most)
-            })
-            .filter(|id| {
-                self.purge(*id)
-                    .inspect_err(|error| log::error!("an old pattern of the trash stays: {error}"))
-                    .is_ok()
-            })
-            .collect()
+        let mut gone = Vec::new();
+        for id in self.ids_in(TRASH).await.unwrap_or_default() {
+            let old = now
+                .duration_since(self.trashed_at(id).await)
+                .is_ok_and(|age| age >= most);
+            if !old {
+                continue;
+            }
+            match self.purge(id).await {
+                Ok(()) => gone.push(id),
+                Err(error) => log::error!("an old pattern of the trash stays: {error}"),
+            }
+        }
+        gone
     }
 
     /// The patterns of a file that came in: each is added with its
     /// identifier, passed over when the list has the same work under it,
     /// or added under a new identifier when the list or the trash has
     /// another pattern under it.
-    pub fn import(&self, patterns: Vec<Pattern>) -> Result<Report> {
+    pub async fn import(&self, patterns: Vec<Pattern>) -> Result<Report> {
         let mut report = Report::default();
         for mut pattern in patterns {
             let id = pattern.id();
-            if self.has(id) {
-                let (present, _) = self.open(id)?;
+            let listed = self.has(id).await?;
+            if listed {
+                let (present, _) = self.open(id).await?;
                 if present.same_work(&pattern) {
                     report.present.push(present.name().to_owned());
                     continue;
                 }
             }
-            if self.has(id) || self.pattern_path(TRASH, id).exists() {
+            let trashed = self.files.modified(&pattern_path(TRASH, id)).await?;
+            if listed || trashed.is_some() {
                 pattern.set_id(PatternId::new());
-                self.add(&pattern)?;
+                self.add(&pattern).await?;
                 report.copies.push(pattern.id());
             } else {
-                self.add(&pattern)?;
+                self.add(&pattern).await?;
                 report.new.push(id);
             }
         }
         Ok(report)
     }
 
-    /// The identifiers of the pattern files of a directory.
-    fn ids_in(&self, directory: &str) -> Vec<PatternId> {
-        let Ok(entries) = std::fs::read_dir(self.dir.join(directory)) else {
-            return Vec::new();
+    /// Takes in the one pattern file the version before the list kept on
+    /// android, `pattern.json` of the data directory: it is the work of the
+    /// person. It is renamed once it is in the list.
+    pub async fn take_in_old(&self) -> Result<()> {
+        let Some(bytes) = self.files.read(OLD_PATTERN).await? else {
+            return Ok(());
         };
-        entries
-            .filter_map(|entry| {
-                let name = entry.ok()?.file_name().into_string().ok()?;
-                let stem = name.strip_suffix(PATTERN)?;
-                if stem.ends_with(".history") {
-                    return None;
-                }
-                stem.parse().ok()
-            })
-            .collect()
+        let pattern = Pattern::from_json(&String::from_utf8_lossy(&bytes))?;
+        self.import(vec![pattern]).await?;
+        Ok(self.files.rename(OLD_PATTERN, OLD_PATTERN_TAKEN).await?)
+    }
+
+    /// The identifiers of the pattern files of a directory.
+    async fn ids_in(&self, directory: &str) -> Result<Vec<PatternId>> {
+        let listed = self.files.list(directory).await?;
+        Ok(listed
+            .iter()
+            .filter_map(|listed| pattern_id(&listed.name))
+            .collect())
     }
 
     /// When a pattern went to the trash; the time of its pattern file when
     /// that is not kept.
-    fn trashed_at(&self, id: PatternId) -> SystemTime {
-        std::fs::read_to_string(self.trashed_path(id))
-            .ok()
-            .and_then(|text| text.trim().parse().ok())
-            .map(|seconds| SystemTime::UNIX_EPOCH + Duration::from_secs(seconds))
-            .unwrap_or_else(|| modified(&self.pattern_path(TRASH, id)))
+    async fn trashed_at(&self, id: PatternId) -> SystemTime {
+        let kept = self.files.read(&trashed_path(id)).await.ok().flatten();
+        let seconds = kept.and_then(|bytes| String::from_utf8_lossy(&bytes).trim().parse().ok());
+        match seconds {
+            Some(seconds) => SystemTime::UNIX_EPOCH + Duration::from_secs(seconds),
+            None => self
+                .files
+                .modified(&pattern_path(TRASH, id))
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or(SystemTime::UNIX_EPOCH),
+        }
     }
 
     /// Moves the pattern file and the history of `id` from one directory to
     /// another.
-    fn move_files(&self, id: PatternId, from: &str, to: &str) -> Result<()> {
-        std::fs::create_dir_all(self.dir.join(to)).map_err(|source| AppError::LibraryWrite {
-            path: self.dir.join(to),
-            source,
-        })?;
-        for path in [Library::pattern_path, Library::history_path] {
-            let (source, target) = (path(self, from, id), path(self, to, id));
-            if !source.exists() {
-                continue;
-            }
-            std::fs::rename(&source, &target).map_err(|source| AppError::LibraryWrite {
-                path: target,
-                source,
-            })?;
+    async fn move_files(&self, id: PatternId, from: &str, to: &str) -> Result<()> {
+        for path in [pattern_path, history_path] {
+            self.files.rename(&path(from, id), &path(to, id)).await?;
         }
         Ok(())
     }
 
-    fn pattern_path(&self, directory: &str, id: PatternId) -> PathBuf {
-        self.dir.join(directory).join(format!("{id}{PATTERN}"))
-    }
-
-    fn history_path(&self, directory: &str, id: PatternId) -> PathBuf {
-        self.dir.join(directory).join(format!("{id}{HISTORY}"))
-    }
-
-    fn trashed_path(&self, id: PatternId) -> PathBuf {
-        self.dir.join(TRASH).join(format!("{id}{TRASHED}"))
-    }
-}
-
-/// Reads a pattern file; one that cannot be read is logged and passed over.
-fn read_logged(path: &Path) -> Option<Pattern> {
-    obusina_pattern::read(path)
-        .inspect_err(|error| log::warn!("{} is passed over: {error}", path.display()))
-        .ok()
-}
-
-/// The time a file was last written; the start of 1970 when it is not known.
-fn modified(path: &Path) -> SystemTime {
-    std::fs::metadata(path)
-        .and_then(|metadata| metadata.modified())
-        .unwrap_or(SystemTime::UNIX_EPOCH)
-}
-
-/// Writes a file through a temporary file beside it and a rename
-/// (`RULE pattern.write`), making its directory first.
-fn write(path: &Path, bytes: &[u8]) -> Result<()> {
-    use std::io::Write as _;
-    let failed = |source| AppError::LibraryWrite {
-        path: path.to_path_buf(),
-        source,
-    };
-    let directory = path.parent().unwrap_or(Path::new("."));
-    std::fs::create_dir_all(directory).map_err(failed)?;
-    let mut file = tempfile::NamedTempFile::new_in(directory).map_err(failed)?;
-    file.write_all(bytes).map_err(failed)?;
-    file.as_file().sync_all().map_err(failed)?;
-    file.persist(path).map_err(|error| failed(error.error))?;
-    Ok(())
-}
-
-/// Removes a file; one that is not there is no failure.
-fn remove(path: &Path) -> Result<()> {
-    match std::fs::remove_file(path) {
-        Err(error) if error.kind() != std::io::ErrorKind::NotFound => Err(AppError::LibraryWrite {
-            path: path.to_path_buf(),
-            source: error,
-        }),
-        _ => Ok(()),
+    /// Reads a pattern file; one that cannot be read is logged and passed
+    /// over.
+    async fn read_logged(&self, path: &str) -> Option<Pattern> {
+        let read = match self.files.read(path).await {
+            Ok(Some(bytes)) => {
+                Pattern::from_json(&String::from_utf8_lossy(&bytes)).map_err(AppError::from)
+            }
+            Ok(None) => return None,
+            Err(error) => Err(error.into()),
+        };
+        read.inspect_err(|error| log::warn!("{path} is passed over: {error}"))
+            .ok()
     }
 }
+
+/// The identifier of a pattern file by its name; none for a history or any
+/// other file.
+fn pattern_id(name: &str) -> Option<PatternId> {
+    let stem = name.strip_suffix(PATTERN)?;
+    if stem.ends_with(".history") {
+        return None;
+    }
+    stem.parse().ok()
+}
+
+fn pattern_path(directory: &str, id: PatternId) -> String {
+    format!("{directory}/{id}{PATTERN}")
+}
+
+fn history_path(directory: &str, id: PatternId) -> String {
+    format!("{directory}/{id}{HISTORY}")
+}
+
+fn trashed_path(id: PatternId) -> String {
+    format!("{TRASH}/{id}{TRASHED}")
+}
+
+/// The one pattern the version before the list kept on android.
+const OLD_PATTERN: &str = "pattern.json";
+/// What it is renamed to once it is in the list.
+const OLD_PATTERN_TAKEN: &str = "pattern.json.taken";
 
 #[cfg(test)]
 mod tests;

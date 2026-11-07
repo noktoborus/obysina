@@ -19,8 +19,9 @@ use plate_menu::{MenuItem, Notice};
 use rust_i18n::t;
 
 use super::View;
-use crate::app::{App, say};
+use crate::app::App;
 use crate::ui::access::Named;
+use crate::work::Done;
 
 /// What the menu is of.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -180,21 +181,17 @@ pub fn show(app: &mut App, context: &egui::Context) {
                 .trim()
                 .to_owned();
             if !name.is_empty() {
-                done(app, |library| library.rename(id, &name));
+                app.change(move |library| async move { library.rename(id, &name).await });
             }
         }
-        ("duplicate", Of::Live(id)) => duplicate(app, context, id),
-        ("lock", Of::Live(id)) => done(app, |library| library.set_locked(id, true)),
-        ("unlock", Of::Live(id)) => done(app, |library| library.set_locked(id, false)),
+        ("duplicate", Of::Live(id)) => duplicate(app, id),
+        ("lock", Of::Live(id)) => lock(app, vec![id], true),
+        ("unlock", Of::Live(id)) => lock(app, vec![id], false),
         ("export", Of::Live(id)) => super::export(app, context, &[id]),
         ("trash", Of::Live(id)) => super::to_trash(app, &[id]),
         ("lock" | "unlock", Of::Chosen) => {
             let ids = app.projects.chosen_ids();
-            let locked = chosen.id == "lock";
-            done(app, |library| {
-                ids.iter()
-                    .try_for_each(|id| library.set_locked(*id, locked))
-            });
+            lock(app, ids, chosen.id == "lock");
         }
         ("export", Of::Chosen) => {
             let ids = app.projects.chosen_ids();
@@ -205,7 +202,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
             super::to_trash(app, &ids);
         }
         ("restore", Of::Trashed(id)) => {
-            done(app, |library| library.restore(id).map(|_| ()));
+            app.change(move |library| async move { library.restore(id).await.map(|_| ()) });
         }
         ("purge", Of::Trashed(id)) => {
             let notice = t!("projects.ask_purge", name = app.projects.name_of(id)).to_string();
@@ -216,13 +213,17 @@ pub fn show(app: &mut App, context: &egui::Context) {
             show_menu(app, of, notice, items);
         }
         ("purge-yes", Of::Trashed(id)) => {
-            done(app, |library| library.purge(id));
+            app.change(move |library| async move { library.purge(id).await });
             app.backdrop.forget(context, vec![id]);
         }
         ("empty", Of::AllTrash) => {
             let ids: Vec<PatternId> = app.projects.trash.iter().map(|t| t.pattern.id()).collect();
-            done(app, |library| {
-                ids.iter().try_for_each(|id| library.purge(*id))
+            let purged = ids.clone();
+            app.change(move |library| async move {
+                for id in purged {
+                    library.purge(id).await?;
+                }
+                Ok(())
             });
             app.backdrop.forget(context, ids);
             app.projects.view = View::List;
@@ -232,32 +233,25 @@ pub fn show(app: &mut App, context: &egui::Context) {
 }
 
 /// A copy of a pattern, "<name> (copy)", with a copy of its picture.
-fn duplicate(app: &mut App, context: &egui::Context, id: PatternId) {
+fn duplicate(app: &mut App, id: PatternId) {
     let name = format!("{} ({})", app.projects.name_of(id), t!("projects.copy"));
-    let Some(library) = &app.library else {
-        return;
-    };
-    match library.duplicate(id, &name) {
-        Ok(copy) => app.backdrop.copy(context, id, copy.id()),
-        Err(error) => app.projects.tell(say(&error)),
-    }
-    app.projects.refresh();
+    app.work(move |library| async move {
+        match library.duplicate(id, &name).await {
+            Ok(copy) => vec![Done::Duplicated {
+                from: id,
+                to: copy.id(),
+            }],
+            Err(error) => vec![Done::Failed(error), Done::Changed],
+        }
+    });
 }
 
-/// Does `work` on the library, tells what failed, and reads the list again.
-pub fn done(
-    app: &mut App,
-    work: impl FnOnce(&crate::library::Library) -> crate::error::Result<()>,
-) {
-    if let Some(library) = &app.library
-        && let Err(error) = work(library)
-    {
-        app.projects.tell(say(&error));
-    }
-    app.projects.refresh();
-    if app.projects.view == View::Trash
-        && app.library.as_ref().is_some_and(|l| l.trash().is_empty())
-    {
-        app.projects.view = View::List;
-    }
+/// Locks the patterns of `ids` against changes, or lets them change again.
+pub fn lock(app: &mut App, ids: Vec<PatternId>, locked: bool) {
+    app.change(move |library| async move {
+        for id in ids {
+            library.set_locked(id, locked).await?;
+        }
+        Ok(())
+    });
 }

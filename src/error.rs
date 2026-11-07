@@ -23,7 +23,7 @@ pub enum AppError {
     SettingsRead {
         /// What went wrong.
         #[source]
-        source: std::io::Error,
+        source: unifs::Error,
     },
     /// The settings file is not one this version reads.
     #[error("settings file invalid")]
@@ -37,7 +37,7 @@ pub enum AppError {
     SettingsWrite {
         /// What went wrong.
         #[source]
-        source: std::io::Error,
+        source: unifs::Error,
     },
     /// The store of pictures could not be read or written.
     #[error("store of pictures error")]
@@ -56,24 +56,16 @@ pub enum AppError {
         #[source]
         source: image::ImageError,
     },
-    /// A file of the patterns of the list could not be read.
-    #[error("file of the list unreadable: {path}")]
-    LibraryRead {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What went wrong.
+    /// A file of the patterns of the list could not be read or written.
+    #[error("files of the list")]
+    Library {
+        /// What the files said.
         #[source]
-        source: std::io::Error,
+        source: unifs::Error,
     },
-    /// A file of the patterns of the list could not be written.
-    #[error("file of the list not written: {path}")]
-    LibraryWrite {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What went wrong.
-        #[source]
-        source: std::io::Error,
-    },
+    /// The pattern asked for is not in the list.
+    #[error("no such pattern in the list")]
+    NoPattern,
     /// A file of patterns could not be packed or unpacked.
     #[error("file of patterns not packed or unpacked")]
     Archive {
@@ -98,6 +90,12 @@ impl From<obusina_backdrop::BackdropError> for AppError {
     }
 }
 
+impl From<unifs::Error> for AppError {
+    fn from(source: unifs::Error) -> Self {
+        AppError::Library { source }
+    }
+}
+
 impl From<PatternError> for AppError {
     fn from(source: PatternError) -> Self {
         AppError::Pattern { source }
@@ -109,8 +107,6 @@ impl AppError {
     pub fn message_key(&self) -> &'static str {
         match self {
             AppError::Pattern { source } => match source {
-                PatternError::Read { .. } => "error.pattern.read",
-                PatternError::Write { .. } => "error.pattern.write",
                 PatternError::Newer { .. } => "error.pattern.newer",
                 PatternError::Json { .. }
                 | PatternError::Id { .. }
@@ -136,8 +132,11 @@ impl AppError {
             AppError::SettingsWrite { .. } => "error.settings.write",
             AppError::Backdrop { .. } | AppError::NoCache => "error.backdrop.store",
             AppError::PictureKind => "error.backdrop.kind",
-            AppError::LibraryRead { .. } => "error.pattern.read",
-            AppError::LibraryWrite { .. } => "error.pattern.write",
+            AppError::Library {
+                source: unifs::Error::Read { .. },
+            }
+            | AppError::NoPattern => "error.pattern.read",
+            AppError::Library { .. } => "error.pattern.write",
             AppError::Archive { .. } | AppError::NoPatterns => "error.import",
             AppError::Picture { .. } => "error.backdrop.picture",
         }

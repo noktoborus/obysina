@@ -35,7 +35,8 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
   the sheet; a new pattern has `DEFAULT_PAPER`.
 - `Grid`: where a bead stands, which bead is under a point, which cells lie
   under a span (`Grid::cells_in`) and the span of a box (`Grid::span`).
-- `read`, `write`, `Pattern::to_json`, `Pattern::from_json`: the file.
+- `Pattern::to_json`, `Pattern::from_json`: the text of the file. Where the
+  text is kept is the caller's: the program keeps it through `unifs`.
 
 | Grid | Where a bead stands |
 | --- | --- |
@@ -123,7 +124,6 @@ row 4   │ └──────────┘    │
         └─────────────────┘
 ```
 
-A write goes to a temporary file beside the target, then a rename.
 
 ## Formats
 
@@ -138,12 +138,12 @@ each format is in `tests/patterns/`.
 
 ## Boundaries
 
-No toolkit and no interface. It says nothing to the user: its errors are for
-the program.
+No toolkit, no interface and no files: it turns a pattern into text and
+back. It says nothing to the user: its errors are for the program.
 
 ## Errors
 
-`Result<T, PatternError>`: `Read`, `Write` (with the path), `Json`, `NoFormat`,
+`Result<T, PatternError>`: `Json`, `NoFormat`,
 `Newer`, `UnknownFormat`, `RowWidth`, `UnknownId`, `Outside`, `DuplicateId`,
 `Palette`, `NoPalette`, `Colour`, `Ratio`, `Turn`, `Sheet`; for a change of
 the colours, `Place`, `Full` and `Lost`.

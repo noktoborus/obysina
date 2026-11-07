@@ -42,6 +42,7 @@ tar = { version = "0.4", default-features = false }
 tempfile = "3.27"
 thiserror = "2.0"
 uuid = { version = "1.29", features = ["v4"] }
+web-time = "1.1"
 js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
@@ -55,6 +56,7 @@ obusina-canvas = { path = "crates/obusina-canvas", version = "1.0.1" }
 obusina-panel = { path = "crates/obusina-panel", version = "1.0.1" }
 obusina-pattern = { path = "crates/obusina-pattern", version = "1.0.1" }
 plate-menu = { path = "crates/plate-menu", version = "1.0.1" }
+unifs = { path = "crates/unifs", version = "1.0.1" }
 
 [profile.release]
 lto = "fat"
@@ -95,7 +97,9 @@ sys-locale.workspace = true
 tar.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
+unifs.workspace = true
 uuid.workspace = true
+web-time.workspace = true
 
 [build-dependencies]
 embed-resource.workspace = true

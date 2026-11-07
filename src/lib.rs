@@ -22,6 +22,7 @@ mod task;
 mod ui;
 #[cfg(not(target_arch = "wasm32"))]
 mod window_icon;
+mod work;
 
 #[cfg(test)]
 mod window_tests;
@@ -75,13 +76,13 @@ pub fn desktop() -> std::process::ExitCode {
     let places = app::Places {
         data: directories
             .as_ref()
-            .map(|dirs| dirs.data_dir().to_path_buf()),
+            .map(|dirs| unifs::Files::at(dirs.data_dir())),
         settings: directories
             .as_ref()
-            .map(|dirs| dirs.config_dir().join(settings::FILE)),
+            .map(|dirs| unifs::Files::at(dirs.config_dir())),
         pictures: directories
             .as_ref()
-            .map(|dirs| dirs.cache_dir().join(backdrop::DIRECTORY)),
+            .map(|dirs| unifs::Files::at(dirs.cache_dir().join(backdrop::DIRECTORY))),
         file,
     };
     let state = directories.map(|dirs| dirs.config_dir().join(EFRAME));
@@ -116,13 +117,12 @@ pub fn android(android: winit::platform::android::activity::AndroidApp) {
     choose_locale();
     let data = android.internal_data_path();
     let places = app::Places {
-        settings: data
-            .as_ref()
-            .map(|directory| directory.join(settings::FILE)),
-        pictures: data
-            .as_ref()
-            .and_then(|directory| Some(directory.parent()?.join(CACHE).join(backdrop::DIRECTORY))),
-        data: data.clone(),
+        settings: data.as_ref().map(unifs::Files::at),
+        pictures: data.as_ref().and_then(|directory| {
+            let cache = directory.parent()?.join(CACHE).join(backdrop::DIRECTORY);
+            Some(unifs::Files::at(cache))
+        }),
+        data: data.as_ref().map(unifs::Files::at),
         file: None,
     };
     let options = eframe::NativeOptions {
@@ -136,8 +136,10 @@ pub fn android(android: winit::platform::android::activity::AndroidApp) {
 }
 
 /// Runs the window until it is closed, keeping what it keeps in `places`.
+/// The settings are read before the window opens.
 #[cfg(not(target_arch = "wasm32"))]
 fn run(options: eframe::NativeOptions, places: app::Places) -> eframe::Result {
+    let app = App::start(places);
     eframe::run_native(
         "Obusina",
         options,
@@ -145,14 +147,14 @@ fn run(options: eframe::NativeOptions, places: app::Places) -> eframe::Result {
             if let Some(state) = &creation.wgpu_render_state {
                 render::log_adapter(state);
             }
-            Ok(Box::new(App::start(places)))
+            Ok(Box::new(app))
         }),
     )
 }
 
-/// Starts the window on the canvas `canvas` of the page. A browser gives no
-/// directory: a new pattern opens, and nothing is saved but what is
-/// exported to a file.
+/// Starts the window on the canvas `canvas` of the page, on the list of the
+/// patterns kept in the private file system of the origin (`unifs`). The
+/// browser is asked to keep those files when its disk runs short.
 #[cfg(target_arch = "wasm32")]
 pub fn web(canvas: &'static str) {
     use wasm_bindgen::JsCast;
@@ -165,15 +167,20 @@ pub fn web(canvas: &'static str) {
             .and_then(|document| document.get_element_by_id(canvas))
             .and_then(|element| element.dyn_into::<web_sys::HtmlCanvasElement>().ok())
             .expect("index.html has the canvas");
+        if !unifs::persist().await {
+            log::warn!("the browser may delete the patterns when its disk runs short");
+        }
+        let places = web_places();
+        let app = App::load(places).await;
         let started = eframe::WebRunner::new()
             .start(
                 canvas,
                 eframe::WebOptions::default(),
-                Box::new(|creation| {
+                Box::new(move |creation| {
                     if let Some(state) = &creation.wgpu_render_state {
                         render::log_adapter(state);
                     }
-                    Ok(Box::new(App::start(app::Places::default())))
+                    Ok(Box::new(app))
                 }),
             )
             .await;
@@ -182,6 +189,32 @@ pub fn web(canvas: &'static str) {
         }
     });
 }
+
+/// The directories of the private file system of the origin, one for each
+/// place a desktop keeps apart.
+#[cfg(target_arch = "wasm32")]
+fn web_places() -> app::Places {
+    let files = |path: &str| {
+        unifs::Files::origin(path)
+            .inspect_err(|error| log::error!("no directory {path}: {error}"))
+            .ok()
+    };
+    app::Places {
+        data: files(WEB_DATA),
+        settings: files(WEB_CONFIG),
+        pictures: files(&format!("{WEB_CACHE}/{}", backdrop::DIRECTORY)),
+        file: None,
+    }
+}
+
+/// The directories of the private file system of the origin: the patterns,
+/// the settings, the cache of the pictures.
+#[cfg(target_arch = "wasm32")]
+const WEB_DATA: &str = "data";
+#[cfg(target_arch = "wasm32")]
+const WEB_CONFIG: &str = "config";
+#[cfg(target_arch = "wasm32")]
+const WEB_CACHE: &str = "cache";
 
 /// Speaks the language of the system when there is a translation for it.
 fn choose_locale() {

@@ -20,8 +20,11 @@ fn tap(window: &mut Window, name: &str) {
 fn list() -> Window {
     let directory = tempfile::tempdir().expect("a scratch directory");
     let places = places(directory.path());
+    // The list comes a frame after it is asked for, its pictures two
+    // frames after that.
     let mut harness = Harness::builder()
         .with_size(SIZE)
+        .with_max_steps(8)
         .wgpu()
         .build_eframe(move |_| App::start(places));
     harness.run();
@@ -402,9 +405,8 @@ fn cards_of_patterns_of_other_sizes_all_get_pictures() {
             max: corner,
         }));
         let library = window.harness.state().library.as_ref().expect("a library");
-        library
-            .save(&pattern, &crate::edit::History::default())
-            .expect("saved");
+        let history = crate::edit::History::default();
+        futures::executor::block_on(library.save(&pattern, &history)).expect("saved");
     }
     window.harness.state_mut().projects.refresh();
 
