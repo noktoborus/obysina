@@ -33,8 +33,8 @@ view.shadows:
   ru: "Тени пустых мест"
 
 backdrop.button:
-  en: "Picture under the beads"
-  ru: "Картинка под бусинами"
+  en: "Underlay"
+  ru: "Подложка"
 backdrop.choose:
   en: "Choose a picture…"
   ru: "Выбрать картинку…"
@@ -526,3 +526,12 @@ sheet.open:
 sheet.size:
   en: "Columns × rows"
   ru: "Колонки × ряды"
+projects.lock:
+  en: "Forbid changes"
+  ru: "Запретить изменять"
+projects.unlock:
+  en: "Unlock the card"
+  ru: "Разблокировать карточку"
+keys.layer.viewer:
+  en: "A locked pattern"
+  ru: "Схема без изменений"

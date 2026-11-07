@@ -1,5 +1,7 @@
 //! The floating panel of tools. While the corners of the picture under the
 //! pattern are edited, it holds only the two buttons that end the editing.
+//! A locked pattern is only looked at: the panel holds the settings, the
+//! shadows, the underlay and the way back.
 
 use obusina_canvas::Turn;
 use obusina_panel::{FloatingPanel, Orientation, Placement};
@@ -24,6 +26,8 @@ pub fn show(app: &mut App, context: &egui::Context) {
         .show(context, |ui, room| {
             if editing {
                 crate::ui::backdrop_menu::editing(app, ui);
+            } else if app.pattern.locked() {
+                viewer(app, ui, room.orientation);
             } else {
                 match room.orientation {
                     Orientation::Horizontal => row(app, ui),
@@ -76,6 +80,30 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
             back(app, ui);
         });
     });
+}
+
+/// The tools of a locked pattern: the settings and the shadows, the
+/// underlay and the way back; in a column two buttons wide.
+fn viewer(app: &mut App, ui: &mut egui::Ui, orientation: Orientation) {
+    match orientation {
+        Orientation::Horizontal => {
+            grid(app, ui);
+            gap(ui, orientation);
+            crate::ui::backdrop_menu::button(app, ui);
+            gap(ui, orientation);
+            back(app, ui);
+        }
+        Orientation::Vertical => {
+            ui.vertical(|ui| {
+                ui.horizontal(|ui| grid(app, ui));
+                gap(ui, orientation);
+                ui.horizontal(|ui| {
+                    crate::ui::backdrop_menu::button(app, ui);
+                    back(app, ui);
+                });
+            });
+        }
+    }
 }
 
 /// A space between two groups of buttons. A separator is not used: in a

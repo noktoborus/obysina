@@ -4,10 +4,11 @@ use super::{GLOBAL, Layer, Row, keymap, rows, written_keys};
 
 impl Layer {
     /// Every layer, in the order of `docs/keys.md`.
-    pub const ALL: [Layer; 10] = [
+    pub const ALL: [Layer; 11] = [
         Layer::List,
         Layer::Trash,
         Layer::Editor,
+        Layer::Viewer,
         Layer::Corners,
         Layer::Palettes,
         Layer::Dragging,
@@ -27,6 +28,10 @@ impl Layer {
             Layer::Trash => "The trash is shown, no menu is open.",
             Layer::Editor => {
                 "A pattern is open, nothing stands over the field, no field holds the keys."
+            }
+            Layer::Viewer => {
+                "A locked pattern is open, nothing stands over the field. It is only \
+                 looked at: there is no palette, and no key changes it."
             }
             Layer::Corners => {
                 "The corners of the picture under the pattern are edited; \

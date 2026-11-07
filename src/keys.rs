@@ -115,6 +115,8 @@ pub enum Layer {
     Trash,
     /// The field of the pattern open, with nothing over it.
     Editor,
+    /// The field of a locked pattern, with nothing over it.
+    Viewer,
     /// The corners of the picture under the pattern, while they are edited.
     Corners,
     /// The window of the palettes.
@@ -139,6 +141,7 @@ impl Layer {
             Layer::List => "keys.layer.list",
             Layer::Trash => "keys.layer.trash",
             Layer::Editor => "keys.layer.editor",
+            Layer::Viewer => "keys.layer.viewer",
             Layer::Corners => "keys.layer.corners",
             Layer::Palettes => "keys.layer.palettes",
             Layer::Dragging => "keys.layer.dragging",
@@ -185,6 +188,8 @@ fn editor_layer(app: &App, text: bool) -> Layer {
         Layer::Palettes
     } else if app.backdrop.editing() {
         Layer::Corners
+    } else if app.pattern.locked() {
+        Layer::Viewer
     } else {
         Layer::Editor
     }
@@ -260,6 +265,7 @@ pub fn keymap(layer: Layer) -> Vec<Row> {
         Layer::List => rows(crate::ui::projects::LIST_KEYS),
         Layer::Trash => rows(crate::ui::projects::TRASH_KEYS),
         Layer::Editor => rows(crate::app::FIELD_KEYS),
+        Layer::Viewer => rows(crate::app::VIEW_KEYS),
         Layer::Corners | Layer::Dragging | Layer::Text => Vec::new(),
         Layer::Palettes => rows(crate::ui::palette_window::KEYS),
         Layer::PaletteMenu => over_menu(rows(crate::ui::palette_window::MENU_KEYS)),

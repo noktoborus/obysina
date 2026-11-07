@@ -15,6 +15,7 @@
 //!                                    └──cancel──► the paper goes back
 //!              glow <on | off> ──► on or off, a setting of the program;
 //!                                  the menu opens again on it
+//! a locked pattern: glow alone
 //! closed with no entry while a ruling, a size or a paper is changed ──► it goes back
 //! ```
 //!
@@ -75,6 +76,26 @@ pub fn open(app: &mut App) {
 /// Opens the menu, on the entry `id` when one is given: the entry just
 /// chosen, when the menu opens again to show what it changed.
 fn open_on(app: &mut App, id: Option<&str>) {
+    let glow = match app.settings.glow() {
+        true => t!("settings.on"),
+        false => t!("settings.off"),
+    };
+    let mut items = match app.pattern.locked() {
+        true => Vec::new(),
+        false => pattern_items(app),
+    };
+    items.push(MenuItem::new("glow", t!("view.glow")).detail(glow));
+    let opened = match id {
+        Some(id) => app.menu.open_at(items, id),
+        None => app.menu.open(items),
+    };
+    if let Err(error) = opened {
+        log::error!("the menu of the settings does not open: {error}");
+    }
+}
+
+/// The entries that change the pattern: none for a locked one.
+fn pattern_items(app: &App) -> Vec<MenuItem> {
     let grid = app.pattern.grid();
     let kinds = Grid::ALL
         .iter()
@@ -84,10 +105,6 @@ fn open_on(app: &mut App, id: Option<&str>) {
         })
         .collect();
     let [columns, rows] = app.pattern.ruling().step;
-    let glow = match app.settings.glow() {
-        true => t!("settings.on"),
-        false => t!("settings.off"),
-    };
     let mut items = vec![
         MenuItem::new("grid", t!("grid.kind"))
             .detail(name(grid))
@@ -100,14 +117,7 @@ fn open_on(app: &mut App, id: Option<&str>) {
             .push(MenuItem::new("sheet", t!("sheet.open")).detail(crate::ui::sheet::detail(sheet)));
     }
     items.push(MenuItem::new("paper", t!("paper.open")).detail(swatch(app.pattern.paper())));
-    items.push(MenuItem::new("glow", t!("view.glow")).detail(glow));
-    let opened = match id {
-        Some(id) => app.menu.open_at(items, id),
-        None => app.menu.open(items),
-    };
-    if let Err(error) = opened {
-        log::error!("the menu of the settings does not open: {error}");
-    }
+    items
 }
 
 /// The swatch of the paper right of its entry.

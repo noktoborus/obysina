@@ -82,6 +82,19 @@ pub(crate) const FIELD_KEYS: &[Binding<FieldAction>] = &[
     },
 ];
 
+/// What a key of the field of a locked pattern does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ViewAction {
+    Back,
+}
+
+/// The keys of the field of a locked pattern (`Layer::Viewer`).
+pub(crate) const VIEW_KEYS: &[Binding<ViewAction>] = &[Binding {
+    keys: &[plain(Key::Escape)],
+    action: ViewAction::Back,
+    name: "projects.back",
+}];
+
 /// The digits, `0` first: the top row and the numpad give the same keys.
 const DIGITS: [KeyboardShortcut; 10] = [
     plain(Key::Num0),
@@ -313,12 +326,22 @@ impl App {
         }
     }
 
-    /// The keys of the field, while it is the layer on top (`FIELD_KEYS`).
+    /// The keys of the field, while it is the layer on top: `FIELD_KEYS`,
+    /// or `VIEW_KEYS` of a locked pattern.
     fn shortcuts(&mut self, ui: &mut egui::Ui) {
-        if crate::keys::layer(self, ui.ctx()) != Layer::Editor {
-            return;
-        }
         let time = ui.input(|input| input.time);
+        match crate::keys::layer(self, ui.ctx()) {
+            Layer::Editor => {}
+            Layer::Viewer => {
+                for taken in crate::keys::take(ui.ctx(), VIEW_KEYS) {
+                    match taken.action {
+                        ViewAction::Back => self.back_to_list(ui.ctx(), time),
+                    }
+                }
+                return;
+            }
+            _ => return,
+        }
         for taken in crate::keys::take(ui.ctx(), FIELD_KEYS) {
             match taken.action {
                 FieldAction::Redo => self.redo(),
@@ -370,7 +393,8 @@ impl App {
         }
         self.history.least_sheet = self.view.sheet.map(|first| (first.width(), first.height()));
         field.response.named(&t!("field"));
-        if let Some((cell, press)) = field.pressed.filter(|_| !self.backdrop.editing()) {
+        let looked_at = self.backdrop.editing() || self.pattern.locked();
+        if let Some((cell, press)) = field.pressed.filter(|_| !looked_at) {
             self.press(cell, press);
         }
     }
@@ -419,12 +443,16 @@ impl eframe::App for App {
         }
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
-        crate::ui::palette::show(self, ui.ctx());
-        crate::ui::palette_window::show(self, ui.ctx());
-        crate::ui::palette::menu(self, ui.ctx());
+        if !self.pattern.locked() {
+            crate::ui::palette::show(self, ui.ctx());
+            crate::ui::palette_window::show(self, ui.ctx());
+            crate::ui::palette::menu(self, ui.ctx());
+        }
         crate::ui::settings_menu::show(self, ui.ctx());
         crate::ui::backdrop_menu::show(self, ui.ctx());
-        crate::ui::palette_window::keep_in_hand(self);
+        if !self.pattern.locked() {
+            crate::ui::palette_window::keep_in_hand(self);
+        }
         self.autosave(ui.ctx());
         self.show_toasts(ui.ctx());
         crate::ui::help::show(self, ui.ctx());

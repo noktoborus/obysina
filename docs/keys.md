@@ -51,6 +51,14 @@ A pattern is open, nothing stands over the field, no field holds the keys.
 | Minus | Previous palette |
 | 0 … 9 | Take the colour of that place of the palette shown; 0, the empty place |
 
+## A locked pattern
+
+A locked pattern is open, nothing stands over the field. It is only looked at: there is no palette, and no key changes it.
+
+| Key | Action |
+| --- | --- |
+| Escape | Back to the list of patterns |
+
 ## The corners of the picture
 
 The corners of the picture under the pattern are edited; the buttons end it.

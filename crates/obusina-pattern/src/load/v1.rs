@@ -22,6 +22,8 @@ struct Document {
     #[serde(default)]
     turn: u16,
     #[serde(default)]
+    locked: bool,
+    #[serde(default)]
     sheet: Option<Sheet>,
     #[serde(default)]
     ruling: Option<Ruling>,
@@ -82,6 +84,7 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     }
     pattern.set_name(document.name);
     pattern.set_turn(document.turn)?;
+    pattern.set_locked(document.locked);
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
     if let Some(sheet) = document.sheet {

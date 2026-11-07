@@ -20,6 +20,10 @@ pub const GAP: f32 = 10.0;
 pub const PLATE: f32 = 56.0;
 /// The mark of a card chosen.
 const MARK: &str = "\u{2714}";
+/// The colour of the lock of a locked pattern.
+const LOCK_RED: Color32 = Color32::from_rgb(0xd8, 0x32, 0x32);
+/// The space between the lock and the name.
+const LOCK_GAP: f32 = 3.0;
 
 /// What a card of a pattern says under its picture.
 pub struct Lines<'a> {
@@ -31,6 +35,8 @@ pub struct Lines<'a> {
     pub last: String,
     /// The paper of the pattern, the ground of its picture.
     pub paper: Color32,
+    /// The pattern is locked against changes: a red lock left of the name.
+    pub locked: bool,
 }
 
 /// One card: its picture (`thumbs.rs`), or the paper of the pattern until
@@ -69,12 +75,20 @@ pub fn card(
         false => (ui.visuals().text_color(), ui.visuals().weak_text_color()),
     };
     let mut line = frame.bottom() + 6.0;
-    let room = rect.width() - 16.0;
-    for (words, colour, height) in [
+    let lock = match lines.locked {
+        true => lock(&painter, pos2(rect.left() + 8.0, line)),
+        false => 0.0,
+    };
+    for (index, (words, colour, height)) in [
         (lines.name, text, 13.0),
         (lines.size.as_str(), weak, 11.0),
         (lines.last.as_str(), weak, 11.0),
-    ] {
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let before = if index == 0 { lock } else { 0.0 };
+        let room = rect.width() - 16.0 - before;
         let galley = painter.layout(
             words.to_owned(),
             egui::FontId::proportional(height),
@@ -85,7 +99,7 @@ pub fn card(
         job.wrap.max_rows = 1;
         job.wrap.overflow_character = Some('\u{2026}');
         let galley = painter.fonts_mut(|fonts| fonts.layout_job(job));
-        painter.galley(pos2(rect.left() + 8.0, line), galley, colour);
+        painter.galley(pos2(rect.left() + 8.0 + before, line), galley, colour);
         line += height + 5.0;
     }
     if let Some(chosen) = mark {
@@ -106,6 +120,19 @@ pub fn card(
         }
     }
     response.named(lines.name)
+}
+
+/// The red lock of a locked pattern at `at`, the top left of the line of
+/// its name; gives the width it takes with the space after it.
+fn lock(painter: &egui::Painter, at: egui::Pos2) -> f32 {
+    let drawn = painter.text(
+        at,
+        egui::Align2::LEFT_TOP,
+        crate::ui::icons::LOCK,
+        egui::FontId::proportional(13.0),
+        LOCK_RED,
+    );
+    drawn.width() + LOCK_GAP
 }
 
 /// A card that does something rather than open a pattern: its icon over its

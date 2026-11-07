@@ -26,6 +26,8 @@ struct Document<'a> {
     name: &'a str,
     grid: Grid,
     turn: u16,
+    #[serde(skip_serializing_if = "is_false")]
+    locked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     sheet: Option<Sheet>,
     ruling: WrittenRuling,
@@ -106,6 +108,7 @@ impl Pattern {
             name: self.name(),
             grid: self.grid(),
             turn: self.turn(),
+            locked: self.locked(),
             sheet: self.sheet().map(|sheet| Sheet {
                 origin: [sheet.min.column, sheet.min.row],
                 size: [sheet.width(), sheet.height()],

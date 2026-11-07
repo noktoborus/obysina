@@ -2,7 +2,9 @@
 //! before the trash is emptied; and what each choice does.
 //!
 //! ```text
-//! a card ──► rename │ duplicate │ export to a file… │ select │ move to the trash
+//! a card ──► rename │ duplicate │ lock │ unlock │ export to a file… │ select
+//!            │ move to the trash
+//!            lock: the pattern opens only to be looked at (`App::locked`)
 //!            rename: the name in a field on top, then accept, cancel
 //! a card of the trash ──► restore │ delete for good… ──► delete │ keep
 //! "Empty the trash…" ──► empty │ keep
@@ -38,6 +40,10 @@ pub fn open(app: &mut App, of: Of) {
             vec![
                 MenuItem::new("rename", t!("projects.rename")),
                 MenuItem::new("duplicate", t!("projects.duplicate")),
+                match projects.locked(id) {
+                    true => MenuItem::new("unlock", t!("projects.unlock")),
+                    false => MenuItem::new("lock", t!("projects.lock")),
+                },
                 MenuItem::new("export", t!("projects.export")),
                 MenuItem::new("select", t!("projects.select")),
                 MenuItem::new("trash", t!("projects.to_trash")),
@@ -137,6 +143,8 @@ pub fn show(app: &mut App, context: &egui::Context) {
             }
         }
         ("duplicate", Of::Live(id)) => duplicate(app, context, id),
+        ("lock", Of::Live(id)) => done(app, |library| library.set_locked(id, true)),
+        ("unlock", Of::Live(id)) => done(app, |library| library.set_locked(id, false)),
         ("export", Of::Live(id)) => super::export(app, context, &[id]),
         ("select", Of::Live(id)) => app.projects.chosen = Some([id].into()),
         ("trash", Of::Live(id)) => super::to_trash(app, &[id]),

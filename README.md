@@ -7,7 +7,10 @@ An editor of bead patterns, for Linux, Windows and Android.
 - Opens on the list of patterns: a card for each, its picture, name, size
   and the time of its last change. A new pattern is named by the time it
   was made. A long press or the second button on a card: rename, duplicate,
-  export to a file, select, move to the trash. A trash keeps a pattern 30
+  forbid changes or unlock the card, export to a file, select, move to the
+  trash. A locked pattern has a red lock left of its name; it opens only to
+  be looked at: no palette, and in the tools only the settings, which hold
+  the volume alone, the shadows, the underlay and the way back. A trash keeps a pattern 30
   days, with "Undo" right after the move. "Export all" saves every pattern
   in one file; while patterns are chosen, a bar on top exports them or
   moves them to the trash, and the row of the trash and the export goes; "Import" takes `.obusina`, `.obusiny` and `.json` files.
@@ -32,7 +35,7 @@ An editor of bead patterns, for Linux, Windows and Android.
 - The field cannot be moved off the screen: at least ten beads of it stay
   on it, at the side it was moved to, also when the window changes its
   size.
-- A picture under the beads to trace from: PNG, JPEG or WebP, its opacity
+- An underlay, a picture under the beads to trace from: PNG, JPEG or WebP, its opacity
   and its four corners set by hand, so a photo taken at an angle lies
   straight. It is kept in the cache of the program, apart from the pattern.
 - A ruling to count the beads by: every few columns and rows the shadows

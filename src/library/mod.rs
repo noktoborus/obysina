@@ -184,6 +184,13 @@ impl Library {
         self.save(&pattern, &history)
     }
 
+    /// Locks a pattern against changes, or lets it be changed again.
+    pub fn set_locked(&self, id: PatternId, locked: bool) -> Result<()> {
+        let (mut pattern, history) = self.open(id)?;
+        pattern.set_locked(locked);
+        self.save(&pattern, &history)
+    }
+
     /// Moves patterns of the list to the trash at `now`, with their
     /// histories.
     pub fn to_trash(&self, ids: &[PatternId], now: SystemTime) -> Result<()> {

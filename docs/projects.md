@@ -101,3 +101,18 @@ frame N+1  once every texture of the shapes is on the chip: tessellate,
 - The texture is shown through its own format: the renderer writes into it
   what it writes into the window.
 - Where the renderer is not wgpu, a card shows its paper only.
+
+## A locked pattern
+
+"Forbid changes" of the menu of a card locks a pattern; "Unlock the card"
+lets it change again. The lock is a field of the pattern and its file,
+`locked` (`crates/obusina-pattern/README.md`), so a pattern exported locked
+opens locked elsewhere.
+
+- The card shows a red lock left of the name (`icons::LOCK`).
+- The window shows the field and the tools only: the settings, the shadows,
+  the underlay and the way back. The settings hold the volume alone. A
+  press on the field does nothing. The keys are those of `Layer::Viewer`
+  (`docs/keys.md`).
+- Why the underlay stays: it is no part of the pattern; it is kept apart,
+  in the cache (`docs/backdrop.md`).

@@ -43,6 +43,10 @@ pub const DONE: &str = "\u{2714}";
 /// Puts back what was edited, the heavy multiplication sign.
 pub const CANCEL: &str = "\u{2716}";
 
+/// A pattern locked against changes, the closed lock; drawn red left of the
+/// name of its card.
+pub const LOCK: &str = "\u{1f512}";
+
 /// The empty place `0`, no colour, which takes beads away. The fonts of the
 /// toolkit carry no eraser; the no entry sign is the nearest.
 pub const EMPTY: &str = "\u{1f6ab}";
@@ -51,7 +55,7 @@ pub const EMPTY: &str = "\u{1f6ab}";
 #[cfg(test)]
 pub const ALL: &[&str] = &[
     UNDO, REDO, TURN_LEFT, TURN_RIGHT, PENCIL, PICK, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH,
-    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY,
+    SETTINGS, SHADOW, PICTURE, DONE, CANCEL, EMPTY, LOCK,
 ];
 
 #[cfg(test)]

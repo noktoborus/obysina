@@ -125,6 +125,13 @@ impl Default for Projects {
 }
 
 impl Projects {
+    /// Whether the pattern `id` of the list is locked against changes.
+    fn locked(&self, id: PatternId) -> bool {
+        self.entries
+            .iter()
+            .any(|entry| entry.pattern.id() == id && entry.pattern.locked())
+    }
+
     /// Whether the menu of a card or of the trash is open.
     pub(crate) fn menu_open(&self) -> bool {
         self.menu.is_open()
@@ -633,6 +640,7 @@ fn list(
                             size: size_words(&entry.pattern),
                             last: when(entry.changed, today),
                             paper: cards::colour(entry.pattern.paper()),
+                            locked: entry.pattern.locked(),
                         };
                         let mark = app
                             .projects
@@ -749,6 +757,7 @@ fn trash(
                     )
                     .to_string(),
                     paper: cards::colour(trashed.pattern.paper()),
+                    locked: trashed.pattern.locked(),
                 };
                 let focused = app.projects.focus == Some(row * columns + place);
                 let place = (picture_size(card), app.settings.glow());

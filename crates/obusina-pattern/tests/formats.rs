@@ -353,3 +353,18 @@ fn a_renamed_pattern_is_the_same_work() {
     renamed.set_paper(Rgb([0, 0, 0]));
     assert!(!renamed.same_work(&pattern));
 }
+
+#[test]
+fn a_locked_pattern_is_written_and_read_locked() {
+    let mut pattern = Pattern::from_json(&file(1)).expect("format 1 reads");
+    assert!(!pattern.locked(), "a file with no lock is not locked");
+
+    pattern.set_locked(true);
+    let text = pattern.to_json().expect("it is written");
+    assert!(text.contains("\"locked\": true"), "{text}");
+    assert!(Pattern::from_json(&text).expect("it reads").locked());
+
+    pattern.set_locked(false);
+    let text = pattern.to_json().expect("it is written");
+    assert!(!text.contains("locked"), "an unlocked pattern says nothing");
+}

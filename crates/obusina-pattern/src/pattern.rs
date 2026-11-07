@@ -46,12 +46,16 @@ pub struct Pattern {
     ruling: Ruling,
     paper: Rgb,
     turn: u16,
+    locked: bool,
     revision: u64,
 }
 
 impl PartialEq for Pattern {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.name == other.name && self.same_work(other)
+        self.id == other.id
+            && self.name == other.name
+            && self.locked == other.locked
+            && self.same_work(other)
     }
 }
 
@@ -95,6 +99,7 @@ impl Pattern {
             ruling: Ruling::default(),
             paper: DEFAULT_PAPER,
             turn: 0,
+            locked: false,
             revision: next_revision(),
         })
     }
@@ -207,6 +212,20 @@ impl Pattern {
     /// was shown.
     pub fn turn(&self) -> u16 {
         self.turn
+    }
+
+    /// True when the pattern is only to be looked at: the window shows no
+    /// palette and no tool that changes it.
+    pub fn locked(&self) -> bool {
+        self.locked
+    }
+
+    /// Locks the pattern against changes, or lets it be changed again.
+    pub fn set_locked(&mut self, locked: bool) {
+        if self.locked != locked {
+            self.locked = locked;
+            self.revision = next_revision();
+        }
     }
 
     /// Sets the turn it is shown at, in degrees; a turn that is not a
