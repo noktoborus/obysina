@@ -320,3 +320,66 @@ fn the_list_keeps_out_of_the_cut_out() {
     assert!(card.top() >= 40.0, "{card:?}");
     assert!(card.left() >= 30.0, "{card:?}");
 }
+
+/// A finger held on a card, moved down to each of `moves` in points, then
+/// held still. Each event is a frame, a quarter of a second; the pointer
+/// moves before the touch, as the hold reads the pointer. Gives whether the
+/// card was chosen when the finger rose.
+fn hold_a_finger(moves: &[f32]) -> bool {
+    use egui::{Event, Modifiers, TouchDeviceId, TouchId, TouchPhase};
+    let mut window = list();
+    window.click(&t!("projects.new"));
+    window.click(&t!("projects.back"));
+    let name = window.harness.state().projects.entries[0]
+        .pattern
+        .name()
+        .to_owned();
+    let start = window.harness.get_by_label(&name).rect().center();
+    let touch = |phase, pos| Event::Touch {
+        device_id: TouchDeviceId(1),
+        id: TouchId(1),
+        phase,
+        pos,
+        force: None,
+    };
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    window.harness.event(touch(TouchPhase::Start, start));
+    window.harness.event(Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    let mut at = start;
+    for down in moves {
+        at = start + egui::vec2(0.0, *down);
+        window.harness.event(Event::PointerMoved(at));
+        window.harness.event(touch(TouchPhase::Move, at));
+        window.harness.step();
+    }
+    window.harness.run_steps(2);
+    window.harness.event(touch(TouchPhase::End, at));
+    window.harness.event(button(at, false));
+    window.harness.run_steps(3);
+    let app = window.harness.state();
+    assert_eq!(app.screen, Screen::List, "nothing opens");
+    app.projects
+        .chosen
+        .as_ref()
+        .is_some_and(|chosen| chosen.len() == 1)
+}
+
+/// A finger that drifts a little as it holds a card still chooses it, and
+/// its rise does not clear it again.
+#[test]
+fn a_finger_may_drift_as_it_holds_a_card() {
+    assert!(hold_a_finger(&[6.0, 12.0, 18.0]));
+}
+
+/// A finger that moves far scrolls; it chooses nothing.
+#[test]
+fn a_finger_that_moves_far_chooses_nothing() {
+    assert!(!hold_a_finger(&[60.0]));
+}

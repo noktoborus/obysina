@@ -115,6 +115,10 @@ the menu ──one chosen──► the menu of a card
 
 - Why a long press chooses and opens no menu: on a phone a pattern is
   mostly acted on with others; the menu is one tap further, on the bar.
+- A finger chooses a card after `hold::SECONDS`, and may drift `hold::SLOP`
+  points meanwhile; the list scrolls under it. Why not the long touch of
+  egui: it lets the finger drift 6 points only, and a finger on a large
+  card drifts more, so the choice was lost (`src/ui/projects/hold.rs`).
 - The lock of the bar and of the menu of more locks all the chosen while
   one of them is not locked, else unlocks them.
 - The export of more is one `.obusiny`; of one, a `.obusina`.

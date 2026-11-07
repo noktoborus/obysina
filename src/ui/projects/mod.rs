@@ -7,7 +7,8 @@
 //!          ──"Import"─────────► a .obusina, .obusiny or .json, each pattern
 //!                               added, passed over or copied (src/library)
 //!          ──a tap on a card──► the pattern opened
-//!          ──a long press, the second button ──► the choice, of that card
+//!          ──a long press, the second button ──► the choice, of that card;
+//!            a finger may drift as it holds (hold.rs)
 //!          ──"Trash" │ "Export all" ──► the trash │ one .obusiny;
 //!            not while patterns are chosen: the bar on top acts on them
 //! the trash ──"Back"──► the list; a card ──► restore │ delete for good
@@ -30,6 +31,7 @@
 //! (`docs/keys.md`).
 
 mod cards;
+mod hold;
 mod menu;
 mod thumbs;
 
@@ -100,6 +102,8 @@ pub struct Projects {
     search_focus: bool,
     /// The columns of cards drawn last, which the arrows walk by.
     columns: usize,
+    /// The long press of a finger on a card.
+    hold: hold::Hold,
 }
 
 impl Default for Projects {
@@ -122,6 +126,7 @@ impl Default for Projects {
             saver: Saver::default(),
             search_focus: false,
             columns: 1,
+            hold: hold::Hold::default(),
         }
     }
 }
@@ -641,6 +646,7 @@ fn list(
     let mut cells: Vec<Option<usize>> = vec![None; ACTIONS];
     cells.extend(shown.into_iter().map(Some));
     let today = chrono::Local::now();
+    let hold = app.projects.hold.step(ui.ctx());
     for (row, line) in cells.chunks(columns).enumerate() {
         ui.horizontal(|ui| {
             for (place, cell) in line.iter().enumerate() {
@@ -682,14 +688,20 @@ fn list(
                                 .thumbs
                                 .of(ui.ctx(), &entry.pattern, entry.changed, place);
                         let response = cards::card(ui, card, picture, &lines, (mark, focused));
-                        let held = response.secondary_clicked() || response.long_touched();
+                        app.projects.hold.press_on(ui.ctx(), &response, id);
+                        // The long touch of egui is a click too; a hold of
+                        // the finger stands for it (hold.rs).
+                        let held = response.secondary_clicked() || hold.fired == Some(id);
+                        let clicked = response.clicked()
+                            && !response.long_touched()
+                            && hold.swallowed != Some(id);
                         if let Some(chosen) = &mut app.projects.chosen {
-                            if (response.clicked() || held) && !chosen.remove(&id) {
+                            if (clicked || held) && !chosen.remove(&id) {
                                 chosen.insert(id);
                             }
                         } else if held {
                             app.projects.chosen = Some([id].into());
-                        } else if response.clicked() {
+                        } else if clicked {
                             app.open_by_id(id, time);
                         }
                     }
