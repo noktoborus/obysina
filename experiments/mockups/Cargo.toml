@@ -1,10 +1,39 @@
+# A workspace of its own, left out of the one of obusina: it depends on
+# showcase, a project beside obusina, which a clone of obusina alone has not.
+# obusina builds without it.
+[workspace]
+
+[workspace.dependencies]
+eframe = { version = "0.37", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
+egui = { version = "0.37", features = ["default_fonts", "monochrome_emoji_fonts"] }
+egui_kittest = { version = "0.37", features = ["wgpu", "snapshot"] }
+log = "0.4"
+palette = "0.7"
+serde_json = "1.0"
+
+obusina-button = { path = "../../crates/obusina-button" }
+plate-menu = { path = "../../crates/plate-menu" }
+# The gallery of the mockups, a project of its own beside obusina.
+showcase = { path = "../../../showcase", version = "0.1.0" }
+
+# The wasm of the mockups: a build of `dev` with no debug information. The
+# crates under it are optimised once; unoptimised, they make a module of tens
+# of megabytes.
+[profile.mockups]
+inherits = "dev"
+debug = false
+
+[profile.mockups.package."*"]
+opt-level = 1
+
 [package]
 name = "mockups"
 description = "Mockups of the design of the window, shown in the gallery of showcase"
-version.workspace = true
-edition.workspace = true
-rust-version.workspace = true
-license.workspace = true
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.95"
+license = "MIT"
+publish = false
 
 [[bin]]
 name = "mockups"

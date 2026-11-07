@@ -1,4 +1,5 @@
 /target
+/experiments/mockups/target
 
 # The list `experiments/glyphs` writes when it is run from here
 /glyphs.txt
