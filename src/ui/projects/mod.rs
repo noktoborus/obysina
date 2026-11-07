@@ -108,7 +108,7 @@ impl Default for Projects {
             stale: true,
             view: View::List,
             query: String::new(),
-            menu: PlateMenu::new().with_id("projects-menu"),
+            menu: crate::ui::plate_menu("projects-menu"),
             menu_of: None,
             renaming: Arc::new(Mutex::new(String::new())),
             chosen: None,

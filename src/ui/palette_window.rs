@@ -45,7 +45,6 @@ enum MenuOf {
 }
 
 /// The state of the window of the palettes.
-#[derive(Default)]
 pub struct PaletteWindow {
     /// True while the window is open.
     pub open: bool,
@@ -59,6 +58,20 @@ pub struct PaletteWindow {
     dragging: Option<usize>,
     /// The place it would stand in, let go now.
     drop_to: usize,
+}
+
+impl Default for PaletteWindow {
+    fn default() -> PaletteWindow {
+        PaletteWindow {
+            open: false,
+            menu: crate::ui::plate_menu("palette-menu"),
+            menu_of: None,
+            editing: Arc::default(),
+            cells: Vec::new(),
+            dragging: None,
+            drop_to: 0,
+        }
+    }
 }
 
 impl PaletteWindow {

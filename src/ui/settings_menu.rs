@@ -62,13 +62,14 @@ pub enum Editing {
     },
 }
 
-/// Opens the menu, on its first entry.
+/// Opens the menu, no entry selected (`RULE ui.menu`).
 pub fn open(app: &mut App) {
-    open_on(app, "grid");
+    open_on(app, None);
 }
 
-/// Opens the menu on the entry `id`.
-fn open_on(app: &mut App, id: &str) {
+/// Opens the menu, on the entry `id` when one is given: the entry just
+/// chosen, when the menu opens again to show what it changed.
+fn open_on(app: &mut App, id: Option<&str>) {
     let grid = app.pattern.grid();
     let kinds = Grid::ALL
         .iter()
@@ -91,7 +92,11 @@ fn open_on(app: &mut App, id: &str) {
         MenuItem::new("paper", t!("paper.open")).detail(swatch(app.pattern.paper())),
         MenuItem::new("glow", t!("view.glow")).detail(glow),
     ];
-    if let Err(error) = app.menu.open_at(items, id) {
+    let opened = match id {
+        Some(id) => app.menu.open_at(items, id),
+        None => app.menu.open(items),
+    };
+    if let Err(error) = opened {
         log::error!("the menu of the settings does not open: {error}");
     }
 }
@@ -238,7 +243,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
         "paper" => open_paper(app),
         "glow" => {
             app.keep_glow(!app.settings.glow());
-            open_on(app, "glow");
+            open_on(app, Some("glow"));
         }
         kind => {
             if let Some(grid) = Grid::ALL.into_iter().find(|grid| kind_id(*grid) == kind) {

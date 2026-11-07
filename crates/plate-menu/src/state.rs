@@ -61,6 +61,9 @@ pub struct MenuState {
     items: Vec<MenuItem>,
     path: Vec<usize>,
     selected: usize,
+    /// No row is selected: the menu was opened so, and nothing has walked
+    /// it since.
+    resting: bool,
     query: String,
     caret: usize,
 }
@@ -72,6 +75,7 @@ impl MenuState {
             items,
             path: Vec::new(),
             selected: 0,
+            resting: false,
             query: String::new(),
             caret: 0,
         };
@@ -93,10 +97,12 @@ impl MenuState {
     /// there, and on the first one when it is gone; a level that no longer
     /// exists is left for the one above it.
     pub fn refill(&mut self, items: Vec<MenuItem>) {
+        let resting = self.resting;
         let standing = self
             .rows()
             .get(self.selected)
             .map(|row| row.id.clone())
+            .filter(|_| !resting)
             .unwrap_or_default();
 
         self.items = items;
@@ -108,6 +114,7 @@ impl MenuState {
         if !standing.is_empty() {
             self.select_id(&standing);
         }
+        self.resting = resting;
     }
 
     /// Text typed so far.
@@ -138,9 +145,20 @@ impl MenuState {
         trail
     }
 
-    /// Row the selection is on.
+    /// Row the selection is on, or would be on while no row is selected.
     pub fn selected(&self) -> usize {
         self.selected
+    }
+
+    /// Row the selection is on; `None` while no row is selected.
+    pub fn selection(&self) -> Option<usize> {
+        (!self.resting).then_some(self.selected)
+    }
+
+    /// Leaves no row selected, until a key or a click selects one or a query
+    /// is typed.
+    pub fn rest(&mut self) {
+        self.resting = true;
     }
 
     /// The rows as they are shown: the current level, or the hits of the query.
@@ -183,7 +201,17 @@ impl MenuState {
 
     /// Moves the selection, skipping what cannot be chosen and wrapping at both
     /// ends.
+    ///
+    /// With no row selected, a step down selects the first entry and a step up
+    /// the last.
     pub fn move_selection(&mut self, delta: isize) {
+        if self.resting {
+            match delta < 0 {
+                true => self.select_last(),
+                false => self.select_first(),
+            }
+            return;
+        }
         let rows = self.rows();
         if rows.is_empty() {
             self.selected = 0;
@@ -207,7 +235,17 @@ impl MenuState {
     /// It lands on the reachable entry nearest to where the step ends, on the
     /// near side of it first, so a line or a disabled entry there does not
     /// take the page back to where it started.
+    ///
+    /// With no row selected, a page down selects the first entry and a page up
+    /// the last.
     pub fn move_page(&mut self, page: isize) {
+        if self.resting {
+            match page < 0 {
+                true => self.select_last(),
+                false => self.select_first(),
+            }
+            return;
+        }
         let rows = self.rows();
         let entries: Vec<usize> = rows
             .iter()
@@ -234,6 +272,7 @@ impl MenuState {
         let rows = self.rows();
         if let Some(index) = rows.iter().rposition(|row| row.is_reachable() && !row.back) {
             self.selected = index;
+            self.resting = false;
         }
     }
 
@@ -241,7 +280,7 @@ impl MenuState {
     /// the ones shown: a selection the window left lands on the reachable row
     /// shown nearest to it. One standing among them is left where it is.
     pub fn select_shown(&mut self, first: usize, last: usize) {
-        if (first..last).contains(&self.selected) {
+        if self.resting || (first..last).contains(&self.selected) {
             return;
         }
         let rows = self.rows();
@@ -267,6 +306,9 @@ impl MenuState {
     /// The entry that was stepped into says where the selection lands, so a
     /// level that is a list of values opens on the value in use.
     pub fn step_in(&mut self) -> bool {
+        if self.resting {
+            return false;
+        }
         let Some(row) = self.rows().get(self.selected).cloned() else {
             return false;
         };
@@ -310,6 +352,9 @@ impl MenuState {
     /// whoever builds the menu, and choosing the entry would leave the menu
     /// closed and the entries under it unseen.
     pub fn accept(&mut self) -> Option<String> {
+        if self.resting {
+            return None;
+        }
         let row = self.rows().get(self.selected).cloned()?;
         if row.back {
             self.step_out();
@@ -332,6 +377,7 @@ impl MenuState {
             return None;
         }
         self.selected = index;
+        self.resting = false;
         self.accept()
     }
 
@@ -343,6 +389,7 @@ impl MenuState {
             return false;
         }
         self.selected = index;
+        self.resting = false;
         self.step_in()
     }
 
@@ -436,6 +483,7 @@ impl MenuState {
             return false;
         };
         self.selected = index;
+        self.resting = false;
         true
     }
 
@@ -472,6 +520,7 @@ impl MenuState {
             .position(|row| row.is_reachable() && !row.back)
             .or_else(|| rows.iter().position(Row::is_reachable))
             .unwrap_or_default();
+        self.resting = false;
     }
 }
 

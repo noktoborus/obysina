@@ -89,7 +89,7 @@ The menu of a place of the window of the palettes. Escape closes it at once, wit
 
 ## A menu
 
-Any other menu: the settings, a colour, the picture, a card of the list. The keys are those of `plate-menu`. The global keys do not act.
+Any other menu: the settings, a colour, the picture, a card of the list. The keys are those of `plate-menu`. A menu opens with no entry selected: Down selects the first, Up the last, Enter does nothing. The global keys do not act.
 
 | Key | Action |
 | --- | --- |

@@ -92,6 +92,7 @@ pub struct PlateMenu {
     step_in_label: String,
     beside: Beside,
     max_plates: Option<usize>,
+    unselected: bool,
     rect: Rect,
     /// Where the notice stood in the last frame: a widget of the caller
     /// there keeps its drags and, while it holds the focus, its keys.
@@ -154,6 +155,7 @@ impl PlateMenu {
             step_in_label: String::new(),
             beside: Beside::default(),
             max_plates: None,
+            unselected: false,
             rect: Rect::NOTHING,
             notice_rect: Rect::NOTHING,
             frames: 0,
@@ -180,6 +182,18 @@ impl PlateMenu {
     /// fifth of it, and less the two strips that say how many rows are hidden.
     pub fn max_plates(mut self, plates: usize) -> Self {
         self.max_plates = Some(plates.max(1));
+        self
+    }
+
+    /// Whether [`Self::open`] leaves every entry unselected.
+    ///
+    /// Then a tap does not meet an entry lit for the keys, and `Enter` chooses
+    /// nothing until an entry is walked to: `Down` or `PageDown` selects the
+    /// first entry, `Up`, `PageUp` or `End` the last, `Home` the first, and a
+    /// query its first hit. [`Self::open_at`] still selects the entry it is
+    /// given. Kept from one opening to the next.
+    pub fn opens_unselected(mut self, unselected: bool) -> Self {
+        self.unselected = unselected;
         self
     }
 
@@ -234,7 +248,11 @@ impl PlateMenu {
 
         self.notice = None;
         self.beside = Beside::default();
-        self.state = Some(MenuState::new(items));
+        let mut state = MenuState::new(items);
+        if self.unselected {
+            state.rest();
+        }
+        self.state = Some(state);
         self.rect = Rect::NOTHING;
         self.notice_rect = Rect::NOTHING;
         self.frames = 0;
@@ -325,9 +343,10 @@ impl PlateMenu {
             .is_some_and(|state| crate::search::path_of(state.items(), id).is_some())
     }
 
-    /// Row the selection stands on, while the menu is open.
+    /// Row the selection stands on, while the menu is open and an entry is
+    /// selected.
     pub fn selected(&self) -> Option<usize> {
-        Some(self.state.as_ref()?.selected())
+        self.state.as_ref()?.selection()
     }
 
     /// Draws the menu and returns the entry that was chosen this frame.
@@ -493,7 +512,7 @@ impl PlateMenu {
             let state = self.state.as_ref()?;
             (
                 state.rows(),
-                state.selected(),
+                state.selection(),
                 state.trail(),
                 state.query().to_string(),
                 state.caret(),
@@ -503,8 +522,8 @@ impl PlateMenu {
         self.follow_query(&query);
         let Layout { width, plates } = self.layout(context, &rows, &trail, &query);
         let width = self.search_from.map_or(width, |from| width.max(from.width));
-        let whole = rows
-            .get(selected)
+        let whole = selected
+            .and_then(|selected| rows.get(selected))
             .map(|row| row.full.clone())
             .filter(|full| !full.is_empty());
         let beside = beside_fits(self.beside_width(width), context.content_rect().width());
@@ -543,7 +562,7 @@ impl PlateMenu {
                     let top = ui.cursor().top();
                     for (index, row) in rows.iter().enumerate().take(last).skip(first) {
                         if let Some(click) =
-                            plate(ui, row, index == selected, width, &self.step_in_label)
+                            plate(ui, row, Some(index) == selected, width, &self.step_in_label)
                         {
                             clicked = Some((index, click));
                         }
@@ -617,12 +636,15 @@ impl PlateMenu {
     /// row at a time, so nothing moves under a pointer that is not moving. A
     /// window a drag moved stays where it was moved to, because the drag put the
     /// selection inside it.
-    fn window(&mut self, selected: usize, plates: usize, rows: usize) -> usize {
+    /// With no entry selected the window stays where it is.
+    fn window(&mut self, selected: Option<usize>, plates: usize, rows: usize) -> usize {
         let highest = rows.saturating_sub(plates);
-        if selected < self.first {
-            self.first = selected;
-        } else if selected + 1 >= self.first + plates {
-            self.first = (selected + 1).saturating_sub(plates);
+        match selected {
+            Some(selected) if selected < self.first => self.first = selected,
+            Some(selected) if selected + 1 >= self.first + plates => {
+                self.first = (selected + 1).saturating_sub(plates);
+            }
+            _ => {}
         }
         self.first = self.first.min(highest);
         self.first
@@ -1210,17 +1232,29 @@ mod tests {
     fn the_window_walks_with_the_selection_one_row_at_a_time() {
         let mut menu = PlateMenu::new();
 
-        assert_eq!(menu.window(0, 3, 10), 0);
+        assert_eq!(menu.window(Some(0), 3, 10), 0);
         assert_eq!(
-            menu.window(2, 3, 10),
+            menu.window(Some(2), 3, 10),
             0,
             "what is visible stays where it is"
         );
-        assert_eq!(menu.window(3, 3, 10), 1, "one row down, one row along");
-        assert_eq!(menu.window(9, 3, 10), 7, "the end shows the last plates");
-        assert_eq!(menu.window(1, 3, 10), 1, "and back up the same way");
-        assert_eq!(menu.window(0, 3, 10), 0);
-        assert_eq!(menu.window(0, 20, 10), 0, "a menu that fits never moves");
+        assert_eq!(
+            menu.window(Some(3), 3, 10),
+            1,
+            "one row down, one row along"
+        );
+        assert_eq!(
+            menu.window(Some(9), 3, 10),
+            7,
+            "the end shows the last plates"
+        );
+        assert_eq!(menu.window(Some(1), 3, 10), 1, "and back up the same way");
+        assert_eq!(menu.window(Some(0), 3, 10), 0);
+        assert_eq!(
+            menu.window(Some(0), 20, 10),
+            0,
+            "a menu that fits never moves"
+        );
     }
 
     #[test]
@@ -1465,6 +1499,55 @@ mod tests {
             .as_ref()
             .map(|state| state.query().to_string())
             .unwrap_or_default()
+    }
+
+    /// A menu that opens unselected selects no entry; `Enter` chooses
+    /// nothing, `Down` selects the first entry and `Up` the last.
+    #[test]
+    fn a_menu_opened_unselected_waits_for_a_key() {
+        let context = context(600.0);
+        let mut menu = PlateMenu::new().opens_unselected(true);
+        menu.open(items(5)).expect("the menu opens");
+        assert_eq!(menu.selected(), None);
+
+        let chosen = frame(
+            &context,
+            &mut menu,
+            vec![key(egui::Key::Enter, egui::Modifiers::NONE)],
+        );
+        assert_eq!(chosen, None, "Enter chooses nothing");
+        assert!(menu.is_open());
+
+        press(&context, &mut menu, egui::Key::ArrowDown);
+        assert_eq!(menu.selected(), Some(0), "Down selects the first entry");
+
+        menu.open(items(5)).expect("the menu opens again");
+        assert_eq!(menu.selected(), None, "the setting is kept");
+        press(&context, &mut menu, egui::Key::ArrowUp);
+        assert_eq!(menu.selected(), Some(4), "Up selects the last entry");
+    }
+
+    /// A query selects its first hit in a menu that opened unselected, and
+    /// `open_at` selects the entry it is given.
+    #[test]
+    fn a_query_or_open_at_selects_in_a_menu_opened_unselected() {
+        let context = context(600.0);
+        let mut menu = PlateMenu::new().opens_unselected(true);
+        menu.open(items(5)).expect("the menu opens");
+        frame(&context, &mut menu, vec![egui::Event::Text("3".into())]);
+        assert!(menu.selected().is_some(), "the hit is selected");
+
+        menu.open_at(items(5), "id2").expect("the menu opens");
+        assert_eq!(menu.selected(), Some(2));
+    }
+
+    /// A menu refilled while no entry is selected keeps none selected.
+    #[test]
+    fn a_refill_keeps_a_menu_unselected() {
+        let mut menu = PlateMenu::new().opens_unselected(true);
+        menu.open(items(5)).expect("the menu opens");
+        menu.refill(items(6)).expect("the menu is refilled");
+        assert_eq!(menu.selected(), None);
     }
 
     /// The first `Esc` takes the query away, the second the menu.

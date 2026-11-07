@@ -35,7 +35,8 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | --- | --- |
 | `new()`, `with_id(id)` | a closed menu; another id for a second one in the window |
 | `max_plates(n)` | plates at once; default is what `HEIGHT_SHARE` of the window holds, less the two strips when not all fit |
-| `open(items)` | opens on the first entry; resets `notice` and `beside` |
+| `opens_unselected(true)` | `open` selects no entry: `Enter` chooses nothing until a key, a click or a query selects one; kept across `open` |
+| `open(items)` | opens on the first entry, or on none with `opens_unselected`; resets `notice` and `beside` |
 | `open_at(items, id)` | opens on that entry, in the level that carries it |
 | `refill(items)` | new entries; the query, the level and the selection stay |
 | `notice(text)`, `notice(Notice::widget(f))` | the lines above everything, or a widget of the caller drawn there |
@@ -43,7 +44,7 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | `step_in_label(text)` | what a screen reader calls the zone `›` of a split entry; kept across `open` |
 | `beside(Closes \| Ignored)` | what a click beside the menu does |
 | `show(context)` | draws a frame; `Some(Chosen)` on the frame an entry is chosen |
-| `close()`, `is_open()`, `selected()` | |
+| `close()`, `is_open()`, `selected()` | `selected()` is `None` while no entry is selected |
 | `holds(id)` | whether an entry of that id stands in the menu, at any level: is the menu standing still the one a caller opened |
 | `layer_id()` | the layer, the same open or closed |
 
@@ -295,6 +296,10 @@ time:
 
 The keys are the table `KEYS`, each with its `Walk`: the menu acts on it,
 and a caller lists the keys of its window from it.
+
+In a menu opened with no entry selected, `Down`, `PageDown` and `Home`
+select the first entry, `Up`, `PageUp` and `End` the last, `Right` and
+`Enter` do nothing, and a query selects its first hit.
 
 These keys, the text, a paste and the wheel are taken out of the input, press
 and release, so the view behind does not walk with the menu. `Tab` is taken so

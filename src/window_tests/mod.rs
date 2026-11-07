@@ -915,3 +915,14 @@ fn the_empty_place_in_hand_takes_a_bead_away() {
 
     assert_eq!(window.harness.state().pattern.get(FREE), None);
 }
+
+/// A menu of the window opens with no entry selected (`RULE ui.menu`).
+#[test]
+fn the_menu_of_the_settings_opens_with_no_entry_selected() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+
+    let app = window.harness.state();
+    assert!(app.menu.is_open());
+    assert_eq!(app.menu.selected(), None);
+}

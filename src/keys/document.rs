@@ -57,7 +57,8 @@ impl Layer {
             }
             Layer::Menu => {
                 "Any other menu: the settings, a colour, the picture, a card of the \
-                 list. The keys are those of `plate-menu`."
+                 list. The keys are those of `plate-menu`. A menu opens with no entry \
+                 selected: Down selects the first, Up the last, Enter does nothing."
             }
             Layer::Text => "A text field holds the keys. It takes them all.",
         }
