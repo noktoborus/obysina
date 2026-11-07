@@ -404,7 +404,7 @@ RULE ui.menu : a choice among variants is a `plate_menu::PlateMenu` in the
      middle of the window, opened by a button of a panel
 EX+  the kinds of grid, `src/ui/grid_menu.rs`
 EX-  an `egui::Popup` or a `ComboBox` under the button
-THEN a menu is made by `ui::plate_menu`: it opens with no entry selected
+THEN a menu opens by `open`, with no entry selected
 WHY  the user's word: a tap must not meet an entry lit for the keys
 THEN `open_at` only opens a menu again on the entry just chosen in it
 

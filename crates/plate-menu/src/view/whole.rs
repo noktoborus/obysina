@@ -257,9 +257,13 @@ mod tests {
         let whole_of = |width: f32| {
             let context = Context::default();
             let mut menu = PlateMenu::new();
-            menu.open(vec![
-                MenuItem::new("id0", "an entry").full("the whole of what the label was cut from"),
-            ])
+            menu.open_at(
+                vec![
+                    MenuItem::new("id0", "an entry")
+                        .full("the whole of what the label was cut from"),
+                ],
+                "id0",
+            )
             .expect("the menu opens");
 
             for _ in 0..3 {
@@ -306,12 +310,13 @@ mod tests {
         let context = Context::default();
         let mut menu = PlateMenu::new();
         let whole = "the whole of what the label was cut from, ".repeat(6);
-        menu.open(
+        menu.open_at(
             (0..entries)
                 .map(|index| {
                     MenuItem::new(format!("id{index}"), format!("entry {index}")).full(&whole)
                 })
                 .collect(),
+            "id0",
         )
         .expect("the menu opens");
 
@@ -356,7 +361,7 @@ mod tests {
         let context = Context::default();
         let mut menu = PlateMenu::new();
         let tall = "the whole of what the label was cut from, ".repeat(6);
-        menu.open(
+        menu.open_at(
             (0..30)
                 .map(|index| {
                     let whole = if index % 2 == 0 {
@@ -367,6 +372,7 @@ mod tests {
                     MenuItem::new(format!("id{index}"), format!("entry {index}")).full(whole)
                 })
                 .collect(),
+            "id0",
         )
         .expect("the menu opens");
 

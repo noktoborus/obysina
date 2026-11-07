@@ -92,7 +92,6 @@ pub struct PlateMenu {
     step_in_label: String,
     beside: Beside,
     max_plates: Option<usize>,
-    unselected: bool,
     rect: Rect,
     /// Where the notice stood in the last frame: a widget of the caller
     /// there keeps its drags and, while it holds the focus, its keys.
@@ -155,7 +154,6 @@ impl PlateMenu {
             step_in_label: String::new(),
             beside: Beside::default(),
             max_plates: None,
-            unselected: false,
             rect: Rect::NOTHING,
             notice_rect: Rect::NOTHING,
             frames: 0,
@@ -182,18 +180,6 @@ impl PlateMenu {
     /// fifth of it, and less the two strips that say how many rows are hidden.
     pub fn max_plates(mut self, plates: usize) -> Self {
         self.max_plates = Some(plates.max(1));
-        self
-    }
-
-    /// Whether [`Self::open`] leaves every entry unselected.
-    ///
-    /// Then a tap does not meet an entry lit for the keys, and `Enter` chooses
-    /// nothing until an entry is walked to: `Down` or `PageDown` selects the
-    /// first entry, `Up`, `PageUp` or `End` the last, `Home` the first, and a
-    /// query its first hit. [`Self::open_at`] still selects the entry it is
-    /// given. Kept from one opening to the next.
-    pub fn opens_unselected(mut self, unselected: bool) -> Self {
-        self.unselected = unselected;
         self
     }
 
@@ -237,7 +223,12 @@ impl PlateMenu {
         self.beside = beside;
     }
 
-    /// Opens the menu with these entries.
+    /// Opens the menu with these entries, none of them selected.
+    ///
+    /// A tap does not meet an entry lit for the keys, and `Enter` chooses
+    /// nothing until an entry is walked to: `Down`, `PageDown` or `Home`
+    /// selects the first entry, `Up`, `PageUp` or `End` the last, and a query
+    /// its first hit. [`Self::open_at`] opens with an entry selected.
     ///
     /// Fails when nothing in them can be chosen, because a menu of lines and
     /// disabled entries would only have to be closed again.
@@ -249,9 +240,7 @@ impl PlateMenu {
         self.notice = None;
         self.beside = Beside::default();
         let mut state = MenuState::new(items);
-        if self.unselected {
-            state.rest();
-        }
+        state.rest();
         self.state = Some(state);
         self.rect = Rect::NOTHING;
         self.notice_rect = Rect::NOTHING;
@@ -272,8 +261,8 @@ impl PlateMenu {
     /// The entry is named by its identifier, which is what a list of values
     /// wants: it opens on the value in use, so the one that is set is the one
     /// under the cursor and the way to the neighbouring values is one key. An
-    /// identifier none of the entries carries opens the menu on the first
-    /// entry, the way [`Self::open`] does.
+    /// identifier none of the entries carries opens the menu with no entry
+    /// selected, the way [`Self::open`] does.
     ///
     /// An entry deeper than the first level opens the level that carries it,
     /// with the level above one step back: a tree of lists is opened on one
@@ -1169,13 +1158,13 @@ mod tests {
         let context = context(600.0);
 
         let mut menu = PlateMenu::new();
-        menu.open(items(3)).expect("the menu opens");
+        menu.open_at(items(3), "id0").expect("the menu opens");
         let plain = enter(&context, &mut menu, egui::Modifiers::NONE).expect("an entry is chosen");
         assert_eq!(plain.id, "id0");
         assert!(!plain.held.shift);
 
         let mut menu = PlateMenu::new();
-        menu.open(items(3)).expect("the menu opens");
+        menu.open_at(items(3), "id0").expect("the menu opens");
         let shifted =
             enter(&context, &mut menu, egui::Modifiers::SHIFT).expect("an entry is chosen");
         assert_eq!(shifted.id, "id0", "the same entry, chosen the other way");
@@ -1324,12 +1313,12 @@ mod tests {
     }
 
     #[test]
-    fn opening_on_an_entry_that_is_not_there_starts_at_the_first() {
+    fn opening_on_an_entry_that_is_not_there_selects_none() {
         let mut menu = PlateMenu::new();
         menu.open_at(items(5), "nothing_of_the_sort")
             .expect("the menu opens");
 
-        assert_eq!(menu.selected(), Some(0));
+        assert_eq!(menu.selected(), None);
     }
 
     #[test]
@@ -1340,7 +1329,7 @@ mod tests {
     fn the_keys_the_menu_walks_by_are_taken_out_of_the_input() {
         let context = Context::default();
         let mut menu = PlateMenu::new();
-        menu.open(items(3)).expect("the menu opens");
+        menu.open_at(items(3), "id0").expect("the menu opens");
 
         let mut left = true;
         let input = egui::RawInput {
@@ -1501,12 +1490,12 @@ mod tests {
             .unwrap_or_default()
     }
 
-    /// A menu that opens unselected selects no entry; `Enter` chooses
-    /// nothing, `Down` selects the first entry and `Up` the last.
+    /// A menu opens with no entry selected; `Enter` chooses nothing, `Down`
+    /// selects the first entry and `Up` the last.
     #[test]
-    fn a_menu_opened_unselected_waits_for_a_key() {
+    fn a_menu_opens_with_no_entry_selected() {
         let context = context(600.0);
-        let mut menu = PlateMenu::new().opens_unselected(true);
+        let mut menu = PlateMenu::new();
         menu.open(items(5)).expect("the menu opens");
         assert_eq!(menu.selected(), None);
 
@@ -1522,29 +1511,32 @@ mod tests {
         assert_eq!(menu.selected(), Some(0), "Down selects the first entry");
 
         menu.open(items(5)).expect("the menu opens again");
-        assert_eq!(menu.selected(), None, "the setting is kept");
+        assert_eq!(menu.selected(), None, "again with none");
         press(&context, &mut menu, egui::Key::ArrowUp);
         assert_eq!(menu.selected(), Some(4), "Up selects the last entry");
     }
 
-    /// A query selects its first hit in a menu that opened unselected, and
-    /// `open_at` selects the entry it is given.
+    /// A query selects its first hit, and `open_at` selects the entry it is
+    /// given; an identifier no entry carries selects none.
     #[test]
-    fn a_query_or_open_at_selects_in_a_menu_opened_unselected() {
+    fn a_query_or_open_at_selects_an_entry() {
         let context = context(600.0);
-        let mut menu = PlateMenu::new().opens_unselected(true);
+        let mut menu = PlateMenu::new();
         menu.open(items(5)).expect("the menu opens");
         frame(&context, &mut menu, vec![egui::Event::Text("3".into())]);
         assert!(menu.selected().is_some(), "the hit is selected");
 
         menu.open_at(items(5), "id2").expect("the menu opens");
         assert_eq!(menu.selected(), Some(2));
+
+        menu.open_at(items(5), "nothing").expect("the menu opens");
+        assert_eq!(menu.selected(), None);
     }
 
     /// A menu refilled while no entry is selected keeps none selected.
     #[test]
     fn a_refill_keeps_a_menu_unselected() {
-        let mut menu = PlateMenu::new().opens_unselected(true);
+        let mut menu = PlateMenu::new();
         menu.open(items(5)).expect("the menu opens");
         menu.refill(items(6)).expect("the menu is refilled");
         assert_eq!(menu.selected(), None);
@@ -1737,7 +1729,7 @@ mod tests {
     fn a_drag_moves_the_window_and_chooses_nothing() {
         let context = context(600.0);
         let mut menu = PlateMenu::new().max_plates(5);
-        menu.open(items(20)).expect("the menu opens");
+        menu.open_at(items(20), "id0").expect("the menu opens");
         frame(&context, &mut menu, Vec::new());
         frame(&context, &mut menu, Vec::new());
         let step = plate_step(&context);
@@ -1782,7 +1774,7 @@ mod tests {
     fn a_drag_beside_the_menu_moves_nothing() {
         let context = context(600.0);
         let mut menu = PlateMenu::new().max_plates(5);
-        menu.open(items(20)).expect("the menu opens");
+        menu.open_at(items(20), "id0").expect("the menu opens");
         frame(&context, &mut menu, Vec::new());
 
         drag(

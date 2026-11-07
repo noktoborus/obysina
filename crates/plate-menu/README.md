@@ -35,9 +35,8 @@ fn frame(context: &egui::Context, menu: &mut PlateMenu, asked: bool) {
 | --- | --- |
 | `new()`, `with_id(id)` | a closed menu; another id for a second one in the window |
 | `max_plates(n)` | plates at once; default is what `HEIGHT_SHARE` of the window holds, less the two strips when not all fit |
-| `opens_unselected(true)` | `open` selects no entry: `Enter` chooses nothing until a key, a click or a query selects one; kept across `open` |
-| `open(items)` | opens on the first entry, or on none with `opens_unselected`; resets `notice` and `beside` |
-| `open_at(items, id)` | opens on that entry, in the level that carries it |
+| `open(items)` | opens with no entry selected: `Enter` chooses nothing until a key, a click or a query selects one; resets `notice` and `beside` |
+| `open_at(items, id)` | opens on that entry, in the level that carries it; on none when no entry carries it |
 | `refill(items)` | new entries; the query, the level and the selection stay |
 | `notice(text)`, `notice(Notice::widget(f))` | the lines above everything, or a widget of the caller drawn there |
 | `nothing_found(text)` | the line of a query that finds nothing; kept across `open` |
@@ -297,7 +296,7 @@ time:
 The keys are the table `KEYS`, each with its `Walk`: the menu acts on it,
 and a caller lists the keys of its window from it.
 
-In a menu opened with no entry selected, `Down`, `PageDown` and `Home`
+A menu opens with no entry selected. Then `Down`, `PageDown` and `Home`
 select the first entry, `Up`, `PageUp` and `End` the last, `Right` and
 `Enter` do nothing, and a query selects its first hit.
 

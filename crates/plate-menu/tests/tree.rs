@@ -8,6 +8,18 @@ use plate_menu::{MenuItem, PlateMenu};
 fn harness(items: Vec<MenuItem>) -> Harness<'static, PlateMenu> {
     let mut menu = PlateMenu::new();
     menu.open(items).expect("an entry can be chosen");
+    shown(menu)
+}
+
+/// The menu of `items`, opened on the entry `id`.
+fn harness_at(items: Vec<MenuItem>, id: &str) -> Harness<'static, PlateMenu> {
+    let mut menu = PlateMenu::new();
+    menu.open_at(items, id).expect("an entry can be chosen");
+    shown(menu)
+}
+
+/// The menu, drawn until it settles.
+fn shown(menu: PlateMenu) -> Harness<'static, PlateMenu> {
     let mut harness = Harness::builder()
         .with_size(egui::vec2(600.0, 400.0))
         .build_ui_state(
@@ -22,10 +34,19 @@ fn harness(items: Vec<MenuItem>) -> Harness<'static, PlateMenu> {
 
 #[test]
 fn a_plate_is_a_button_named_by_its_label() {
-    let harness = harness(vec![
-        MenuItem::new("copy", "Copy").detail("ctrl+shift+c"),
-        MenuItem::new("send", "Send a file").enabled(false),
-    ]);
+    let items = || {
+        vec![
+            MenuItem::new("copy", "Copy").detail("ctrl+shift+c"),
+            MenuItem::new("send", "Send a file").enabled(false),
+        ]
+    };
+    let unselected = harness(items());
+    assert_eq!(
+        unselected.get_by_label("Copy").accesskit_node().toggled(),
+        Some(egui::accesskit::Toggled::False),
+        "a menu opens with no entry selected"
+    );
+    let harness = harness_at(items(), "copy");
     let copy = harness.get_by_label("Copy");
     assert_eq!(copy.accesskit_node().role(), egui::accesskit::Role::Button);
     assert_eq!(

@@ -64,7 +64,7 @@ impl Default for PaletteWindow {
     fn default() -> PaletteWindow {
         PaletteWindow {
             open: false,
-            menu: crate::ui::plate_menu("palette-menu"),
+            menu: PlateMenu::new().with_id("palette-menu"),
             menu_of: None,
             editing: Arc::default(),
             cells: Vec::new(),

@@ -92,10 +92,16 @@ fn uneven(count: usize) -> Vec<MenuItem> {
         .collect()
 }
 
-/// A menu of `items` with nothing else set.
+/// A menu of `items` with nothing else set, on its first entry: the
+/// pictures show the selection.
 fn opened(items: Vec<MenuItem>) -> PlateMenu {
+    let first = items
+        .iter()
+        .find(|item| item.is_reachable())
+        .map(|item| item.id.clone())
+        .unwrap_or_default();
     let mut menu = PlateMenu::new();
-    menu.open(items).expect("an entry can be chosen");
+    menu.open_at(items, &first).expect("an entry can be chosen");
     menu
 }
 
