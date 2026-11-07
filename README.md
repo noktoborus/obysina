@@ -79,16 +79,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   with ctrl zoom it.
 - A pattern is a JSON file. Every format the program ever wrote opens.
 
-| Key | Action |
-| --- | --- |
-| ctrl+z | undo |
-| ctrl+shift+z | redo |
-| ctrl+s | save now |
-| Escape | back to the list, when no menu is open |
-| 1 … 9 | the colour of that place of the palette shown |
-| 0 | the empty place |
-| + / - | the next and the previous palette |
-| P | the window of the palettes |
+The keys of each screen and menu are [docs/keys.md](docs/keys.md).
 
 ## Running
 

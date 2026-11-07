@@ -3,13 +3,14 @@
 
 use std::path::PathBuf;
 
-use egui::{Key, KeyboardShortcut, Modifiers};
+use egui::{Key, KeyboardShortcut};
 use obusina_canvas::{Canvas, Press, View};
 use obusina_pattern::{Cell, Colour, ColourId, DEFAULT_BEAD_RATIO, Grid, Pattern, Rgb};
 use rust_i18n::t;
 
 use crate::edit::{Edit, History};
 use crate::error::AppError;
+use crate::keys::{Binding, Layer, command, command_shift, plain};
 use crate::settings::Settings;
 use crate::ui::access::Named;
 
@@ -22,22 +23,77 @@ const NEW_PALETTE: [[u8; 3]; 5] = [
     [0xe8, 0xc5, 0x47],
 ];
 
-const UNDO: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::Z);
-const REDO: KeyboardShortcut =
-    KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), Key::Z);
-const SAVE: KeyboardShortcut = KeyboardShortcut::new(Modifiers::COMMAND, Key::S);
+/// What a key of the field does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum FieldAction {
+    Redo,
+    Undo,
+    Save,
+    Back,
+    Palettes,
+    NextPalette,
+    PreviousPalette,
+    /// Takes the colour of the place of the digit, `Taken::index`.
+    Digit,
+}
+
+/// The keys of the field (`Layer::Editor`), a second way to the buttons
+/// (`RULE ui.touch`).
+pub(crate) const FIELD_KEYS: &[Binding<FieldAction>] = &[
+    Binding {
+        keys: &[command_shift(Key::Z)],
+        action: FieldAction::Redo,
+        name: "edit.redo",
+    },
+    Binding {
+        keys: &[command(Key::Z)],
+        action: FieldAction::Undo,
+        name: "edit.undo",
+    },
+    Binding {
+        keys: &[command(Key::S)],
+        action: FieldAction::Save,
+        name: "keys.save",
+    },
+    Binding {
+        keys: &[plain(Key::Escape)],
+        action: FieldAction::Back,
+        name: "projects.back",
+    },
+    Binding {
+        keys: &[plain(Key::P)],
+        action: FieldAction::Palettes,
+        name: "keys.palettes",
+    },
+    Binding {
+        keys: &[plain(Key::Plus), plain(Key::Equals)],
+        action: FieldAction::NextPalette,
+        name: "palette.next",
+    },
+    Binding {
+        keys: &[plain(Key::Minus)],
+        action: FieldAction::PreviousPalette,
+        name: "palette.previous",
+    },
+    Binding {
+        keys: &DIGITS,
+        action: FieldAction::Digit,
+        name: "keys.digit",
+    },
+];
+
 /// The digits, `0` first: the top row and the numpad give the same keys.
-const DIGITS: [Key; 10] = [
-    Key::Num0,
-    Key::Num1,
-    Key::Num2,
-    Key::Num3,
-    Key::Num4,
-    Key::Num5,
-    Key::Num6,
-    Key::Num7,
-    Key::Num8,
-    Key::Num9,
+const DIGITS: [KeyboardShortcut; 10] = [
+    plain(Key::Num0),
+    plain(Key::Num1),
+    plain(Key::Num2),
+    plain(Key::Num3),
+    plain(Key::Num4),
+    plain(Key::Num5),
+    plain(Key::Num6),
+    plain(Key::Num7),
+    plain(Key::Num8),
+    plain(Key::Num9),
 ];
 
 /// What a press on the field does.
@@ -253,45 +309,26 @@ impl App {
         }
     }
 
-    /// The keys that are a second way to the buttons (`RULE ui.touch`).
+    /// The keys of the field, while it is the layer on top (`FIELD_KEYS`).
     fn shortcuts(&mut self, ui: &mut egui::Ui) {
-        let (redo, undo, save) = ui.input_mut(|input| {
-            (
-                input.consume_shortcut(&REDO),
-                input.consume_shortcut(&UNDO),
-                input.consume_shortcut(&SAVE),
-            )
-        });
-        if redo {
-            self.redo();
-        }
-        if undo {
-            self.undo();
+        if crate::keys::layer(self, ui.ctx()) != Layer::Editor {
+            return;
         }
         let time = ui.input(|input| input.time);
-        if save {
-            self.save_now(time);
-        }
-        let free = !ui.ctx().egui_wants_keyboard_input()
-            && !self.palette_window.open
-            && !self.bead_menu.is_open()
-            && !self.menu.is_open()
-            && !self.backdrop_menu.is_open()
-            && !self.backdrop.editing();
-        if !free {
-            return;
-        }
-        if ui.input_mut(|input| input.consume_key(Modifiers::NONE, Key::Escape)) {
-            self.back_to_list(ui.ctx(), time);
-            return;
-        }
-        if ui.input(|input| input.key_pressed(Key::P)) {
-            self.palette_window.open = true;
-        }
-        crate::ui::palette_window::step_by_keys(self, ui);
-        if let Some(digit) = ui.input(|input| DIGITS.iter().position(|key| input.key_pressed(*key)))
-        {
-            self.take_by_digit(digit);
+        for taken in crate::keys::take(ui.ctx(), FIELD_KEYS) {
+            match taken.action {
+                FieldAction::Redo => self.redo(),
+                FieldAction::Undo => self.undo(),
+                FieldAction::Save => self.save_now(time),
+                FieldAction::Back => {
+                    self.back_to_list(ui.ctx(), time);
+                    return;
+                }
+                FieldAction::Palettes => self.palette_window.open = true,
+                FieldAction::NextPalette => crate::ui::palette_window::step(self, 1),
+                FieldAction::PreviousPalette => crate::ui::palette_window::step(self, -1),
+                FieldAction::Digit => self.take_by_digit(taken.index),
+            }
         }
     }
 
@@ -360,6 +397,7 @@ impl eframe::App for App {
 
     fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         crate::ui::access::name_window(ui.ctx(), &t!("app.name"));
+        crate::keys::global(self, ui.ctx());
         if self.screen == crate::session::Screen::List {
             self.projects.thumbs.render = frame.wgpu_render_state().cloned();
             crate::ui::projects::show(self, ui);

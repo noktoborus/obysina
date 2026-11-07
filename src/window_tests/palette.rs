@@ -517,7 +517,7 @@ fn a_press_beside_the_picker_closes_it_and_nothing_else() {
 
     press_at(&mut window, uncovered);
 
-    assert!(!window.harness.state().palette_window.menu_is_open());
+    assert!(!window.harness.state().palette_window.menu_open());
     assert!(
         window
             .harness

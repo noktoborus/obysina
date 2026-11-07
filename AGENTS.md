@@ -405,6 +405,19 @@ RULE ui.menu : a choice among variants is a `plate_menu::PlateMenu` in the
 EX+  the kinds of grid, `src/ui/grid_menu.rs`
 EX-  an `egui::Popup` or a `ComboBox` under the button
 
+RULE ui.keys : every key is a row of a table: `Binding`s of the layer,
+     beside its code, or `keys::GLOBAL`; `keys::layer` says which layer is on
+     top, and only it acts on a key
+THEN a layer reads its table with `keys::take`; a new layer is a variant
+     of `keys::Layer`, its table named in `keys::keymap`
+THEN `clippy.toml` refuses `key_pressed`, `consume_key` and their kin; only
+     `keys::take` and the menu of `plate-menu` read a key
+THEN `UPDATE_KEYS=1 cargo test -p obusina keys` writes `docs/keys.md` from
+     the tables; a test fails while the file says other
+EX+  Binding { keys: &[command(Key::Z)], action: FieldAction::Undo, name: "edit.undo" }
+EX-  if ui.input(|input| input.key_pressed(Key::P)) in the code of a panel
+REF  src/keys.rs
+
 RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller
 

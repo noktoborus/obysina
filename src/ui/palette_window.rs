@@ -25,6 +25,7 @@ use plate_menu::{MenuItem, Notice, PlateMenu};
 use rust_i18n::t;
 
 use crate::app::App;
+use crate::keys::{Binding, Layer, plain};
 use crate::settings::PaletteView;
 use crate::ui::access::Named;
 use crate::ui::{button, icons};
@@ -60,13 +61,60 @@ pub struct PaletteWindow {
     drop_to: usize,
 }
 
-#[cfg(test)]
 impl PaletteWindow {
     /// Whether its menu is open.
-    pub fn menu_is_open(&self) -> bool {
+    pub fn menu_open(&self) -> bool {
         self.menu.is_open()
     }
+
+    /// Whether a colour is dragged.
+    pub fn dragging(&self) -> bool {
+        self.dragging.is_some()
+    }
 }
+
+/// What a key of the window does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum WindowAction {
+    Close,
+    Next,
+    Previous,
+}
+
+/// The keys of the window (`Layer::Palettes`). "+" and "-" show the next
+/// and the previous palette, in a circle; `=` is the key of "+" with no
+/// shift.
+pub(crate) const KEYS: &[Binding<WindowAction>] = &[
+    Binding {
+        keys: &[plain(Key::Escape)],
+        action: WindowAction::Close,
+        name: "keys.close",
+    },
+    Binding {
+        keys: &[plain(Key::Plus), plain(Key::Equals)],
+        action: WindowAction::Next,
+        name: "palette.next",
+    },
+    Binding {
+        keys: &[plain(Key::Minus)],
+        action: WindowAction::Previous,
+        name: "palette.previous",
+    },
+];
+
+/// What a key of the menu of the window does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MenuAction {
+    Close,
+}
+
+/// The keys of the menu of the window (`Layer::PaletteMenu`), over the keys
+/// of the menu itself: Escape closes it while its picker holds the keys.
+pub(crate) const MENU_KEYS: &[Binding<MenuAction>] = &[Binding {
+    keys: &[plain(Key::Escape)],
+    action: MenuAction::Close,
+    name: "keys.close_menu",
+}];
 
 /// The places the line shows: every place up to the last one that holds
 /// anything, then the first after it, the "+" of all the places left. A full
@@ -151,10 +199,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
         return;
     }
     app.history.begin();
-    let escape =
-        |input: &mut egui::InputState| input.consume_key(egui::Modifiers::NONE, Key::Escape);
-    if app.palette_window.menu.is_open() && context.input_mut(escape) {
-        app.palette_window.menu.close();
+    keys(app, context);
+    if !app.palette_window.open {
+        app.history.end();
+        return;
     }
     let modal = Modal::new(Id::unique("palette-window")).show(context, |ui| window(app, ui));
     modal.response.clone().named(&t!("palette.window"));
@@ -169,7 +217,6 @@ pub fn show(app: &mut App, context: &egui::Context) {
 
 /// The content of the window.
 fn window(app: &mut App, ui: &mut egui::Ui) {
-    keys(app, ui);
     ui.horizontal(|ui| {
         let mut view = app.settings.palette_view();
         ui.selectable_value(&mut view, PaletteView::Line, t!("palette.line"));
@@ -206,30 +253,26 @@ fn window(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// "+" and "-" of the keyboard or the numpad, while no menu is open and no
-/// colour is dragged.
-fn keys(app: &mut App, ui: &egui::Ui) {
-    let state = &app.palette_window;
-    if state.menu.is_open() || state.dragging.is_some() {
-        return;
-    }
-    step_by_keys(app, ui);
-}
-
-/// "+" and "-" show the next and the previous palette, in a circle. `=` is
-/// the key of "+" with no shift.
-pub fn step_by_keys(app: &mut App, ui: &egui::Ui) {
-    let (next, previous) = ui.input(|input| {
-        (
-            input.key_pressed(Key::Plus) || input.key_pressed(Key::Equals),
-            input.key_pressed(Key::Minus),
-        )
-    });
-    if next {
-        step(app, 1);
-    }
-    if previous {
-        step(app, -1);
+/// The keys of the window or of its menu, whichever is on top.
+fn keys(app: &mut App, context: &egui::Context) {
+    match crate::keys::layer(app, context) {
+        Layer::Palettes => {
+            for taken in crate::keys::take(context, KEYS) {
+                match taken.action {
+                    WindowAction::Close => app.palette_window.open = false,
+                    WindowAction::Next => step(app, 1),
+                    WindowAction::Previous => step(app, -1),
+                }
+            }
+        }
+        Layer::PaletteMenu => {
+            for taken in crate::keys::take(context, MENU_KEYS) {
+                match taken.action {
+                    MenuAction::Close => app.palette_window.menu.close(),
+                }
+            }
+        }
+        _ => {}
     }
 }
 

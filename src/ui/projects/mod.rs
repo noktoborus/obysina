@@ -24,8 +24,8 @@
 //! bar, the wheel, a finger or a drag of the first button; the bar takes no
 //! width.
 //!
-//! Keys on the desktop: the arrows walk the cards, `Enter` opens, `Delete`
-//! moves to the trash, `F2` renames, `Ctrl+F` or a letter typed searches.
+//! The keys are `LIST_KEYS` and `TRASH_KEYS`; a letter typed searches
+//! (`docs/keys.md`).
 
 mod cards;
 mod menu;
@@ -35,13 +35,14 @@ use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
-use egui::{Key, Modifiers, Vec2, vec2};
+use egui::{Key, Vec2, vec2};
 use egui_notify::ToastId;
 use obusina_pattern::{Pattern, PatternId};
 use plate_menu::PlateMenu;
 use rust_i18n::t;
 
 use crate::app::{App, say};
+use crate::keys::{Binding, Layer, command, plain};
 use crate::library::{Entry, Report, Trashed, archive};
 use crate::pick::{Choice, Kinds, Picker, Saved, Saver};
 use crate::ui::access::Named;
@@ -124,6 +125,11 @@ impl Default for Projects {
 }
 
 impl Projects {
+    /// Whether the menu of a card or of the trash is open.
+    pub(crate) fn menu_open(&self) -> bool {
+        self.menu.is_open()
+    }
+
     /// Reads the list again before it is next drawn.
     pub fn refresh(&mut self) {
         self.stale = true;
@@ -322,88 +328,162 @@ fn take_answers(app: &mut App, context: &egui::Context) {
     let _ = context;
 }
 
-/// The keys of the desktop, while no menu and no field takes them.
+/// What a key of the list does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ListAction {
+    Search,
+    /// Walks the cards by the arrow `Taken::index` of `ARROWS`.
+    Walk,
+    Open,
+    ToTrash,
+    Rename,
+}
+
+/// The arrows that walk the cards: right, left, down, up.
+const ARROWS: [egui::KeyboardShortcut; 4] = [
+    plain(Key::ArrowRight),
+    plain(Key::ArrowLeft),
+    plain(Key::ArrowDown),
+    plain(Key::ArrowUp),
+];
+
+/// The keys of the list (`Layer::List`).
+pub(crate) const LIST_KEYS: &[Binding<ListAction>] = &[
+    Binding {
+        keys: &[command(Key::F)],
+        action: ListAction::Search,
+        name: "projects.search",
+    },
+    Binding {
+        keys: &ARROWS,
+        action: ListAction::Walk,
+        name: "keys.walk",
+    },
+    Binding {
+        keys: &[plain(Key::Enter)],
+        action: ListAction::Open,
+        name: "keys.open",
+    },
+    Binding {
+        keys: &[plain(Key::Delete)],
+        action: ListAction::ToTrash,
+        name: "keys.to_trash",
+    },
+    Binding {
+        keys: &[plain(Key::F2)],
+        action: ListAction::Rename,
+        name: "projects.rename",
+    },
+];
+
+/// What a key of the trash does.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TrashAction {
+    /// Walks the cards by the arrow `Taken::index` of `ARROWS`.
+    Walk,
+    Open,
+}
+
+/// The keys of the trash (`Layer::Trash`).
+pub(crate) const TRASH_KEYS: &[Binding<TrashAction>] = &[
+    Binding {
+        keys: &ARROWS,
+        action: TrashAction::Walk,
+        name: "keys.walk",
+    },
+    Binding {
+        keys: &[plain(Key::Enter)],
+        action: TrashAction::Open,
+        name: "keys.trash_open",
+    },
+];
+
+/// The keys of the list or of the trash, whichever is on top.
 fn keys(app: &mut App, ui: &egui::Ui) {
-    if app.projects.menu.is_open() || ui.ctx().egui_wants_keyboard_input() {
-        return;
+    match crate::keys::layer(app, ui.ctx()) {
+        Layer::List => list_keys(app, ui),
+        Layer::Trash => trash_keys(app, ui),
+        _ => {}
     }
-    let (search, typed) = ui.input_mut(|input| {
-        let search = input.consume_key(Modifiers::COMMAND, Key::F);
-        let typed: String = input
+}
+
+/// The keys of the list, and a letter typed, which searches.
+fn list_keys(app: &mut App, ui: &egui::Ui) {
+    let taken = crate::keys::take(ui.ctx(), LIST_KEYS);
+    let typed: String = ui.input(|input| {
+        input
             .events
             .iter()
             .filter_map(|event| match event {
                 egui::Event::Text(text) => Some(text.as_str()),
                 _ => None,
             })
-            .collect();
-        (search, typed)
+            .collect()
     });
-    if app.projects.view == View::List && (search || !typed.trim().is_empty()) {
+    let search = taken.iter().any(|taken| taken.action == ListAction::Search);
+    if search || !typed.trim().is_empty() {
         app.projects.query.push_str(typed.trim_start());
         app.projects.search_focus = true;
         return;
     }
-    let count = match app.projects.view {
-        View::List => ACTIONS + app.projects.shown().len(),
-        View::Trash => app.projects.trash.len(),
+    let walks = taken
+        .iter()
+        .filter(|taken| taken.action == ListAction::Walk)
+        .map(|taken| taken.index);
+    let count = ACTIONS + app.projects.shown().len();
+    let Some(at) = walk(app, walks, count) else {
+        return;
     };
-    if count == 0 {
+    let time = ui.input(|input| input.time);
+    let shown = app.projects.shown();
+    let id = at
+        .checked_sub(ACTIONS)
+        .map(|index| app.projects.entries[shown[index]].pattern.id());
+    for taken in taken {
+        match (taken.action, id) {
+            (ListAction::Open, None) if at == 0 => app.create_pattern(time),
+            (ListAction::Open, None) => import(app, ui.ctx()),
+            (ListAction::Open, Some(id)) => app.open_by_id(id, time),
+            (ListAction::ToTrash, Some(id)) => to_trash(app, &[id]),
+            (ListAction::Rename, Some(id)) => menu::rename(app, id),
+            _ => continue,
+        }
         return;
     }
-    let columns = app.projects.columns.max(1);
-    let step = ui.input_mut(|input| {
-        let mut step = 0_isize;
-        for (key, by) in [
-            (Key::ArrowRight, 1),
-            (Key::ArrowLeft, -1),
-            (Key::ArrowDown, columns as isize),
-            (Key::ArrowUp, -(columns as isize)),
-        ] {
-            if input.consume_key(Modifiers::NONE, key) {
-                step += by;
-            }
-        }
-        step
-    });
+}
+
+/// The keys of the trash.
+fn trash_keys(app: &mut App, ui: &egui::Ui) {
+    let taken = crate::keys::take(ui.ctx(), TRASH_KEYS);
+    let walks = taken
+        .iter()
+        .filter(|taken| taken.action == TrashAction::Walk)
+        .map(|taken| taken.index);
+    let count = app.projects.trash.len();
+    let Some(at) = walk(app, walks, count) else {
+        return;
+    };
+    if taken.iter().any(|taken| taken.action == TrashAction::Open) {
+        let id = app.projects.trash[at].pattern.id();
+        menu::open(app, Of::Trashed(id));
+    }
+}
+
+/// Moves the card the keys stand on by `walks`, indices of `ARROWS`, among
+/// `count` cards, and gives it; `None` while it stands on none.
+fn walk(app: &mut App, walks: impl Iterator<Item = usize>, count: usize) -> Option<usize> {
+    if count == 0 {
+        return None;
+    }
+    let columns = app.projects.columns.max(1) as isize;
+    let step: isize = walks.map(|arrow| [1, -1, columns, -columns][arrow]).sum();
     if step != 0 {
         let at = app.projects.focus.map_or(0, |at| {
             (at as isize + step).clamp(0, count as isize - 1) as usize
         });
         app.projects.focus = Some(at);
     }
-    let Some(at) = app.projects.focus.filter(|at| *at < count) else {
-        return;
-    };
-    let (enter, delete, rename) = ui.input_mut(|input| {
-        (
-            input.consume_key(Modifiers::NONE, Key::Enter),
-            input.consume_key(Modifiers::NONE, Key::Delete),
-            input.consume_key(Modifiers::NONE, Key::F2),
-        )
-    });
-    let time = ui.input(|input| input.time);
-    match app.projects.view {
-        View::List => {
-            let shown = app.projects.shown();
-            let id = at
-                .checked_sub(ACTIONS)
-                .map(|index| app.projects.entries[shown[index]].pattern.id());
-            match (id, enter, delete, rename) {
-                (None, true, ..) if at == 0 => app.create_pattern(time),
-                (None, true, ..) => import(app, ui.ctx()),
-                (Some(id), true, ..) => app.open_by_id(id, time),
-                (Some(id), _, true, _) => to_trash(app, &[id]),
-                (Some(id), _, _, true) => menu::rename(app, id),
-                _ => {}
-            }
-        }
-        View::Trash if enter => {
-            let id = app.projects.trash[at].pattern.id();
-            menu::open(app, Of::Trashed(id));
-        }
-        View::Trash => {}
-    }
+    app.projects.focus.filter(|at| *at < count)
 }
 
 /// Asks for a file of patterns to import.

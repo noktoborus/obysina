@@ -5,6 +5,7 @@ mod whole;
 use crate::detail::Detail;
 use crate::error::{MenuError, Result};
 use crate::item::MenuItem;
+use crate::keys::{KEYS, Walk};
 use crate::notice::Notice;
 use crate::state::{MenuState, Row};
 use egui::text::{LayoutJob, TextFormat};
@@ -374,57 +375,37 @@ impl PlateMenu {
         let mut scrolled = self.scrolled;
 
         context.input_mut(|input| {
-            let pressed = |key| input.key_pressed(key);
-            if pressed(egui::Key::Escape) && !state.clear_query() {
-                close = true;
-            }
-            if pressed(egui::Key::ArrowDown) {
-                state.move_selection(1);
-            }
-            if pressed(egui::Key::ArrowUp) {
-                state.move_selection(-1);
-            }
-            if pressed(egui::Key::ArrowRight) {
-                state.step_in();
-            }
-            if pressed(egui::Key::ArrowLeft) {
-                state.step_out();
-            }
-            if pressed(egui::Key::PageDown) {
-                state.move_page(page);
-            }
-            if pressed(egui::Key::PageUp) {
-                state.move_page(-page);
-            }
-            match (pressed(egui::Key::Home), state.query().is_empty()) {
-                (true, true) => state.select_first(),
-                (true, false) => state.caret_home(),
-                _ => {}
-            }
-            match (pressed(egui::Key::End), state.query().is_empty()) {
-                (true, true) => state.select_last(),
-                (true, false) => state.caret_end(),
-                _ => {}
-            }
-            if pressed(egui::Key::Backspace) {
-                let whole = input.events.iter().any(|event| {
-                    matches!(
-                        event,
-                        egui::Event::Key {
-                            key: egui::Key::Backspace,
-                            pressed: true,
-                            modifiers,
-                            ..
-                        } if modifiers.command
-                    )
-                });
-                match whole {
-                    true => state.clear_query(),
-                    false => state.pop_query(),
-                };
-            }
-            if pressed(egui::Key::Enter) {
-                chosen = state.accept();
+            let walks: Vec<Walk> = KEYS
+                .iter()
+                .filter(|(key, _)| pressed(input, *key))
+                .map(|(_, walk)| *walk)
+                .collect();
+            for walk in walks {
+                match walk {
+                    Walk::Close if !state.clear_query() => close = true,
+                    Walk::Close | Walk::Stay => {}
+                    Walk::Down => state.move_selection(1),
+                    Walk::Up => state.move_selection(-1),
+                    Walk::StepIn => {
+                        state.step_in();
+                    }
+                    Walk::StepOut => {
+                        state.step_out();
+                    }
+                    Walk::PageDown => state.move_page(page),
+                    Walk::PageUp => state.move_page(-page),
+                    Walk::First if state.query().is_empty() => state.select_first(),
+                    Walk::First => state.caret_home(),
+                    Walk::Last if state.query().is_empty() => state.select_last(),
+                    Walk::Last => state.caret_end(),
+                    Walk::Erase if erases_whole(input) => {
+                        state.clear_query();
+                    }
+                    Walk::Erase => {
+                        state.pop_query();
+                    }
+                    Walk::Choose => chosen = state.accept(),
+                }
             }
 
             let typed: String = input
@@ -677,24 +658,30 @@ impl PlateMenu {
     }
 }
 
-/// Keys the menu is walked by, which are the keys it takes out of the input.
-///
-/// `Tab` does nothing in the menu and is taken all the same: the toolkit would
-/// move the keyboard to a widget behind it.
-const WALKED: &[egui::Key] = &[
-    egui::Key::Escape,
-    egui::Key::ArrowUp,
-    egui::Key::ArrowDown,
-    egui::Key::ArrowLeft,
-    egui::Key::ArrowRight,
-    egui::Key::Home,
-    egui::Key::End,
-    egui::Key::PageUp,
-    egui::Key::PageDown,
-    egui::Key::Backspace,
-    egui::Key::Enter,
-    egui::Key::Tab,
-];
+/// Whether `key` was pressed this frame, whatever was held.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "the menu reads the keys of its own table, `KEYS`"
+)]
+fn pressed(input: &egui::InputState, key: egui::Key) -> bool {
+    input.key_pressed(key)
+}
+
+/// Whether `Backspace` was pressed with `Ctrl` this frame: the whole query
+/// goes.
+fn erases_whole(input: &egui::InputState) -> bool {
+    input.events.iter().any(|event| {
+        matches!(
+            event,
+            egui::Event::Key {
+                key: egui::Key::Backspace,
+                pressed: true,
+                modifiers,
+                ..
+            } if modifiers.command
+        )
+    })
+}
 
 /// True for an event the menu acts on, and so does not leave to anything else.
 ///
@@ -703,7 +690,7 @@ const WALKED: &[egui::Key] = &[
 fn taken(event: &egui::Event) -> bool {
     match event {
         egui::Event::MouseWheel { .. } | egui::Event::Text(_) | egui::Event::Paste(_) => true,
-        egui::Event::Key { key, .. } => WALKED.contains(key),
+        egui::Event::Key { key, .. } => KEYS.iter().any(|(walked, _)| walked == key),
         _ => false,
     }
 }
@@ -1312,6 +1299,10 @@ mod tests {
     }
 
     #[test]
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the test asks for the key as a view behind the menu would"
+    )]
     fn the_keys_the_menu_walks_by_are_taken_out_of_the_input() {
         let context = Context::default();
         let mut menu = PlateMenu::new();

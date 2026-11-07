@@ -229,6 +229,43 @@ fn a_press_is_undone_and_redone() {
 }
 
 #[test]
+fn a_press_is_undone_and_redone_by_the_keys() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+
+    window
+        .harness
+        .key_combination_modifiers(Modifiers::COMMAND, &[egui::Key::Z]);
+    window.harness.run();
+    assert_eq!(window.harness.state().pattern.get(FREE), None);
+
+    window
+        .harness
+        .key_combination_modifiers(Modifiers::COMMAND.plus(Modifiers::SHIFT), &[egui::Key::Z]);
+    window.harness.run();
+    assert_eq!(window.harness.state().pattern.get(FREE), Some(id_at(0)));
+}
+
+/// The keys of the field act only on the field: the window of the palettes
+/// over it takes them (`docs/keys.md`).
+#[test]
+fn the_window_of_the_palettes_takes_the_undo_from_the_field() {
+    let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    window.harness.key_press(egui::Key::P);
+    window.harness.run();
+
+    window
+        .harness
+        .key_combination_modifiers(Modifiers::COMMAND, &[egui::Key::Z]);
+    window.harness.run();
+
+    let app = window.harness.state();
+    assert!(app.palette_window.open);
+    assert_eq!(app.pattern.get(FREE), Some(id_at(0)));
+}
+
+#[test]
 fn a_tap_on_a_swatch_takes_the_colour_in_hand() {
     let mut window = window();
     let red = swatch(window.harness.state(), 2);

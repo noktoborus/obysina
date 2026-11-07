@@ -7,6 +7,7 @@
 | [docs/palette.md](docs/palette.md) | how the colours of a pattern are filled in |
 | [docs/backdrop.md](docs/backdrop.md) | the picture under the pattern, its store and the choice of its file |
 | [docs/projects.md](docs/projects.md) | the list of patterns, the trash, when a pattern is saved, the files of the export and the import |
+| [docs/keys.md](docs/keys.md) | the keys of each layer of the window, written from the tables of `src/keys.rs` |
 
 ## Crates
 

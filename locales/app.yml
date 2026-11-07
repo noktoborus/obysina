@@ -411,3 +411,67 @@ plural.days.few:
 plural.days.many:
   en: "days"
   ru: "дней"
+
+keys.save:
+  en: "Save now"
+  ru: "Сохранить сейчас"
+keys.palettes:
+  en: "Open the window of the palettes"
+  ru: "Открыть окно палитр"
+keys.digit:
+  en: "Take the colour of that place of the palette shown; 0, the empty place"
+  ru: "Взять цвет этого места показанной палитры; 0 — пустое место"
+keys.close:
+  en: "Close the window"
+  ru: "Закрыть окно"
+keys.close_menu:
+  en: "Close the menu"
+  ru: "Закрыть меню"
+keys.walk:
+  en: "Walk the cards"
+  ru: "Перейти по карточкам"
+keys.open:
+  en: "Open the card: the pattern, a new one, or the import"
+  ru: "Открыть карточку: схему, новую схему или импорт"
+keys.to_trash:
+  en: "Move the pattern to the trash"
+  ru: "Переместить схему в корзину"
+keys.trash_open:
+  en: "The menu of the pattern: restore or delete for good"
+  ru: "Меню схемы: вернуть или удалить навсегда"
+keys.menu.close:
+  en: "Clear the query; with none, close the menu"
+  ru: "Очистить запрос; если его нет — закрыть меню"
+keys.menu.down:
+  en: "The next entry"
+  ru: "Следующий пункт"
+keys.menu.up:
+  en: "The entry before"
+  ru: "Предыдущий пункт"
+keys.menu.step_in:
+  en: "Into the entry"
+  ru: "Войти в пункт"
+keys.menu.step_out:
+  en: "Out of the level, or clear the query"
+  ru: "Выйти на уровень выше или очистить запрос"
+keys.menu.page_down:
+  en: "Forward by the plates shown"
+  ru: "Вперёд на видимые пункты"
+keys.menu.page_up:
+  en: "Back by the plates shown"
+  ru: "Назад на видимые пункты"
+keys.menu.first:
+  en: "The first entry; with a query, the caret to its start"
+  ru: "Первый пункт; с запросом — курсор в начало"
+keys.menu.last:
+  en: "The last entry; with a query, the caret to its end"
+  ru: "Последний пункт; с запросом — курсор в конец"
+keys.menu.erase:
+  en: "The character before the caret; with Ctrl, the whole query"
+  ru: "Символ перед курсором; с Ctrl — весь запрос"
+keys.menu.choose:
+  en: "Choose the entry"
+  ru: "Выбрать пункт"
+keys.menu.stay:
+  en: "Nothing; the keyboard stays with the menu"
+  ru: "Ничего; клавиатура остаётся у меню"

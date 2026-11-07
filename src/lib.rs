@@ -10,6 +10,7 @@ mod backdrop;
 mod edit;
 mod error;
 mod history_file;
+mod keys;
 mod library;
 mod new_colour;
 mod pick;

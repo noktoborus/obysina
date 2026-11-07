@@ -293,6 +293,9 @@ time:
 | click beside | `Beside::Closes` closes, `Beside::Ignored` nothing |
 | pointer leaving | nothing |
 
+The keys are the table `KEYS`, each with its `Walk`: the menu acts on it,
+and a caller lists the keys of its window from it.
+
 These keys, the text, a paste and the wheel are taken out of the input, press
 and release, so the view behind does not walk with the menu. `Tab` is taken so
 the toolkit does not hand the keyboard to a widget behind. The query is not a

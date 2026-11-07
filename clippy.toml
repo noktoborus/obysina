@@ -1,0 +1,9 @@
+# A key is a row of a table of `src/keys.rs` or of `plate-menu` (`RULE ui.keys`).
+disallowed-methods = [
+    { path = "egui::InputState::key_pressed", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+    { path = "egui::InputState::key_down", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+    { path = "egui::InputState::key_released", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+    { path = "egui::InputState::consume_key", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+    { path = "egui::InputState::consume_shortcut", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+    { path = "egui::InputState::count_and_consume_key", reason = "a key is a row of a table, read by `keys::take` (RULE ui.keys)" },
+]
