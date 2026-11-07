@@ -29,6 +29,10 @@ THEN the builds are `.github/workflows/build.yml`, for every push and for a
      release; a step of a build is a target of the Makefile, so it runs here
      the same
 EX-  a command of a build written in a workflow and nowhere in the Makefile
+THEN an action is named by its latest major version
+WHY  GitHub stops the runtime of Node 20 on its runners; an old major of an
+     action runs on it
+EX-  actions/checkout@v4, which runs on Node 20
 REF  .github/workflows/
 
 RULE app.id = ru.styxheim.obusina

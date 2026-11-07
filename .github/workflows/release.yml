@@ -18,7 +18,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: the tag is the version of Cargo.toml (RULE version)
         id: version
         run: |
@@ -42,7 +42,7 @@ jobs:
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: built
       - name: the files of the release, named by the version
@@ -50,7 +50,7 @@ jobs:
           mkdir release
           cp built/android/obusina-release.apk "release/obusina-$VERSION.apk"
           cp built/windows/obusina.exe "release/obusina-$VERSION-windows-x86_64.exe"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: Obusina ${{ env.VERSION }}
           files: release/*
@@ -66,12 +66,12 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: web
           path: web
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: web
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
