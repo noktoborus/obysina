@@ -7,16 +7,19 @@
 //!              ruling… <step>  ──► the four numbers on top, then
 //!                                    │──accept──► the ruling stays, a step of undo
 //!                                    └──cancel──► the ruling goes back
+//!              sheet… <w×h>    ──► the columns and the rows on top, then
+//!                                    │──accept──► the size stays, a step of undo
+//!                                    └──cancel──► the size goes back
 //!              paper… <swatch> ──► the picker and the swatches on top, then
 //!                                    │──accept──► the paper stays, a step of undo
 //!                                    └──cancel──► the paper goes back
 //!              glow <on | off> ──► on or off, a setting of the program;
 //!                                  the menu opens again on it
-//! closed with no entry while a ruling or a paper is changed ──► it goes back
+//! closed with no entry while a ruling, a size or a paper is changed ──► it goes back
 //! ```
 //!
-//! A number of the ruling and a colour of the paper show on the field at
-//! once.
+//! A number of the ruling or of the size and a colour of the paper show on
+//! the field at once.
 
 use std::sync::{Arc, Mutex};
 
@@ -54,6 +57,8 @@ pub enum Editing {
         before: Ruling,
         editing: Arc<Mutex<Ruling>>,
     },
+    /// The size of the sheet (`src/ui/sheet.rs`).
+    Sheet(crate::ui::sheet::Sizing),
     /// The paper: the one the menu opened on, and the one the picker
     /// changes.
     Paper {
@@ -83,15 +88,19 @@ fn open_on(app: &mut App, id: Option<&str>) {
         true => t!("settings.on"),
         false => t!("settings.off"),
     };
-    let items = vec![
+    let mut items = vec![
         MenuItem::new("grid", t!("grid.kind"))
             .detail(name(grid))
             .opens_at(kind_id(grid))
             .children(kinds),
         MenuItem::new("ruling", t!("ruling.open")).detail(format!("{columns}\u{d7}{rows}")),
-        MenuItem::new("paper", t!("paper.open")).detail(swatch(app.pattern.paper())),
-        MenuItem::new("glow", t!("view.glow")).detail(glow),
     ];
+    if let Some(sheet) = app.pattern.sheet() {
+        items
+            .push(MenuItem::new("sheet", t!("sheet.open")).detail(crate::ui::sheet::detail(sheet)));
+    }
+    items.push(MenuItem::new("paper", t!("paper.open")).detail(swatch(app.pattern.paper())));
+    items.push(MenuItem::new("glow", t!("view.glow")).detail(glow));
     let opened = match id {
         Some(id) => app.menu.open_at(items, id),
         None => app.menu.open(items),
@@ -123,6 +132,20 @@ fn open_ruling(app: &mut App) {
     let editing = Arc::new(Mutex::new(before));
     app.menu.notice(numbers(Arc::clone(&editing)));
     app.settings_edit = Some(Editing::Ruling { before, editing });
+}
+
+/// Opens the menu of the size of the sheet: its two numbers on top, then
+/// accept and cancel.
+fn open_sheet(app: &mut App) {
+    let Some(before) = app.pattern.sheet() else {
+        return;
+    };
+    if !open_accept(app) {
+        return;
+    }
+    let sizing = crate::ui::sheet::Sizing::new(before, app.pattern.bounds());
+    app.menu.notice(sizing.numbers());
+    app.settings_edit = Some(Editing::Sheet(sizing));
 }
 
 /// Opens the menu of the paper: the picker and the swatches on top, then
@@ -220,6 +243,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
             let shown = *editing.lock().expect("the ruling is never poisoned");
             app.pattern.set_ruling(shown);
         }
+        Some(Editing::Sheet(sizing)) => {
+            let shown = sizing.sheet();
+            app.pattern.set_sheet(Some(shown));
+        }
         Some(Editing::Paper { editing, .. }) => {
             let shown = *editing.lock().expect("the paper is never poisoned");
             app.pattern.set_paper(rgb(shown));
@@ -235,11 +262,13 @@ pub fn show(app: &mut App, context: &egui::Context) {
     match chosen.id.as_str() {
         "accept" => match app.settings_edit.take() {
             Some(Editing::Ruling { before, .. }) => app.history.keep_ruling(&app.pattern, before),
+            Some(Editing::Sheet(sizing)) => app.history.keep_sheet(&app.pattern, sizing.before),
             Some(Editing::Paper { before, .. }) => app.history.keep_paper(&app.pattern, before),
             None => {}
         },
         "cancel" => put_back(app),
         "ruling" => open_ruling(app),
+        "sheet" => open_sheet(app),
         "paper" => open_paper(app),
         "glow" => {
             app.keep_glow(!app.settings.glow());
@@ -253,10 +282,11 @@ pub fn show(app: &mut App, context: &egui::Context) {
     }
 }
 
-/// Puts back the ruling or the paper the menu opened on.
+/// Puts back the ruling, the size or the paper the menu opened on.
 fn put_back(app: &mut App) {
     match app.settings_edit.take() {
         Some(Editing::Ruling { before, .. }) => app.pattern.set_ruling(before),
+        Some(Editing::Sheet(sizing)) => app.pattern.set_sheet(Some(sizing.before)),
         Some(Editing::Paper { before, .. }) => app.pattern.set_paper(before),
         None => {}
     }

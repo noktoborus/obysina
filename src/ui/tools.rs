@@ -49,7 +49,6 @@ fn row(app: &mut App, ui: &mut egui::Ui) {
     tools(app, ui);
     gap(ui, orientation);
     grid(app, ui);
-    crate::ui::sheet::show(app, ui);
     gap(ui, orientation);
     crate::ui::backdrop_menu::button(app, ui);
     gap(ui, orientation);
@@ -69,8 +68,6 @@ fn column(app: &mut App, ui: &mut egui::Ui) {
         ui.horizontal(|ui| turns(app, ui));
         gap(ui, orientation);
         ui.horizontal(|ui| tools(app, ui));
-        gap(ui, orientation);
-        ui.horizontal(|ui| crate::ui::sheet::show(app, ui));
         gap(ui, orientation);
         ui.horizontal(|ui| grid(app, ui));
         gap(ui, orientation);

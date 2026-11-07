@@ -63,7 +63,7 @@ on the field, columns 1 2 3       the file
     ┌──────────── field: the work area, doubled ────────────┐
     │  shade: the cells past the work area                  │
     │       ┌──── work area: paper ────────────────┐        │
-    │       │ ┌── sheet: the numbers of the tools ─┤        │
+    │       │ ┌── sheet: the numbers of the menu ──┤        │
     │       │ │                                    │        │
     │       │ └────────────────────────────────────┤        │
     │       │            ● a bead past the sheet   │        │
@@ -72,12 +72,12 @@ on the field, columns 1 2 3       the file
     ```
 
     - The sheet is the start size of the work area: the numbers of the
-      tools, the cells of the screen when the pattern is first shown.
+      menu of the settings, the cells of the screen when the pattern is first shown.
     - A bead put past the sheet, in the shade, grows the sheet to hold it,
       and the field with it, in the same step of undo as the bead.
     - A bead taken away shrinks the sheet to the box of the beads left, in
       the same step of undo. It never shrinks below the first screen
-      (`View::sheet`) and never grows: a sheet set smaller in the tools
+      (`View::sheet`) and never grows: a sheet set smaller in the menu
       stays. It moves as little as it takes to hold the beads
       (`Bounds::resized_over`). `History::fit_sheet` does both.
     - Why the first screen: an empty sheet is still a place to work on.
@@ -93,17 +93,20 @@ on the field, columns 1 2 3       the file
     - The work area is on paper; the rest of the field is in shade.
     - Replaces the field of the sheet and twice the active area, and the
       field with no end of decision 2.
-14. **The size of the sheet is set in the tools.** Two fields, columns and
-    rows, start at the size of the first screen and change the sheet around
+14. **The size of the sheet is set in the menu of the settings,** as the
+    ruling is: the entry shows it, `columns×rows`, and opens two numbers on
+    top of accept and cancel. They start at the size of the first screen,
+    show on the field at once and change the sheet around
     its middle (`Bounds::resized`), up to `MAX_SIDE`. A bead put past the
     sheet grows it, and the numbers with it (decision 13). A number is dragged or typed, so a finger reaches
     it. A number is never less than the box around the beads: the sheet
     takes no smaller size, and moves as little as it takes to hold the beads
     (`Bounds::resized_over`).
     - Was: any size from 1, the beads left past a smaller sheet.
-    - The sheet is part of the pattern (decision 17): a change of its size
-      is a step of undo. Changes one after another are one step, since a
-      number dragged changes it in every frame.
+    - The sheet is part of the pattern (decision 17): a size accepted is a
+      step of undo; one not accepted goes back.
+    - Was: two fields in the tools, where changes one after another were
+      one step, since a number dragged changed it in every frame.
 15. **There are no outlines of empty places.** Decision 20 replaces them.
     - Was: a repeating texture of outlines, a quad of it for each column of
       the field.

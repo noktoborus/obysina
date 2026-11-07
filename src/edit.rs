@@ -285,28 +285,16 @@ impl History {
         self.paint(pattern, &cells, None);
     }
 
-    /// Gives the sheet a new size as a step. Changes of the size one after
-    /// another are one step: a number dragged changes it in every frame.
-    pub fn resize_sheet(&mut self, pattern: &mut Pattern, after: Bounds) {
-        let before = pattern.sheet();
-        if before == Some(after) {
-            return;
+    /// Keeps as a step the size of the sheet already put on the pattern in
+    /// place of `before`; nothing is kept when it is the same.
+    pub fn keep_sheet(&mut self, pattern: &Pattern, before: Bounds) {
+        let after = pattern.sheet();
+        if after != Some(before) {
+            self.keep(Edit::Sheet {
+                before: Some(before),
+                after,
+            });
         }
-        if self.undone.is_empty()
-            && self.batch.is_none()
-            && let Some(Edit::Sheet { after: last, .. }) = self.done.last_mut()
-        {
-            *last = Some(after);
-            pattern.set_sheet(Some(after));
-            return;
-        }
-        self.apply(
-            pattern,
-            Edit::Sheet {
-                before,
-                after: Some(after),
-            },
-        );
     }
 
     /// True when there is a step to undo. While a batch is open there is

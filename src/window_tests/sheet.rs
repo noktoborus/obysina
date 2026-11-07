@@ -1,15 +1,30 @@
-//! Tests of the sheet and the work area: its size in the tools, a bead
-//! past it, a bead taken away.
+//! Tests of the sheet and the work area: its size in the menu of the
+//! settings, a bead past it, a bead taken away.
 
 use egui::PointerButton;
 use egui_kittest::kittest::Queryable;
 use obusina_pattern::Cell;
 use rust_i18n::t;
 
-use super::{SIZE, id_at, window};
+use super::{SIZE, Window, id_at, window};
 
-/// The sheet starts as the cells of the screen, and the two fields of the
-/// tools show its size.
+/// Opens the numbers of the size from the menu of the settings.
+fn open_sheet(window: &mut Window) {
+    window.click(&t!("settings.open"));
+    window.click(&t!("sheet.open"));
+}
+
+/// Types `text` into the number field named `name` and takes it.
+fn type_number(window: &mut Window, name: &str, text: &str) {
+    window.harness.get_by_label(name).click();
+    window.harness.run();
+    window.harness.get_by_label(name).type_text(text);
+    window.harness.key_press(egui::Key::Enter);
+    window.harness.run();
+}
+
+/// The sheet starts as the cells of the screen, and the menu of the
+/// settings shows its size.
 #[test]
 fn the_sheet_starts_as_the_screen() {
     let window = window();
@@ -20,24 +35,22 @@ fn the_sheet_starts_as_the_screen() {
 
     assert!((sheet.width() as f32 - columns).abs() <= 2.0, "{sheet:?}");
     assert!((sheet.height() as f32 - rows).abs() <= 2.0, "{sheet:?}");
-    window.harness.get_by_label(&t!("sheet.width"));
-    window.harness.get_by_label(&t!("sheet.height"));
+    assert!(
+        window.harness.query_by_label(&t!("sheet.width")).is_none(),
+        "no size in the tools"
+    );
 }
 
-/// A number typed in a field gives the sheet that size, around its middle.
+/// A number typed in the menu gives the sheet that size, around its middle;
+/// "Accept" keeps it as one step of undo.
 #[test]
-fn a_size_typed_in_the_tools_resizes_the_sheet() {
+fn a_size_typed_in_the_menu_resizes_the_sheet() {
     let mut window = window();
     let before = window.harness.state().pattern.sheet().expect("a sheet");
 
-    window.harness.get_by_label(&t!("sheet.width")).click();
-    window.harness.run();
-    window
-        .harness
-        .get_by_label(&t!("sheet.width"))
-        .type_text("12");
-    window.harness.key_press(egui::Key::Enter);
-    window.harness.run();
+    open_sheet(&mut window);
+    type_number(&mut window, &t!("sheet.width"), "12");
+    window.click(&t!("ruling.accept"));
 
     let after = window.harness.state().pattern.sheet().expect("a sheet");
     assert_eq!(after.width(), 12);
@@ -62,18 +75,38 @@ fn the_sheet_is_never_smaller_than_the_beads() {
     window.press(left, PointerButton::Primary);
     window.press(right, PointerButton::Primary);
 
-    window.harness.get_by_label(&t!("sheet.width")).click();
-    window.harness.run();
-    window
-        .harness
-        .get_by_label(&t!("sheet.width"))
-        .type_text("3");
-    window.harness.key_press(egui::Key::Enter);
-    window.harness.run();
+    open_sheet(&mut window);
+    type_number(&mut window, &t!("sheet.width"), "3");
+    window.click(&t!("ruling.accept"));
 
     let sheet = window.harness.state().pattern.sheet().expect("a sheet");
     assert_eq!(sheet.width(), 8, "columns 2 to 9");
     assert!(sheet.contains(left) && sheet.contains(right), "{sheet:?}");
+}
+
+/// A size not accepted goes back, and no step is kept.
+#[test]
+fn a_size_not_accepted_goes_back() {
+    let mut window = window();
+    let before = window.harness.state().pattern.sheet().expect("a sheet");
+
+    open_sheet(&mut window);
+    type_number(&mut window, &t!("sheet.width"), "12");
+    assert_eq!(
+        window
+            .harness
+            .state()
+            .pattern
+            .sheet()
+            .expect("a sheet")
+            .width(),
+        12
+    );
+    window.click(&t!("ruling.cancel"));
+
+    let app = window.harness.state();
+    assert_eq!(app.pattern.sheet(), Some(before));
+    assert!(!app.history.can_undo());
 }
 
 /// A bead put past the sheet grows the sheet to hold it, and one undo takes

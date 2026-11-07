@@ -19,7 +19,7 @@ An editor of bead patterns, for Linux, Windows and Android.
 - Draws a pattern on a field in a window. A bead is drawn at its
   proportions.
 - The work area is on paper: the sheet, whose columns and rows are set in
-  the tools and start at the size of the first screen, and every bead put
+  the menu of the settings and start at the size of the first screen, and every bead put
   past it. A bead put in the shade around grows the sheet. A bead taken
   away shrinks it to the box of the beads, never below the first screen.
   The shade reaches half the work area past it on every side. An empty
@@ -51,8 +51,7 @@ An editor of bead patterns, for Linux, Windows and Android.
   against it. The place of each panel is kept for the next start. The
   panels:
   - **Tools**: undo, redo, a quarter turn of the field each way, the pencil,
-    the picker, the settings, the shadows, the columns and the rows of the sheet,
-    the picture, back to the list;
+    the picker, the settings, the shadows, the picture, back to the list;
   - **Beads**: the colours of the palette shown, each with the number of its
     place, and the empty place `0`. They stand as a line, which turns with
     the panel, or as a block, as the keys of a numpad; the tabs of the window

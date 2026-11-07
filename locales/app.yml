@@ -520,3 +520,9 @@ keys.layer.text:
 keys.layer.help:
   en: "The keys"
   ru: "Подсказка клавиш"
+sheet.open:
+  en: "Size of the sheet…"
+  ru: "Размер поля…"
+sheet.size:
+  en: "Columns × rows"
+  ru: "Колонки × ряды"
