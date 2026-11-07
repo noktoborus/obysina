@@ -1,7 +1,8 @@
 //! The library android loads. The activity calls `android_main`, which starts
 //! the window of `obusina`; `picturePicked` of `MainActivity` when the
-//! person chose a file; `fileSaved` when a file was saved; and
-//! `backPressed` for the way back.
+//! person chose a file; `fileSaved` when a file was saved;
+//! `backPressed` for the way back; and `safeArea` for the edges the system
+//! takes.
 //!
 //! On any other platform the library is empty: a `cdylib` of the whole
 //! program would export every symbol, and the linker of mingw refuses that
@@ -66,4 +67,19 @@ pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_backPressed<'caller
     _class: jni::objects::JClass<'caller>,
 ) {
     obusina::android_back();
+}
+
+/// What the system bars and the cut out of the camera take of each edge of
+/// the window, in pixels: left, top, right, bottom.
+#[cfg(target_os = "android")]
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_ru_styxheim_obusina_MainActivity_safeArea<'caller>(
+    _env: jni::EnvUnowned<'caller>,
+    _class: jni::objects::JClass<'caller>,
+    left: jni::sys::jint,
+    top: jni::sys::jint,
+    right: jni::sys::jint,
+    bottom: jni::sys::jint,
+) {
+    obusina::android_safe_area([left, top, right, bottom]);
 }

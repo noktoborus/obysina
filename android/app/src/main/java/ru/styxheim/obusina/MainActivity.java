@@ -8,6 +8,9 @@ import android.view.KeyEvent;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.activity.result.contract.ActivityResultContracts;
 
 import com.google.androidgamesdk.GameActivity;
@@ -21,8 +24,10 @@ import java.io.OutputStream;
  * The activity of Obusina: the game activity; the choice of a document of
  * the system, which Rust asks for by pickPicture or pickPatterns and is
  * answered by picturePicked; a new document, which Rust asks for by
- * saveDocument and is answered by fileSaved; and the way back, which Rust
- * takes by takeBack and is told of by backPressed.
+ * saveDocument and is answered by fileSaved; the way back, which Rust
+ * takes by takeBack and is told of by backPressed; and the part of the
+ * window the system bars and the cut out of the camera leave free, told by
+ * safeArea.
  */
 public class MainActivity extends GameActivity {
     /** The kinds of picture Obusina reads. */
@@ -62,6 +67,16 @@ public class MainActivity extends GameActivity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         getOnBackPressedDispatcher().addCallback(this, back);
+        ViewCompat.setOnApplyWindowInsetsListener(
+                getWindow().getDecorView(),
+                (view, insets) -> {
+                    Insets taken =
+                            insets.getInsets(
+                                    WindowInsetsCompat.Type.systemBars()
+                                            | WindowInsetsCompat.Type.displayCutout());
+                    safeArea(taken.left, taken.top, taken.right, taken.bottom);
+                    return ViewCompat.onApplyWindowInsets(view, insets);
+                });
     }
 
     /**
@@ -173,4 +188,10 @@ public class MainActivity extends GameActivity {
 
     /** The way back, while Rust takes it. */
     private static native void backPressed();
+
+    /**
+     * What the system bars and the cut out of the camera take of each edge
+     * of the window, in pixels.
+     */
+    private static native void safeArea(int left, int top, int right, int bottom);
 }

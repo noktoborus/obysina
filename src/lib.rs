@@ -38,6 +38,14 @@ pub fn android_back() {
     activity::back();
 }
 
+/// What the system bars and the cut out of the camera take of each edge of
+/// the window of android, in pixels: left, top, right, bottom
+/// (`src/activity.rs`).
+#[cfg(target_os = "android")]
+pub fn android_safe_area(pixels: [i32; 4]) {
+    activity::keep_safe_area(pixels);
+}
+
 rust_i18n::i18n!("locales", fallback = "en");
 
 /// The name the desktop and android know the program by (`RULE app.id`).

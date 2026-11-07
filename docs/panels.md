@@ -46,12 +46,16 @@ rules themselves are `crates/obusina-panel/README.md`.
 
 9. **On android the panels stand in the part of the window the system
    leaves free.** egui-winit gives egui the insets of the system bars and
-   of the cut out of the camera on iOS only; on android `raw_input_hook`
-   takes them from the content rectangle of the activity
+   of the cut out of the camera on iOS only; on android `MainActivity`
+   reads them from the window (`WindowInsetsCompat`, the system bars and
+   the cut out) and `raw_input_hook` gives them to egui
    (`src/activity.rs`). egui lays the panels out in `Context::content_rect`,
-   which leaves them out.
+   which leaves them out. The field is drawn under them, edge to edge.
    - Why: on a phone with a cut out, a panel at the top stood under the
      status bar, and its grip could not be taken.
+   - Was: the insets of the content rectangle of the activity. Android 15
+     draws a window of `targetSdk` 35 or more edge to edge, so that
+     rectangle is the whole window and gave none.
 
 ## Open questions
 

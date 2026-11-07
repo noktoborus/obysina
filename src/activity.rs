@@ -59,20 +59,52 @@ pub fn call(
     })
 }
 
-/// The insets of the part of the window the system leaves free, in points:
-/// what the content rectangle of the activity leaves out of the window of
-/// `raw_input`. egui lays the panels out inside it (`Context::content_rect`).
+/// What the system bars and the cut out of the camera take of each edge of
+/// the window, in pixels, as `MainActivity.safeArea` last told it: left,
+/// top, right, bottom.
+static SAFE_AREA: Mutex<Option<[i32; 4]>> = Mutex::new(None);
+
+/// Keeps what the system takes of each edge, and wakes the window to lay
+/// itself out again. Called by the native method of `android/`.
+pub fn keep_safe_area(pixels: [i32; 4]) {
+    *SAFE_AREA.lock().expect("the safe area is never poisoned") = Some(pixels);
+    let window = WINDOW.lock().expect("the window is never poisoned");
+    if let Some(context) = window.as_ref() {
+        context.request_repaint();
+    }
+}
+
+/// The insets of the part of the window the system leaves free, in points.
+/// egui lays the panels out inside it (`Context::content_rect`).
+///
+/// They are the insets of the system bars and of the cut out of the camera
+/// that `MainActivity` reads from the window. The window is drawn edge to
+/// edge, under them: the content rectangle of the activity is the whole
+/// window and gives none. Before the activity tells them, they are what the
+/// content rectangle leaves out.
 pub fn safe_area(raw_input: &egui::RawInput) -> Option<egui::SafeAreaInsets> {
     let points = raw_input.screen_rect?;
     let scale = raw_input.viewport().native_pixels_per_point?;
-    let free = with(AndroidApp::content_rect)?;
-    let window = points.size() * scale;
     let inset = |pixels: f32| (pixels / scale).max(0.0);
+    let told = *SAFE_AREA.lock().expect("the safe area is never poisoned");
+    let [left, top, right, bottom] = match told {
+        Some(pixels) => pixels.map(|pixels| pixels as f32),
+        None => {
+            let free = with(AndroidApp::content_rect)?;
+            let window = points.size() * scale;
+            [
+                free.left as f32,
+                free.top as f32,
+                window.x - free.right as f32,
+                window.y - free.bottom as f32,
+            ]
+        }
+    };
     Some(egui::SafeAreaInsets(egui::epaint::MarginF32 {
-        left: inset(free.left as f32),
-        top: inset(free.top as f32),
-        right: inset(window.x - free.right as f32),
-        bottom: inset(window.y - free.bottom as f32),
+        left: inset(left),
+        top: inset(top),
+        right: inset(right),
+        bottom: inset(bottom),
     }))
 }
 
