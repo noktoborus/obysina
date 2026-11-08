@@ -157,6 +157,12 @@ impl FloatingPanel {
         let layer = egui::LayerId::new(egui::Order::Foreground, self.id);
         let last = Rect::from_min_size(state.placement.position(window, state.size), state.size);
         let step = hold::step(context, &mut state.hold, layer, last, window);
+        let mut changed = false;
+        if let Step::Let { position, edge } = step {
+            let at = Placement::at(window, state.size, position);
+            state.placement.at = edge.map_or(at, |edge| edge.pin(at));
+            changed = true;
+        }
         let measure = std::mem::take(&mut state.measure);
         let lifted = state.hold.is_some_and(|hold| hold.taken());
         let position = match state.hold.and_then(|hold| hold.position()) {
@@ -190,12 +196,6 @@ impl FloatingPanel {
         let resized = rect.size() != state.size;
         state.size = rect.size();
 
-        let mut changed = false;
-        if let Step::Let { position, edge } = step {
-            let at = Placement::at(window, rect.size(), position);
-            state.placement.at = edge.map_or(at, |edge| edge.pin(at));
-            changed = true;
-        }
         if lifted {
             context.set_cursor_icon(egui::CursorIcon::Grabbing);
         }

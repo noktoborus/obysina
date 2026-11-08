@@ -646,6 +646,40 @@ fn a_finger_takes_a_panel_only_when_held() {
     assert!(!window.harness.state().menu.is_open(), "no button pressed");
 }
 
+/// In the frame it is let go, and in every frame after, the panel stands
+/// where it was let go: it does not go back to its old place first.
+#[test]
+fn a_panel_let_go_stands_there_at_once() {
+    let mut window = window();
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+    let start = window.panel(&t!("panel.tools")).center();
+    let target = start + egui::vec2(-120.0, 90.0);
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    window.harness.event(Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    for step in 1..=10 {
+        let point = start + (target - start) * (step as f32 / 10.0);
+        window.harness.event(Event::PointerMoved(point));
+        window.harness.step();
+    }
+
+    window.harness.event(button(target, false));
+    for frame in 0..5 {
+        window.harness.step();
+        let centre = window.panel(&t!("panel.tools")).center();
+        assert!(
+            (centre - target).length() < 1.0,
+            "frame {frame} after the release: {centre:?}, let go at {target:?}"
+        );
+    }
+}
+
 #[test]
 fn a_panel_stays_inside_the_window() {
     let mut window = window();
