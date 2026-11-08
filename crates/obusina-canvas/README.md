@@ -41,8 +41,10 @@ The field of beads: an egui widget that draws an
   every `SHIMMER_PERIOD`; the window draws again all along. While
   `editing`, a handle on each corner moves it, a drag inside moves all of
   it, and a drag outside moves the field; the handles are drawn over the
-  beads. A corner moves only as far as the four stay convex and in their
-  turn: the picture never turns inside out. `handles` gives where they are,
+  beads. Two fingers with their middle on it move, turn and grow it, and
+  so do Ctrl or Shift with the wheel over it; the turn sticks to a whole
+  quarter within `SNAP_TURN`. A corner moves only as far as the four stay
+  convex and in their turn: the picture never turns inside out. `handles` gives where they are,
   for a test.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in
   the middle of the field the first time the field has a size.

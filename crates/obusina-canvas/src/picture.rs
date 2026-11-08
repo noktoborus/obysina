@@ -6,7 +6,16 @@
 //!             drag that starts on a handle: that corner moves
 //!             drag that starts inside:      the whole picture moves
 //!             drag that starts outside:     the field moves, as always
+//!             two fingers, their middle inside: the picture moves, turns
+//!                                               and grows with them
+//!             two fingers, their middle outside: the field, as always
+//!             over the picture, Ctrl and the wheel: it grows
+//!                               Shift and the wheel: it turns
 //! ```
+//!
+//! A turn sticks to a whole quarter, 0°, 90°, 180° or 270° of its top edge,
+//! within `SNAP_TURN`: the turn the gesture made is kept apart, so the
+//! picture leaves the quarter once the gesture goes past it.
 //!
 //! The four corners need make no rectangle. The picture is drawn through the
 //! projection they give, a mesh of `STEPS` by `STEPS` cells, so a line of the
@@ -46,6 +55,14 @@ const SHIMMER_WIDTH: f32 = 0.18;
 const LEAST_TURN: f32 = 0.05;
 /// The halvings that find how far a corner may move.
 const HALVINGS: usize = 12;
+/// How near a whole quarter a turn sticks to it, in radians: three degrees.
+const SNAP_TURN: f32 = 3.0 * std::f32::consts::PI / 180.0;
+/// The points of a line of the wheel, for the turn by the wheel.
+const POINTS_PER_LINE: f32 = 40.0;
+/// The points of a page of the wheel, for the turn by the wheel.
+const POINTS_PER_PAGE: f32 = 400.0;
+/// How far a point of the wheel with Shift turns the picture, in radians.
+const TURN_PER_POINT: f32 = 0.3 * std::f32::consts::PI / 180.0;
 
 /// A picture to draw under the beads.
 pub struct Picture<'a> {
@@ -70,7 +87,81 @@ enum Grab {
     Whole,
 }
 
+/// A gesture on the picture under way: the turn of its top edge as the
+/// gesture alone made it, before it stuck to a quarter. A turn of the wheel
+/// lasts while egui still smooths its scroll, which the field does not take.
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Gesture {
+    /// The turn, in radians.
+    free: f32,
+}
+
 impl Canvas<'_> {
+    /// Moves, turns and grows the picture by two fingers whose middle is on
+    /// it, or by the wheel with Ctrl or Shift over it, while it is edited:
+    /// true when it did, and the field is not to move.
+    pub(crate) fn gesture_picture(
+        &self,
+        ui: &Ui,
+        rect: Rect,
+        origin: Pos2,
+        picture: &mut Picture<'_>,
+    ) -> bool {
+        let id = Id::unique("obusina-canvas-picture-gesture");
+        if !picture.editing {
+            ui.data_mut(|data| data.remove::<Gesture>(id));
+            return false;
+        }
+        let shown = self.shown_corners(picture.corners, origin);
+        let (touch, zoom, wheel, settling, pointer) = ui.input(|input| {
+            (
+                input.multi_touch(),
+                input.zoom_delta(),
+                shift_wheel(&input.events),
+                input.smooth_scroll_delta() != Vec2::ZERO,
+                input.pointer.hover_pos(),
+            )
+        });
+        let held = ui.data(|data| data.get_temp::<Gesture>(id));
+        let step = match touch {
+            Some(touch) if held.is_some() || inside(shown, touch.center_pos) => Some((
+                touch.center_pos,
+                touch.translation_delta,
+                touch.zoom_delta,
+                touch.rotation_delta,
+            )),
+            Some(_) => None,
+            None => pointer
+                .filter(|at| rect.contains(*at) && inside(shown, *at))
+                .and_then(|at| {
+                    let turn = wheel * TURN_PER_POINT;
+                    (zoom != 1.0 || turn != 0.0).then_some((at, Vec2::ZERO, zoom, turn))
+                }),
+        };
+        let Some((centre, moved, grown, turned)) = step else {
+            if held.is_some() && touch.is_none() && settling {
+                return true;
+            }
+            ui.data_mut(|data| data.remove::<Gesture>(id));
+            return false;
+        };
+        let now = top_turn(picture.corners);
+        let free = held.map_or(now, |gesture| gesture.free) + turned;
+        let turn = stuck(free) - now;
+        let (sin, cos) = turn.sin_cos();
+        let shown = shown.map(|corner| {
+            let from = (corner - centre) * grown;
+            let rotated = egui::vec2(from.x * cos - from.y * sin, from.x * sin + from.y * cos);
+            centre + rotated + moved
+        });
+        for (corner, at) in picture.corners.iter_mut().zip(shown) {
+            *corner = self.view.to_pattern(at - origin) / self.view.bead;
+        }
+        ui.data_mut(|data| data.insert_temp(id, Gesture { free }));
+        ui.ctx().request_repaint();
+        true
+    }
+
     /// The corners of the picture on the screen, the pattern standing at
     /// `origin`.
     fn shown_corners(&self, corners: &[Vec2; 4], origin: Pos2) -> [Pos2; 4] {
@@ -195,6 +286,48 @@ fn move_corner(corners: &mut [Vec2; 4], index: usize, delta: Vec2) {
         }
     }
     *corners = moved(kept);
+}
+
+/// The points the wheel turned with Shift held in this frame, as given, not
+/// smoothed: a notch turns the picture past a quarter it stuck to.
+fn shift_wheel(events: &[egui::Event]) -> f32 {
+    events
+        .iter()
+        .filter_map(|event| match event {
+            egui::Event::MouseWheel {
+                unit,
+                delta,
+                modifiers,
+                ..
+            } if modifiers.shift => {
+                let points = match unit {
+                    egui::MouseWheelUnit::Point => 1.0,
+                    egui::MouseWheelUnit::Line => POINTS_PER_LINE,
+                    egui::MouseWheelUnit::Page => POINTS_PER_PAGE,
+                };
+                Some((delta.x + delta.y) * points)
+            }
+            _ => None,
+        })
+        .sum()
+}
+
+/// The turn of the top edge of a picture, in radians, on the pattern before
+/// the view turns it: 0 when it runs to the right.
+fn top_turn(corners: &[Vec2; 4]) -> f32 {
+    let edge = corners[1] - corners[0];
+    edge.y.atan2(edge.x)
+}
+
+/// `free` stuck to a whole quarter it is within [`SNAP_TURN`] of.
+fn stuck(free: f32) -> f32 {
+    let quarter = std::f32::consts::FRAC_PI_2;
+    let nearest = (free / quarter).round() * quarter;
+    if (free - nearest).abs() <= SNAP_TURN {
+        nearest
+    } else {
+        free
+    }
 }
 
 /// True when the corners, top left, top right, bottom right, bottom left,

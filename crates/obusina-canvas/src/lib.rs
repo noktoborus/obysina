@@ -109,7 +109,9 @@ impl<'a> Canvas<'a> {
         }
         let mut picture = self.picture.take();
         let held = picture.as_mut().is_some_and(|picture| {
-            self.drag_picture(ui, &response, rect.min + self.view.offset, picture)
+            let origin = rect.min + self.view.offset;
+            self.gesture_picture(ui, rect, origin, picture)
+                || self.drag_picture(ui, &response, origin, picture)
         });
         if !held {
             self.navigate(ui, &response);

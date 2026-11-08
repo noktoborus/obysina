@@ -52,6 +52,18 @@ over four corners, kept apart from the pattern. The store is the crate
     reached. Where it begins is where the button went down, so a quick drag
     still takes its handle. A press puts no bead while the corners are
     edited.
+    - Two fingers whose middle is on the picture move, turn and grow it
+      as one, about their middle; the four corners keep their shape. Their
+      middle beside the picture moves the field, as one finger does.
+    - Over the picture Ctrl and the wheel grow it, Shift and the wheel turn
+      it, `TURN_PER_POINT` a point; a notch is taken whole, not smoothed, and
+      the field does not scroll by it. A touchpad gives egui no turn: it
+      only grows the picture.
+    - A turn sticks to a whole quarter of the top edge within `SNAP_TURN`.
+      The turn the gesture made is kept apart, so the picture leaves the
+      quarter once the gesture goes past it.
+    - Only while the corners are edited: two fingers on a picture while
+      beads are put zoom the field, and do not turn the picture by chance.
 12. **A corner never turns the picture inside out.** It moves only as far
     as the four stay convex and turn the same way at each corner, by at
     least `LEAST_TURN`; dragged further, it stops at the last place that

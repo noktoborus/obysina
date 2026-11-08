@@ -384,3 +384,168 @@ fn a_new_picture_is_edited_at_once() {
     assert_eq!(app.backdrop.corners, laid);
     window.harness.get_by_label(&t!("edit.undo"));
 }
+
+/// Two fingers from `from` to `to`, each pair of points of the fingers in
+/// turn, sent as winit sends them.
+fn two_fingers(window: &mut Window, from: [Pos2; 2], to: [Pos2; 2]) {
+    let touch = |id, phase, pos| Event::Touch {
+        device_id: egui::TouchDeviceId(1),
+        id: egui::TouchId(id),
+        phase,
+        pos,
+        force: None,
+    };
+    window
+        .harness
+        .event(touch(0, egui::TouchPhase::Start, from[0]));
+    window.harness.event(Event::PointerMoved(from[0]));
+    window.harness.event(Event::PointerButton {
+        pos: from[0],
+        button: PointerButton::Primary,
+        pressed: true,
+        modifiers: Modifiers::NONE,
+    });
+    window
+        .harness
+        .event(touch(1, egui::TouchPhase::Start, from[1]));
+    window.harness.step();
+    for step in 1..=10 {
+        let part = step as f32 / 10.0;
+        let at = |finger: usize| from[finger] + (to[finger] - from[finger]) * part;
+        window
+            .harness
+            .event(touch(0, egui::TouchPhase::Move, at(0)));
+        window.harness.event(Event::PointerMoved(at(0)));
+        window
+            .harness
+            .event(touch(1, egui::TouchPhase::Move, at(1)));
+        window.harness.step();
+    }
+    window.harness.event(touch(1, egui::TouchPhase::End, to[1]));
+    window.harness.event(touch(0, egui::TouchPhase::End, to[0]));
+    window.harness.event(Event::PointerButton {
+        pos: to[0],
+        button: PointerButton::Primary,
+        pressed: false,
+        modifiers: Modifiers::NONE,
+    });
+    window.harness.event(Event::PointerGone);
+    window.harness.run();
+}
+
+/// The middle of the picture on the screen.
+fn middle(window: &Window) -> Pos2 {
+    let (first, third) = (handle(window, 0), handle(window, 2));
+    Pos2::new((first.x + third.x) / 2.0, (first.y + third.y) / 2.0)
+}
+
+/// Two fingers spread on the picture grow it; the field keeps its zoom.
+#[test]
+fn two_fingers_on_the_picture_grow_it() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let before = window.harness.state().backdrop.corners;
+    let bead = window.harness.state().view.bead;
+    let centre = middle(&window);
+    let apart = |half: f32| {
+        [
+            centre - egui::vec2(half, 0.0),
+            centre + egui::vec2(half, 0.0),
+        ]
+    };
+
+    two_fingers(&mut window, apart(20.0), apart(40.0));
+
+    let after = window.harness.state().backdrop.corners;
+    let width = |corners: [egui::Vec2; 4]| (corners[1] - corners[0]).length();
+    let grown = width(after) / width(before);
+    assert!((grown - 2.0).abs() < 0.05, "grown by {grown}");
+    assert_eq!(window.harness.state().view.bead, bead);
+}
+
+/// Two fingers turned on the picture turn it; near a quarter it sticks.
+#[test]
+fn two_fingers_on_the_picture_turn_it() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let centre = middle(&window);
+    let at = |degrees: f32| {
+        let (sin, cos) = degrees.to_radians().sin_cos();
+        let arm = egui::vec2(cos, sin) * 30.0;
+        [centre - arm, centre + arm]
+    };
+    let turn = |window: &Window| {
+        let corners = window.harness.state().backdrop.corners;
+        let edge = corners[1] - corners[0];
+        edge.y.atan2(edge.x).to_degrees()
+    };
+
+    two_fingers(&mut window, at(0.0), at(30.0));
+    assert!((turn(&window) - 30.0).abs() < 1.0, "{}", turn(&window));
+
+    two_fingers(&mut window, at(0.0), at(58.0));
+    assert!((turn(&window) - 90.0).abs() < 0.01, "{}", turn(&window));
+}
+
+/// Over the picture, Shift and the wheel turn it, Ctrl and the wheel grow
+/// it; the field stays.
+#[test]
+fn the_wheel_turns_and_grows_the_picture() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let before = window.harness.state().backdrop.corners;
+    let view = window.harness.state().view;
+    let centre = middle(&window);
+    let wheel = |window: &mut Window, modifiers| {
+        window.harness.event(Event::PointerMoved(centre));
+        window.harness.event(Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, 40.0),
+            phase: egui::TouchPhase::Move,
+            modifiers,
+            source: egui::MouseWheelSource::Wheel,
+        });
+        window.harness.run();
+    };
+
+    wheel(&mut window, Modifiers::SHIFT);
+    let turned = window.harness.state().backdrop.corners;
+    let edge = turned[1] - turned[0];
+    assert!(edge.y.abs() > 1e-3, "turned: {turned:?}");
+
+    wheel(&mut window, Modifiers::COMMAND);
+    let grown = window.harness.state().backdrop.corners;
+    let width = |corners: [egui::Vec2; 4]| (corners[1] - corners[0]).length();
+    assert!(width(grown) > width(before) * 1.01, "{grown:?}");
+    assert_eq!(window.harness.state().view.offset, view.offset);
+    assert_eq!(window.harness.state().view.bead, view.bead);
+}
+
+/// Two fingers beside the picture zoom the field, and leave the picture.
+#[test]
+fn two_fingers_beside_the_picture_zoom_the_field() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let before = window.harness.state().backdrop.corners;
+    let bead = window.harness.state().view.bead;
+    let beside = handle(&window, 1) + egui::vec2(120.0, 0.0);
+    let apart = |half: f32| {
+        [
+            beside - egui::vec2(half, 0.0),
+            beside + egui::vec2(half, 0.0),
+        ]
+    };
+
+    two_fingers(&mut window, apart(20.0), apart(40.0));
+
+    assert!(window.harness.state().view.bead > bead);
+    assert_eq!(window.harness.state().backdrop.corners, before);
+}
