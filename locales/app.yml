@@ -72,8 +72,8 @@ backdrop.kinds:
   en: "Pictures: PNG, JPEG, WebP"
   ru: "Картинки: PNG, JPEG, WebP"
 backdrop.edit:
-  en: "Edit the corners"
-  ru: "Править углы"
+  en: "Change the geometry"
+  ru: "Изменить геометрию"
 backdrop.hide:
   en: "Hide the picture"
   ru: "Скрыть картинку"
