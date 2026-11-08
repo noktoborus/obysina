@@ -4,6 +4,7 @@
 mod glow;
 mod projects;
 mod settings;
+mod wrap;
 
 pub use showcase::{Lang, Mockup, named};
 
@@ -16,6 +17,7 @@ pub fn all() -> Vec<Box<dyn Mockup>> {
         Box::new(projects::Projects::new()),
         Box::new(settings::Settings::new()),
         Box::new(glow::Glow::new()),
+        Box::new(wrap::Wrap::new()),
     ]
 }
 
