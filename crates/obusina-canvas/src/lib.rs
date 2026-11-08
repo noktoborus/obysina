@@ -104,9 +104,6 @@ impl<'a> Canvas<'a> {
         if !self.view.centred && rect.is_positive() {
             self.view.centre(rect.size(), self.middle());
         }
-        if self.view.sheet.is_none() && rect.is_positive() {
-            self.view.sheet = Some(self.cells_under(rect.min + self.view.offset, rect));
-        }
         let mut picture = self.picture.take();
         let held = picture.as_mut().is_some_and(|picture| {
             let origin = rect.min + self.view.offset;
@@ -171,26 +168,22 @@ impl<'a> Canvas<'a> {
             .cells_in((min.x, min.y), (max.x, max.y), self.pattern.ratio())
     }
 
-    /// The work area: the box around the start sheet and the beads. A bead
-    /// put past it grows it. `None` before the field was first shown, with
-    /// no beads.
+    /// The work area: the field set by hand, or the box around the beads.
+    /// `None` by the beads with no beads.
     fn work_area(&self) -> Option<Bounds> {
-        let sheet = self.pattern.field().or(self.view.sheet);
-        match (sheet, self.pattern.bounds()) {
-            (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
-            (sheet, beads) => sheet.or(beads),
-        }
+        self.pattern.work_area()
     }
 
-    /// The field drawn: the work area doubled. The part past the work area
-    /// is in shade.
-    fn field(&self) -> Option<Bounds> {
+    /// The bounds the view moves in: the work area doubled. `None` with no
+    /// work area: the view moves freely.
+    fn bounds(&self) -> Option<Bounds> {
         self.work_area().map(Bounds::doubled)
     }
 
-    /// True when `cell` is in the field drawn.
+    /// True when a press on `cell` reaches the pattern: anywhere by the
+    /// beads, in the field only when it is set by hand.
     fn in_field(&self, cell: Cell) -> bool {
-        self.field().is_some_and(|field| field.contains(cell))
+        self.pattern.takes(cell)
     }
 
     /// The paper under the work area, over the shade of the rest: one
@@ -289,7 +282,7 @@ impl<'a> Canvas<'a> {
     /// stand on the screen `rect` along each axis, or all of it when it is
     /// smaller. A field moved off a side stays at that side.
     fn keep_on_screen(&mut self, rect: Rect) {
-        let Some(field) = self.field() else {
+        let Some(field) = self.bounds() else {
             return;
         };
         if !rect.is_positive() {

@@ -51,12 +51,11 @@ fn pattern(grid: Grid) -> Pattern {
 }
 
 /// Draws the field of `grid`, turned by `turns`, and compares it with
-/// `img/<name>.png`. The sheet is one cell, so the work area is the diamond
-/// and the shade around it is seen.
+/// `img/<name>.png`. The size is by the beads, so the work area is the
+/// diamond and the shade around it is seen.
 fn picture(grid: Grid, turns: &[Turn], name: &str) {
     let pattern = pattern(grid);
     let mut view = View::default();
-    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
     for turn in turns {
         view.turn(*turn);
     }
@@ -94,8 +93,7 @@ fn peyote_turned() {
 fn hatched() {
     let mut pattern = pattern(Grid::Loom);
     pattern.remove_colour(0, 0).expect("the black colour goes");
-    let mut view = View::default();
-    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let view = View::default();
     let mut harness = Harness::builder()
         .with_size(SIZE)
         .with_theme(egui::Theme::Dark)
@@ -113,8 +111,7 @@ fn hatched() {
 #[test]
 fn flat() {
     let pattern = pattern(Grid::Loom);
-    let mut view = View::default();
-    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let view = View::default();
     let mut harness = Harness::builder()
         .with_size(SIZE)
         .with_theme(egui::Theme::Dark)
@@ -135,11 +132,7 @@ fn dark_paper() {
     let mut pattern = pattern(Grid::Loom);
     pattern.set_paper(Rgb([0x1e, 0x1e, 0x1e]));
     pattern.set_hidden(PALE, true);
-    let mut view = View::default();
-    view.sheet = Some(Bounds {
-        min: Cell { column: 2, row: 1 },
-        max: Cell { column: 6, row: 5 },
-    });
+    let view = View::default();
     let mut harness = Harness::builder()
         .with_size(SIZE)
         .with_theme(egui::Theme::Dark)
@@ -153,25 +146,15 @@ fn dark_paper() {
     harness.snapshot_options("dark-paper", &SnapshotOptions::new().output_path(PICTURES));
 }
 
-/// Zoomed out, the field moved so the middle of the screen is at the top
-/// left corner of the paper, the pointer in the shade at the bottom left:
-/// the shadows in the frame of the screen at zoom 1 and in the round under
-/// the pointer, each fading to its edge.
+/// Zoomed out and sized by the beads, the field moved to the bottom right
+/// corner, the pointer in the shade at the bottom left: the shadows in the
+/// frame of the screen at zoom 1 and in the round under the pointer, each
+/// fading to its edge, past the field too.
 #[test]
 fn shadows_zoomed_out() {
     let pattern = pattern(Grid::Peyote);
     let mut view = View::default();
     view.bead = 6.0;
-    view.sheet = Some(Bounds {
-        min: Cell {
-            column: -20,
-            row: -15,
-        },
-        max: Cell {
-            column: 28,
-            row: 21,
-        },
-    });
     let mut harness = Harness::builder()
         .with_size(egui::vec2(400.0, 300.0))
         .with_theme(egui::Theme::Dark)
@@ -198,7 +181,6 @@ fn kept_at_the_side() {
     let pattern = pattern(Grid::Peyote);
     let mut view = View::default();
     view.bead = 10.0;
-    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
     let mut harness = Harness::builder()
         .with_size(egui::vec2(400.0, 300.0))
         .with_theme(egui::Theme::Dark)
@@ -226,8 +208,7 @@ fn ruling() {
         step: [10, 4],
         offset: [2, 1],
     });
-    let mut view = View::default();
-    view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+    let view = View::default();
     let mut harness = Harness::builder()
         .with_size(SIZE)
         .with_theme(egui::Theme::Dark)
@@ -266,8 +247,7 @@ fn lines() -> egui::ColorImage {
 fn picture_shot(editing: bool, loading: bool, name: &str) {
     {
         let pattern = pattern(Grid::Loom);
-        let mut view = View::default();
-        view.sheet = Some(Bounds::of(Cell { column: 4, row: 3 }));
+        let view = View::default();
         let corners = [
             egui::vec2(1.0, -1.0),
             egui::vec2(7.0, -0.5),

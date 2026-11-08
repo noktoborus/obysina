@@ -5,13 +5,15 @@ The field of beads: an egui widget that draws an
 
 ## Scope
 
-- The work area is the box around the sheet and the beads. The sheet is the
-  size set, `Pattern::sheet`; a pattern with none uses the cells under the
-  screen when the field is first shown, `View::sheet`: the first screen,
-  which the caller may give it. A bead past the sheet grows the work area;
-  when it goes, the work area is the sheet again. The field
-  drawn is the work area doubled (`Bounds::doubled`). Past it the ground is
-  bare and a press does nothing. Only its cells on the screen are drawn.
+- The work area is `Pattern::work_area`: the field set by hand, or the box
+  of the beads when the size is by them; none by the beads with no beads.
+  The view moves within the work area doubled (`Bounds::doubled`), freely
+  with none. A press reaches the pattern where it takes a bead
+  (`Pattern::takes`): anywhere by the beads, in the field only by hand.
+  Beads past a field set by hand are drawn as the others. Only the cells on
+  the screen are drawn.
+- `View::first_screen`: the cells a screen of the size last drawn holds at
+  zoom 1, about its middle; the size a field set by hand starts at.
 - A bead is drawn at its proportions, with a small gap. The ground of the
   work area is the paper of the pattern, `Pattern::paper`; the rest of the
   field is the paper in shade. `Tones::of` takes from the paper the shade,
@@ -19,9 +21,9 @@ The field of beads: an egui widget that draws an
   of OKLab) they are darker than it, on a darker one lighter. An empty place has no outline. It shows the
   shadow of a bead only in a square frame of cells, as many on a side as
   the screen at zoom 1 (`DEFAULT_BEAD`) holds along its longer side, in its
-  middle and within `NEAR_RADIUS` cells of the pointer, on the paper,
-  in the shade and past the field alike, each fading over its edge
-  (`FRAME_FADE`). With no
+  middle and within `NEAR_RADIUS` cells of the pointer, each fading over
+  its edge (`FRAME_FADE`). By the beads they stand on the paper and in the
+  shade alike; by hand in the field only. With no
   pointer over the field, as under a finger, there is no round.
   `shadow.rs` holds the rules. A shadow on a line of the ruling of the
   pattern (`Pattern::ruling`) is `Tones::line`, any other the fainter

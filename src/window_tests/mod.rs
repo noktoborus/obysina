@@ -1045,11 +1045,12 @@ fn a_new_size_of_the_window_keeps_the_middle() {
 }
 
 /// How many columns of the field stand left of the right side of the
-/// screen, counted by the middles of the beads of a row of the sheet.
+/// screen, counted by the middles of the beads of a row of the field set
+/// by hand.
 fn columns_on_screen(window: &Window) -> i32 {
     let app = window.harness.state();
     let screen = window.harness.get_by_label(&t!("field")).rect();
-    let sheet = app.pattern.field().expect("a sheet");
+    let sheet = app.pattern.field().expect("a field set by hand");
     let field = app
         .pattern
         .bounds()
@@ -1075,6 +1076,12 @@ fn columns_on_screen(window: &Window) -> i32 {
 fn a_field_dragged_away_stays_at_the_side() {
     let keep = obusina_canvas::KEEP_BEADS as i32;
     let mut window = window();
+    let app = window.harness.state_mut();
+    let first = app
+        .view
+        .first_screen(app.pattern.grid(), app.pattern.ratio());
+    app.pattern.set_field(Some(first));
+    window.harness.run();
 
     window.drag_field(FREE, egui::vec2(3000.0, 0.0));
     assert_eq!(columns_on_screen(&window), keep);

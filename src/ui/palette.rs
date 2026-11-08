@@ -220,7 +220,7 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry) {
                 "palette.bead",
                 key = place + 1,
                 rgb = rgb,
-                count = app.pattern.count(id)
+                count = app.pattern.count_in_field(id)
             );
             let fill = colour
                 .and_then(obusina_pattern::Colour::seen)

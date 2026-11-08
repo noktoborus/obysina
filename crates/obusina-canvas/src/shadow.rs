@@ -21,7 +21,9 @@
 //! - The round is `NEAR_RADIUS` cells around the pointer. With no pointer, as
 //!   under a finger, there is none.
 //!
-//! Where both cover a cell, the stronger one counts.
+//! Where both cover a cell, the stronger one counts. With a field set by
+//! hand, only an empty place in the field shows a shadow: a bead goes
+//! nowhere else.
 
 use egui::{Pos2, Rect, Vec2, vec2};
 use obusina_pattern::{Bounds, Cell};
@@ -41,10 +43,10 @@ const ROUND_FADE: f32 = 0.5;
 const FRAME_CORNER: f32 = 1.0 / 8.0;
 
 impl Canvas<'_> {
-    /// The empty places on the screen with a shadow, in the field or past it,
-    /// each with its strength, more than 0 and at most 1. The pattern stands
-    /// at `origin` of the field `rect`; `pointer` is where the pointer is
-    /// over it.
+    /// The empty places on the screen with a shadow, in the field or past it
+    /// by the beads, in it only by hand, each with its strength, more than 0
+    /// and at most 1. The pattern stands at `origin` of the field `rect`;
+    /// `pointer` is where the pointer is over it.
     pub(crate) fn shadowed(
         &self,
         origin: Pos2,
@@ -64,6 +66,7 @@ impl Canvas<'_> {
         frame_cells
             .chain(round_cells)
             .filter(|cell| self.pattern.get(*cell).is_none())
+            .filter(|cell| self.pattern.takes(*cell))
             .filter_map(|cell| {
                 let middle = self.middle_of(cell);
                 let frame = self.in_frame(origin, rect, middle);

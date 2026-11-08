@@ -116,7 +116,7 @@ fn the_changes_of_the_window_are_one_step_made_when_it_closes() {
     choose(&mut window, &place, &t!("palette.accept"));
     choose(&mut window, &colour(1), &t!("palette.remove"));
     let removed = t!("palette.removed", number = 1).to_string();
-    choose(&mut window, &removed, &delete_beads(1));
+    choose(&mut window, &removed, &delete_beads(1, 0));
     assert!(!window.harness.state().history.can_undo(), "no step yet");
 
     close(&mut window);
@@ -174,7 +174,7 @@ fn a_removed_colour_deletes_only_its_beads() {
     choose(&mut window, &colour(1), &t!("palette.remove"));
 
     let removed = t!("palette.removed", number = 1).to_string();
-    choose(&mut window, &removed, &delete_beads(1));
+    choose(&mut window, &removed, &delete_beads(1, 0));
 
     let app = window.harness.state();
     assert_eq!(app.pattern.count(id_at(0)), 0);
@@ -280,7 +280,7 @@ fn the_menu_of_a_place_hides_a_colour_and_deletes_its_beads() {
     choose(&mut window, &hidden_one, &t!("palette.show"));
     assert!(!hidden(&window));
 
-    choose(&mut window, &colour(1), &delete_beads(1));
+    choose(&mut window, &colour(1), &delete_beads(1, 0));
     assert_eq!(window.harness.state().pattern.count(id_at(0)), 0);
 }
 

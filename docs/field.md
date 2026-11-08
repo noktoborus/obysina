@@ -57,53 +57,48 @@ on the field, columns 1 2 3       the file
     with beads opens on the middle of its active area.
 12. **A turn keeps the middle of the screen.** What is seen in the middle
     stays there; a pattern has no fixed middle any more.
-13. **The work area is the sheet and the beads; the field is twice it.**
+13. **The size of the field is by the beads or set by hand.** It is kept
+    in the pattern (`Pattern::field`): `None` by the beads, the default;
+    a box when set by hand.
+
+    | | by the beads | by hand |
+    | --- | --- | --- |
+    | work area, on paper | the box of the beads; none with no beads | the field |
+    | a bead put past it | is put; the box grows | is refused |
+    | beads past it | none | when the field was made smaller; they stay |
+    | the count of the panel | every bead | the beads in the field |
+    | delete the beads of a colour | all | all; the entry names those past the field |
+    | the picture of the list | the box of the beads | the field |
+    | the shadows of empty places | in the field and past it | in the field only |
 
     ```text
-    ┌──────────── field: the work area, doubled ────────────┐
-    │  shade: the cells past the work area                  │
-    │       ┌──── work area: paper ────────────────┐        │
-    │       │ ┌── sheet: the numbers of the menu ──┤        │
-    │       │ │                                    │        │
-    │       │ └────────────────────────────────────┤        │
-    │       │            ● a bead past the sheet   │        │
-    │       └──────────────────────────────────────┘        │
-    └───────────────────────────────────────────────────────┘
+    ┌──────────── bounds of the view: the work area, doubled ───┐
+    │  shade: the cells past the work area                      │
+    │       ┌──── work area: paper ────────────────┐            │
+    │       │                                      │            │
+    │       └──────────────────────────────────────┘            │
+    │                      ● by hand: a bead left past the field│
+    └───────────────────────────────────────────────────────────┘
     ```
 
-    - The sheet is the start size of the work area: the numbers of the
-      menu of the settings, the cells of the screen when the pattern is first shown.
-    - A bead put past the sheet, in the shade, grows the sheet to hold it,
-      and the field with it, in the same step of undo as the bead.
-    - A bead taken away shrinks the sheet to the box of the beads left, in
-      the same step of undo. It never shrinks below the first screen
-      (`View::sheet`) and never grows: a sheet set smaller in the menu
-      stays. It moves as little as it takes to hold the beads
-      (`Bounds::resized_over`). `History::fit_sheet` does both.
-    - Why the first screen: an empty sheet is still a place to work on.
-    - Was: the sheet stayed as it grew when the bead went.
-    - The work area is still the box around the sheet and the beads: the
-      beads of a file can lie past its sheet.
-    - Was before that: the sheet stayed, and only the work area grew; it was
-      the sheet again when the bead went. One undo took the bead, not the
-      size.
-    - The field is the work area grown by half its width on each side and
-      half its height above and below. Past the field the ground is bare,
-      and a press does nothing.
-    - The work area is on paper; the rest of the field is in shade.
-    - Replaces the field of the sheet and twice the active area, and the
-      field with no end of decision 2.
-14. **The size of the sheet is set in the menu of the settings,** as the
-    ruling is: the entry shows it, `columns×rows`, and its level shows two
-    numbers on top (decision 27). They start at the size of the first screen,
-    show on the field at once and change the sheet around
-    its middle (`Bounds::resized`), up to `MAX_SIDE`. A bead put past the
-    sheet grows it, and the numbers with it (decision 13). A number is dragged or typed, so a finger reaches
-    it. A number is never less than the box around the beads: the sheet
-    takes no smaller size, and moves as little as it takes to hold the beads
-    (`Bounds::resized_over`).
-    - Was: any size from 1, the beads left past a smaller sheet.
-    - The sheet is part of the pattern (decision 17): a size changed is a
+    - The view moves within the work area doubled: half its width on each
+      side and half its height above and below (decision 23). With no work
+      area it moves freely.
+    - An empty pattern by the beads has no paper. The frame of the
+      shadows shows where to draw.
+    - Why the size by the beads is the default: a pattern grows where it is
+      drawn; a size set by hand is for a work of a known size.
+    - Was: a sheet, the first screen at the start, grown by a bead past it
+      and shrunk to the beads when one went, never below the first screen
+      (`View::sheet`, `History::fit_sheet`). The first screen went with it.
+14. **The size of a field set by hand is changed in the menu of the
+    settings,** as the ruling is: the entry shows it, `columns×rows`, and
+    its level shows two numbers on top (decision 27). They show on the
+    field at once and change it around its middle, over the beads
+    (`Bounds::resized_over`), up to `MAX_SIDE`. A number is dragged or
+    typed, so a finger reaches it. The entry stands only while the field is
+    set by hand.
+    - The field is part of the pattern (decision 17): a size changed is a
       step of undo when its level is left.
     - Was: two fields in the tools, where changes one after another were
       one step, since a number dragged changed it in every frame.
@@ -116,12 +111,12 @@ on the field, columns 1 2 3       the file
     frame but the textures.
     - At a bead of 10 points in a window of 1000 by 700 points, a press, a
       step of a zoom and a move take about 0.1 ms each.
-17. **The sheet is written to the file.** It is the size of the work area
-    set by hand, a part of the work, not of the window: `Pattern::sheet`,
-    and `sheet` in the file, its origin and its size. A new pattern takes
-    the cells of its first screen as its start value, no step of undo. A
-    file with no sheet opens the same way. The work area is not written: it
-    is the box around the sheet and the rows.
+17. **The field set by hand is written to the file,** a part of the work,
+    not of the window: `field` in the file, its origin and its size. By the
+    beads it is left out. The work area is not written.
+    - Was: the sheet, `sheet` in the file. No release counts yet, so format
+      1 changed itself and reads no `sheet` (the plan of the field of the
+      workspace).
 18. **The turn is written to the file.** `turn` holds how far the pattern is
     shown turned, 0, 90, 180 or 270; a pattern opens turned as it was. The
     beads do not move, and the turn stays no step of undo: an `EXC` of
@@ -143,7 +138,7 @@ on the field, columns 1 2 3       the file
       at the side it was moved to.
 20. **An empty place shows the shadow of a bead only near the middle of the
     screen and the pointer,** on the paper, in the shade and past the field
-    alike, each
+    alike by the beads, in the field only by hand (decision 13), each
     fading to its edge. A shadow is a bead of faint black: `SHADOW` on a line
     of the ruling (decision 21), the lighter `SHADOW_CELL` elsewhere. The
     rules are in `crates/obusina-canvas/src/shadow.rs`.

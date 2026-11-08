@@ -259,6 +259,9 @@ palette.delete_beads_few:
 palette.delete_beads_many:
   en: "Delete %{count} beads"
   ru: "Удалить %{count} бусин"
+palette.past_field:
+  en: "(%{count} past the field)"
+  ru: "(%{count} за полем)"
 palette.where:
   en: "Where does colour %{number} go?"
   ru: "Куда переместить цвет %{number}?"

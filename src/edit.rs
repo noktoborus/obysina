@@ -111,10 +111,6 @@ pub struct History {
     /// The edits of a batch while it is open; they become one step when it
     /// ends.
     batch: Option<Vec<Edit>>,
-    /// The columns and rows a sheet shrinks to at least when a bead goes:
-    /// the first screen. `None` until it is known; a sheet then does not
-    /// shrink.
-    pub(crate) least_sheet: Option<(usize, usize)>,
     /// The steps kept since the history began: what the autosave counts.
     kept: u64,
 }
@@ -183,9 +179,8 @@ impl History {
     }
 
     /// Puts colours in cells as one step; a cell that has its colour already
-    /// is left out, and nothing is kept when no cell changes. A bead put past
-    /// the sheet grows the sheet to hold it; a bead taken away shrinks it, in
-    /// the same step ([`History::fit_sheet`]).
+    /// is left out, and nothing is kept when no cell changes. A bead is not
+    /// put past a field set by hand; one there may be taken away.
     pub fn paint(&mut self, pattern: &mut Pattern, cells: &[Cell], colour: Option<ColourId>) {
         let changes: Vec<Change> = cells
             .iter()
@@ -195,6 +190,7 @@ impl History {
                 after: colour,
             })
             .filter(|change| change.before != change.after)
+            .filter(|change| change.after.is_none() || pattern.takes(change.cell))
             .collect();
         if changes.is_empty() {
             return;
@@ -202,35 +198,7 @@ impl History {
         for change in &changes {
             pattern.set(change.cell, change.after);
         }
-        let before = pattern.field();
-        let after = before.map(|sheet| self.fit_sheet(sheet, pattern.bounds(), &changes));
-        let beads = Edit::Beads(changes);
-        if after == before {
-            self.keep(beads);
-            return;
-        }
-        let sheet = Edit::Field { before, after };
-        sheet.apply(pattern);
-        self.keep(Edit::Many(vec![beads, sheet]));
-    }
-
-    /// The sheet after `changes`, the beads now in the box `beads`. It grows
-    /// to hold a bead put past it. When a bead is taken away it shrinks to
-    /// the box of the beads, never below `least_sheet` and never above its
-    /// size now, moving as little as it takes to hold them.
-    fn fit_sheet(&self, sheet: Bounds, beads: Option<Bounds>, changes: &[Change]) -> Bounds {
-        let grown = changes
-            .iter()
-            .filter(|change| change.after.is_some())
-            .fold(sheet, |sheet, change| sheet.with(change.cell));
-        let taken = changes.iter().any(|change| change.after.is_none());
-        let Some((least_width, least_height)) = self.least_sheet.filter(|_| taken) else {
-            return grown;
-        };
-        let (width, height) = beads.map_or((0, 0), |beads| (beads.width(), beads.height()));
-        let width = width.max(least_width).min(grown.width());
-        let height = height.max(least_height).min(grown.height());
-        grown.resized_over(width, height, beads)
+        self.keep(Edit::Beads(changes));
     }
 
     /// Changes the colours by `change` as one step. Nothing is kept when the
@@ -507,28 +475,29 @@ mod tests {
         }
     }
 
-    /// A bead taken away shrinks the sheet to the beads, not below the
-    /// least size; a sheet smaller than that does not grow.
+    /// By the beads a bead goes anywhere. By hand none is put past the
+    /// field; a bead left past it, when the field was made smaller, may be
+    /// taken away.
     #[test]
-    fn a_sheet_shrinks_to_the_beads_and_never_grows_when_a_bead_goes() {
-        let mut history = History {
-            least_sheet: Some((4, 4)),
-            ..History::default()
-        };
+    fn a_field_set_by_hand_takes_no_bead_past_it() {
+        let mut history = History::default();
         let mut pattern = pattern();
-        pattern.set_field(Some(bounds((0, 0), (19, 9))));
-        let row: Vec<Cell> = (0..10).map(|column| Cell { column, row: 0 }).collect();
-        history.paint(&mut pattern, &row, Some(COLOUR));
+        let far = Cell {
+            column: 40,
+            row: -7,
+        };
+        history.paint(&mut pattern, &[far], Some(COLOUR));
+        assert_eq!(pattern.get(far), Some(COLOUR));
 
-        history.paint(&mut pattern, &row[5..], None);
-        assert_eq!(pattern.field(), Some(bounds((0, 0), (4, 3))));
+        pattern.set_field(Some(bounds((0, 0), (4, 4))));
+        let inside = Cell { column: 2, row: 2 };
+        let past = Cell { column: 5, row: 2 };
+        history.paint(&mut pattern, &[inside, past], Some(COLOUR));
+        assert_eq!(pattern.get(inside), Some(COLOUR));
+        assert_eq!(pattern.get(past), None);
+        assert_eq!(pattern.field(), Some(bounds((0, 0), (4, 4))));
 
-        history.paint(&mut pattern, &row[..5], None);
-        assert_eq!(pattern.field(), Some(bounds((0, 0), (3, 3))));
-
-        pattern.set_field(Some(bounds((0, 0), (1, 1))));
-        history.paint(&mut pattern, &row[..1], Some(COLOUR));
-        history.paint(&mut pattern, &row[..1], None);
-        assert_eq!(pattern.field(), Some(bounds((0, 0), (1, 1))));
+        history.paint(&mut pattern, &[far], None);
+        assert_eq!(pattern.get(far), None);
     }
 }

@@ -195,14 +195,18 @@ fn form(count: usize, russian: bool) -> Form {
     }
 }
 
-/// The entry that deletes `count` beads, its word fitted to the number.
-pub fn delete_beads(count: usize) -> String {
-    match form(count, rust_i18n::locale().starts_with("ru")) {
+/// The entry that deletes `count` beads, its word fitted to the number;
+/// `past` of them lie past the field set by hand, and the entry says so.
+pub fn delete_beads(count: usize, past: usize) -> String {
+    let delete = match form(count, rust_i18n::locale().starts_with("ru")) {
         Form::One => t!("palette.delete_beads_one", count = count),
         Form::Few => t!("palette.delete_beads_few", count = count),
         Form::Many => t!("palette.delete_beads_many", count = count),
+    };
+    match past {
+        0 => delete.to_string(),
+        past => format!("{delete} {}", t!("palette.past_field", count = past)),
     }
-    .to_string()
 }
 
 /// Shows the window while it is open, and its menu.
@@ -475,13 +479,14 @@ fn tap(app: &mut App, place: usize) {
         }
     };
     let beads = app.pattern.count(id);
+    let past = beads - app.pattern.count_in_field(id);
     let mut items = vec![
         MenuItem::new("accept", t!("palette.accept")),
         MenuItem::new("move", t!("palette.move")).enabled(colour.is_some()),
     ];
     match &colour {
         Some(colour) if colour.rgb.is_none() && beads > 0 => {
-            items.push(MenuItem::new("beads", delete_beads(beads)));
+            items.push(MenuItem::new("beads", delete_beads(beads, past)));
         }
         Some(colour) => {
             let hide = if colour.hidden {
@@ -490,7 +495,7 @@ fn tap(app: &mut App, place: usize) {
                 t!("palette.hide")
             };
             items.push(MenuItem::new("hide", hide));
-            items.push(MenuItem::new("beads", delete_beads(beads)).enabled(beads > 0));
+            items.push(MenuItem::new("beads", delete_beads(beads, past)).enabled(beads > 0));
             items.push(MenuItem::new("remove", t!("palette.remove")));
         }
         None => items.push(MenuItem::new("remove", t!("palette.remove")).enabled(false)),

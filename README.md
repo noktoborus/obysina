@@ -37,14 +37,15 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 
 - Draws a pattern on a field in a window. A bead is drawn at its
   proportions.
-- The work area is on paper: the sheet, whose columns and rows are set in
-  the menu of the settings and start at the size of the first screen, and every bead put
-  past it. A bead put in the shade around grows the sheet. A bead taken
-  away shrinks it to the box of the beads, never below the first screen.
-  The shade reaches half the work area past it on every side. An empty
-  place has no outline: only near the middle of the screen and under the
-  pointer it shows the faint shadow of a bead, at every zoom. A button of
-  the tools hides the shadows. A new pattern is an empty sheet.
+- The size of the field is by the beads, or set by hand. By the beads the
+  paper lies under the box of the beads, and a bead goes anywhere; a new
+  pattern has no paper. Set by hand, the paper lies under the field, and no
+  bead is put past it; beads left past a field made smaller stay, and the
+  panel counts only the beads in the field. The field can be moved half
+  the work area past it on every side. An empty place has no outline: only
+  near the middle of the screen and under the pointer it shows the faint
+  shadow of a bead, at every zoom, in the field only when it is set by
+  hand. A button of the tools hides the shadows.
 - The panels and menus are light or dark as the system is, on Windows, on
   Android (its night mode) and in a browser. On Linux the system does not
   tell winit, and they are dark. The field keeps the paper of the pattern in both.

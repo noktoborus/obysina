@@ -1,7 +1,7 @@
 //! Where the field is moved to and how large a bead is drawn.
 
 use egui::{Vec2, vec2};
-use obusina_pattern::Bounds;
+use obusina_pattern::{Bounds, Grid};
 
 /// The smallest height of a bead, in points.
 pub const MIN_BEAD: f32 = 4.0;
@@ -36,10 +36,6 @@ pub struct View {
     pub bead: f32,
     /// The pattern has been put in the middle of the field once.
     pub centred: bool,
-    /// The cells under the screen when the field was first shown: the first
-    /// screen. A pattern with no sheet of its own uses it as its sheet, and
-    /// the caller may give it to the pattern.
-    pub sheet: Option<Bounds>,
     /// Quarter turns clockwise, 0 to 3.
     quarters: u8,
     /// The size of the field, as last drawn: a turn keeps its middle.
@@ -52,7 +48,6 @@ impl Default for View {
             offset: Vec2::ZERO,
             bead: DEFAULT_BEAD,
             centred: false,
-            sheet: None,
             quarters: 0,
             field: Vec2::ZERO,
         }
@@ -111,6 +106,22 @@ impl View {
             2 => -shown,
             _ => vec2(-shown.y, shown.x),
         }
+    }
+
+    /// The cells a screen of the size last drawn holds at zoom 1
+    /// (`DEFAULT_BEAD`), about the cell in the middle of the screen: the
+    /// size a field set by hand starts at.
+    pub fn first_screen(&self, grid: Grid, ratio: f32) -> Bounds {
+        let middle = self.to_pattern(self.field / 2.0 - self.offset) / self.bead;
+        let centre = grid.cell_at(middle.x, middle.y, ratio);
+        let shown = self.field / DEFAULT_BEAD;
+        let (across, down) = match self.quarters % 2 {
+            0 => (shown.x, shown.y),
+            _ => (shown.y, shown.x),
+        };
+        let columns = (across / ratio).floor().max(1.0) as usize;
+        let rows = down.floor().max(1.0) as usize;
+        Bounds::of(centre).resized(columns, rows)
     }
 
     /// Zooms by `factor`, keeping the point `anchor` of the field still.
@@ -199,6 +210,29 @@ mod tests {
         view.turn(Turn::Clockwise);
 
         assert_eq!(view, start);
+    }
+
+    /// The first screen is the cells of the screen at zoom 1, about its
+    /// middle, whatever the zoom now; a quarter turn swaps its sides.
+    #[test]
+    fn the_first_screen_is_the_screen_at_zoom_one() {
+        let mut view = View {
+            field: FIELD,
+            bead: 40.0,
+            ..View::default()
+        };
+        view.centre(FIELD, Vec2::new(5.5, 3.5) * 40.0);
+        let first = view.first_screen(Grid::Loom, 1.0);
+        let wide = (
+            (FIELD.x / DEFAULT_BEAD) as usize,
+            (FIELD.y / DEFAULT_BEAD) as usize,
+        );
+        assert_eq!((first.width(), first.height()), wide);
+        assert!(first.contains(obusina_pattern::Cell { column: 5, row: 3 }));
+
+        view.turn(Turn::Clockwise);
+        let turned = view.first_screen(Grid::Loom, 1.0);
+        assert_eq!((turned.width(), turned.height()), (wide.1, wide.0));
     }
 
     #[test]

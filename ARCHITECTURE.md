@@ -68,8 +68,7 @@ Every change goes through `edit::History` (`src/edit.rs`):
 
 ```text
 press on a bead ──► App::press ──► History::paint(cells, colour) ──► one step
-                    a bead past the sheet: the sheet grows, in the same step;
-                    a bead taken away: the sheet shrinks, in the same step
+                    a bead past a field set by hand: not put
 drag            ──► the field moves; the pattern does not change
 window of the palettes open ──► History::begin ... closed ──► History::end
                     every edit between is one step: `Edit::Many`
