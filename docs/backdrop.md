@@ -64,6 +64,10 @@ over four corners, kept apart from the pattern. The store is the crate
       quarter once the gesture goes past it.
     - Only while the corners are edited: two fingers on a picture while
       beads are put zoom the field, and do not turn the picture by chance.
+    - The panel of tools holds, while the corners are edited, `↺` and `↻`,
+      a quarter turn either way about the middle of the picture, and `📐`,
+      which turns it to the nearest `ALIGN_STEP` of its top edge; then keep
+      and put back.
 12. **A corner never turns the picture inside out.** It moves only as far
     as the four stay convex and turn the same way at each corner, by at
     least `LEAST_TURN`; dragged further, it stops at the last place that

@@ -288,6 +288,25 @@ fn move_corner(corners: &mut [Vec2; 4], index: usize, delta: Vec2) {
     *corners = moved(kept);
 }
 
+/// Turns the corners of a picture about their middle by `radians`,
+/// clockwise on the field: the picture keeps its shape and its place.
+pub fn turn_corners(corners: &mut [Vec2; 4], radians: f32) {
+    let middle = corners.iter().fold(Vec2::ZERO, |sum, corner| sum + *corner) / 4.0;
+    let (sin, cos) = radians.sin_cos();
+    for corner in corners.iter_mut() {
+        let from = *corner - middle;
+        *corner = middle + egui::vec2(from.x * cos - from.y * sin, from.x * sin + from.y * cos);
+    }
+}
+
+/// Turns the corners of a picture about their middle so its top edge stands
+/// at the nearest whole `step`, in radians.
+pub fn align_corners(corners: &mut [Vec2; 4], step: f32) {
+    let now = top_turn(corners);
+    let aligned = (now / step).round() * step;
+    turn_corners(corners, aligned - now);
+}
+
 /// The points the wheel turned with Shift held in this frame, as given, not
 /// smoothed: a notch turns the picture past a quarter it stuck to.
 fn shift_wheel(events: &[egui::Event]) -> f32 {
@@ -435,6 +454,48 @@ fn mesh(
 
 #[cfg(test)]
 mod tests {
+
+    /// A quarter turn clockwise takes the top edge down the right side,
+    /// about the middle.
+    #[test]
+    fn a_quarter_turn_keeps_the_middle() {
+        let mut corners = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(4.0, 0.0),
+            Vec2::new(4.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ];
+        turn_corners(&mut corners, std::f32::consts::FRAC_PI_2);
+        let expected = [
+            Vec2::new(3.0, -1.0),
+            Vec2::new(3.0, 3.0),
+            Vec2::new(1.0, 3.0),
+            Vec2::new(1.0, -1.0),
+        ];
+        for (corner, expected) in corners.iter().zip(expected) {
+            assert!((*corner - expected).length() < 1e-4, "{corners:?}");
+        }
+    }
+
+    /// The top edge turned by 23 degrees stands at 20 after the alignment,
+    /// by 26 at 30.
+    #[test]
+    fn the_alignment_takes_the_nearest_ten_degrees() {
+        let square = [
+            Vec2::new(0.0, 0.0),
+            Vec2::new(2.0, 0.0),
+            Vec2::new(2.0, 2.0),
+            Vec2::new(0.0, 2.0),
+        ];
+        let ten = 10f32.to_radians();
+        for (degrees, aligned) in [(23.0f32, 20.0f32), (26.0, 30.0), (-4.0, 0.0)] {
+            let mut corners = square;
+            turn_corners(&mut corners, degrees.to_radians());
+            align_corners(&mut corners, ten);
+            assert!((top_turn(&corners).to_degrees() - aligned).abs() < 1e-3);
+        }
+    }
+
     use super::*;
 
     const SQUARE: [Pos2; 4] = [

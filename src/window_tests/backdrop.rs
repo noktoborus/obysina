@@ -549,3 +549,40 @@ fn two_fingers_beside_the_picture_zoom_the_field() {
     assert!(window.harness.state().view.bead > bead);
     assert_eq!(window.harness.state().backdrop.corners, before);
 }
+
+/// The buttons of the editing turn the picture a quarter either way about
+/// its middle, and to the nearest ten degrees.
+#[test]
+fn the_buttons_turn_and_align_the_picture() {
+    let mut window = window();
+    choose(&mut window);
+    in_the_middle(&mut window);
+    menu(&mut window, &t!("backdrop.edit"));
+    let turn = |window: &Window| {
+        let corners = window.harness.state().backdrop.corners;
+        let edge = corners[1] - corners[0];
+        edge.y.atan2(edge.x).to_degrees()
+    };
+    let middle = |window: &Window| {
+        let corners = window.harness.state().backdrop.corners;
+        corners
+            .iter()
+            .fold(egui::Vec2::ZERO, |sum, corner| sum + *corner)
+            / 4.0
+    };
+    let centre = middle(&window);
+
+    window.click(&t!("backdrop.turn_right"));
+    assert!((turn(&window) - 90.0).abs() < 0.01, "{}", turn(&window));
+    window.click(&t!("backdrop.turn_left"));
+    window.click(&t!("backdrop.turn_left"));
+    assert!((turn(&window) + 90.0).abs() < 0.01, "{}", turn(&window));
+    assert!((middle(&window) - centre).length() < 1e-3);
+
+    obusina_canvas::turn_corners(
+        &mut window.harness.state_mut().backdrop.corners,
+        97f32.to_radians(),
+    );
+    window.click(&t!("backdrop.align"));
+    assert!((turn(&window) - 10.0).abs() < 0.01, "{}", turn(&window));
+}
