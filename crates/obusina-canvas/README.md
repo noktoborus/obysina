@@ -17,8 +17,9 @@ The field of beads: an egui widget that draws an
   field is the paper in shade. `Tones::of` takes from the paper the shade,
   the shadows and the hatch: on a paper lighter than `LIGHT` (`lightness`,
   of OKLab) they are darker than it, on a darker one lighter. An empty place has no outline. It shows the
-  shadow of a bead only in a frame of the screen at zoom 1 (`DEFAULT_BEAD`)
-  in its middle and within `NEAR_RADIUS` cells of the pointer, on the paper,
+  shadow of a bead only in a square frame of cells, as many on a side as
+  the screen at zoom 1 (`DEFAULT_BEAD`) holds along its longer side, in its
+  middle and within `NEAR_RADIUS` cells of the pointer, on the paper,
   in the shade and past the field alike, each fading over its edge
   (`FRAME_FADE`). With no
   pointer over the field, as under a finger, there is no round.
@@ -89,7 +90,7 @@ The field of beads: an egui widget that draws an
 | `still`: drawn still into a box, a quarter turned, for a picture of it | ![Still][picture-still] |
 | A black paper, a colour hidden: the shade, the shadows and the hatch lighter than it | ![Dark paper][picture-dark-paper] |
 | Loom, a line every 10 columns and 4 rows from (2, 1) | ![Ruling][picture-ruling] |
-| Zoomed out: the shadows in the frame of the screen at zoom 1 and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
+| Zoomed out: the shadows in the square frame and in the round under the pointer | ![Shadows][picture-shadows-zoomed-out] |
 | A picture under the beads over four corners | ![Picture][picture-picture] |
 | The same, its corners edited | ![Picture edited][picture-picture-editing] |
 | The same while it loads | ![Picture that loads][picture-picture-loading] |

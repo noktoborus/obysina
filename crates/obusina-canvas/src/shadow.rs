@@ -5,17 +5,19 @@
 //!
 //! ```text
 //! ┌──────────────── the screen ────────────────┐
-//! │      ╭──── the frame: the screen ────╮     │
-//! │      │     at zoom 1, in its middle  │     │
+//! │      ╭──── the frame: a square of ───╮     │
+//! │      │     cells, in its middle      │     │
 //! │      │                     ( o )─────┼── the round under the pointer
 //! │      ╰───────────────────────────────╯     │
 //! └────────────────────────────────────────────┘
 //! ```
 //!
-//! - The frame is as many cells as the screen holds at `DEFAULT_BEAD`, a box
-//!   with corners rounded by an eighth of its shorter side, in the middle of
-//!   the screen. Zoomed out it is smaller than the screen; at zoom 1 and in it
-//!   is the screen or more.
+//! - The frame is a square of cells: as many columns as rows, as many as
+//!   the screen holds along the side that holds more at `DEFAULT_BEAD`. On
+//!   the screen it has the shape of a bead. It is a box with corners rounded
+//!   by an eighth of its shorter side, in the middle of the screen. Zoomed
+//!   out it is smaller than the screen; at zoom 1 and in it covers the
+//!   screen.
 //! - The round is `NEAR_RADIUS` cells around the pointer. With no pointer, as
 //!   under a finger, there is none.
 //!
@@ -79,10 +81,22 @@ impl Canvas<'_> {
         vec2(left + ratio / 2.0, top + 0.5)
     }
 
-    /// The frame on the screen at the size of a bead now: the screen at
-    /// zoom 1, scaled about its middle.
+    /// The size of the frame on the screen at zoom 1: a square of cells,
+    /// as many on a side as the screen `rect` holds along the side that
+    /// holds more.
+    fn frame_size(&self, rect: Rect) -> Vec2 {
+        let cell = self.view.to_shown(vec2(self.pattern.ratio(), 1.0)).abs() * DEFAULT_BEAD;
+        let cells = (rect.size() / cell).max_elem();
+        cell * cells
+    }
+
+    /// The frame on the screen at the size of a bead now: the frame at zoom
+    /// 1, scaled about the middle of the screen.
     fn frame_rect(&self, rect: Rect) -> Rect {
-        Rect::from_center_size(rect.center(), rect.size() * self.view.bead / DEFAULT_BEAD)
+        Rect::from_center_size(
+            rect.center(),
+            self.frame_size(rect) * self.view.bead / DEFAULT_BEAD,
+        )
     }
 
     /// The cells under the frame, of those `visible`.
@@ -108,7 +122,7 @@ impl Canvas<'_> {
     fn in_frame(&self, origin: Pos2, rect: Rect, middle: Vec2) -> f32 {
         let shown = origin + self.view.to_shown(middle * self.view.bead);
         let at_zoom_one = (shown - rect.center()) * DEFAULT_BEAD / self.view.bead;
-        let half = rect.size() / 2.0;
+        let half = self.frame_size(rect) / 2.0;
         let corner = 2.0 * half.min_elem() * FRAME_CORNER;
         let distance = rounded_box(at_zoom_one, half, corner);
         (-distance / (FRAME_FADE * DEFAULT_BEAD)).clamp(0.0, 1.0)

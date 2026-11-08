@@ -147,10 +147,15 @@ on the field, columns 1 2 3       the file
     fading to its edge. A shadow is a bead of faint black: `SHADOW` on a line
     of the ruling (decision 21), the lighter `SHADOW_CELL` elsewhere. The
     rules are in `crates/obusina-canvas/src/shadow.rs`.
-    - The frame is the screen at zoom 1 (`DEFAULT_BEAD`), in the middle of
-      the screen, its corners rounded. Zoomed out it shows how much of the
-      field one screen at zoom 1 holds. At zoom 1 and in, it is the screen
-      or more, and every empty place on the screen has a shadow.
+    - The frame is a square of cells: as many columns as rows, as many as
+      the screen at zoom 1 (`DEFAULT_BEAD`) holds along the side that holds
+      more. It stands in the middle of the screen, its corners rounded. At
+      zoom 1 and in, it covers the screen, and every empty place on the
+      screen has a shadow.
+    - Why a square of cells: it does not change with the shape of the
+      window or a turn of the phone, and a square of a pattern is a square
+      of cells. On the screen it has the shape of a bead.
+    - Was: the screen at zoom 1, of the shape of the screen.
     - The round is `NEAR_RADIUS` cells around the pointer.
     - Neither ends at the edge of the field: a shadow stands past it too.
     - Why the frame: android gives no pointer while a stylus hovers. winit
@@ -159,8 +164,8 @@ on the field, columns 1 2 3       the file
     - Why the round stays: zoomed out, it shows the shadows past the frame
       under a mouse.
     - Why the fade: a hard edge reads as a hole.
-    - Zoomed out the frame holds as many cells as the screen at zoom 1, a
-      few thousand quads.
+    - Zoomed out the frame holds as many cells as a square on the longer
+      side of the screen at zoom 1, a few thousand quads.
     - Was: outlines over the whole field; then outlines over the paper,
       and in the shade only in the frame and the round. A soft spot with no
       cells was weighed and left: it does not show where a bead goes.
