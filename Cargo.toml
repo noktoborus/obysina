@@ -4,7 +4,7 @@ members = ["android", "crates/*", "experiments/glyphs"]
 exclude = ["experiments/mockups"]
 
 [workspace.package]
-version = "1.0.4"
+version = "1.0.5"
 edition = "2024"
 rust-version = "1.95"
 license = "MIT"
@@ -49,14 +49,14 @@ wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Blob", "Document", "Element", "HtmlAnchorElement", "HtmlCanvasElement", "Url", "Window"] }
 winit = { version = "0.30", default-features = false }
 
-obusina = { path = ".", version = "1.0.4" }
-obusina-backdrop = { path = "crates/obusina-backdrop", version = "1.0.4" }
-obusina-button = { path = "crates/obusina-button", version = "1.0.4" }
-obusina-canvas = { path = "crates/obusina-canvas", version = "1.0.4" }
-obusina-panel = { path = "crates/obusina-panel", version = "1.0.4" }
-obusina-pattern = { path = "crates/obusina-pattern", version = "1.0.4" }
-plate-menu = { path = "crates/plate-menu", version = "1.0.4" }
-unifs = { path = "crates/unifs", version = "1.0.4" }
+obusina = { path = ".", version = "1.0.5" }
+obusina-backdrop = { path = "crates/obusina-backdrop", version = "1.0.5" }
+obusina-button = { path = "crates/obusina-button", version = "1.0.5" }
+obusina-canvas = { path = "crates/obusina-canvas", version = "1.0.5" }
+obusina-panel = { path = "crates/obusina-panel", version = "1.0.5" }
+obusina-pattern = { path = "crates/obusina-pattern", version = "1.0.5" }
+plate-menu = { path = "crates/plate-menu", version = "1.0.5" }
+unifs = { path = "crates/unifs", version = "1.0.5" }
 
 [profile.release]
 lto = "fat"
