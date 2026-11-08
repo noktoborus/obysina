@@ -74,8 +74,8 @@ window of the palettes open ──► History::begin ... closed ──► Histor
                     every edit between is one step: `Edit::Many`
 ```
 
-A change of the kind of grid is one step too, and so is a ruling or a
-paper accepted in its menu (`History::keep_ruling`, `History::keep_paper`). While a batch is open there
+A change of the kind of grid is one step too, and so is a ruling, a field or a
+paper accepted in its menu (`History::keep_ruling`, `History::keep_field`, `History::keep_paper`). While a batch is open there
 is nothing to undo or redo: its edits are no step yet.
 
 ## Start

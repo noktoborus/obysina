@@ -17,7 +17,7 @@ mod locked;
 mod palette;
 mod projects;
 mod screenshots;
-mod sheet;
+mod size;
 
 /// The size of the window in every test.
 const SIZE: egui::Vec2 = egui::vec2(1000.0, 700.0);

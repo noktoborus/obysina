@@ -7,10 +7,10 @@ use rust_i18n::t;
 
 use super::{Window, id_at, window};
 
-/// Opens the numbers of the size from the menu of the settings.
-fn open_sheet(window: &mut Window) {
+/// Opens the level of the field of the menu of the settings.
+fn open_field(window: &mut Window) {
     window.click(&t!("settings.open"));
-    window.click(&t!("sheet.open"));
+    window.click(&t!("field.open"));
 }
 
 /// Types `text` into the number field named `name` and takes it.
@@ -115,8 +115,8 @@ fn a_size_typed_in_the_menu_resizes_the_field() {
     let mut window = window();
     set_by_hand(&mut window, SMALL);
 
-    open_sheet(&mut window);
-    type_number(&mut window, &t!("sheet.width"), "12");
+    open_field(&mut window);
+    type_number(&mut window, &t!("field.width"), "12");
     window.close_menu();
 
     let after = window.harness.state().pattern.field().expect("a field");
@@ -133,12 +133,76 @@ fn the_old_size_is_put_back() {
     let mut window = window();
     set_by_hand(&mut window, SMALL);
 
-    open_sheet(&mut window);
-    type_number(&mut window, &t!("sheet.width"), "12");
-    window.click(&t!("sheet.revert"));
+    open_field(&mut window);
+    type_number(&mut window, &t!("field.width"), "12");
+    window.click(&t!("field.revert"));
     window.close_menu();
 
     let app = window.harness.state();
     assert_eq!(app.pattern.field(), Some(SMALL));
+    assert!(!app.history.can_undo());
+}
+
+/// "Set" on a pattern sized by the beads takes the first screen grown to
+/// hold the beads, and shows the numbers; "By the beads" takes the field
+/// away. Left, the level keeps one step of undo.
+#[test]
+fn set_takes_the_first_screen_grown_to_hold_the_beads() {
+    let mut window = window();
+    let far = Cell { column: 3, row: 2 };
+    window.press(far, PointerButton::Primary);
+    let app = window.harness.state();
+    let first = app
+        .view
+        .first_screen(app.pattern.grid(), app.pattern.ratio());
+    assert!(window.harness.query_by_label(&t!("field.width")).is_none());
+
+    open_field(&mut window);
+    window.click(&t!("field.set"));
+
+    let field = window.harness.state().pattern.field().expect("a field");
+    assert_eq!(field, first.union(Bounds::of(far)));
+    assert!(window.harness.query_by_label(&t!("field.width")).is_some());
+
+    window.click(&t!("field.by_beads"));
+    assert_eq!(window.harness.state().pattern.field(), None);
+    window.click(&t!("field.set"));
+    window.close_menu();
+
+    let app = window.harness.state_mut();
+    assert_eq!(app.pattern.field(), Some(field));
+    app.history.undo(&mut app.pattern);
+    assert_eq!(app.pattern.field(), None, "one step back to the beads");
+}
+
+/// A size smaller than the beads is taken: the beads past it stay.
+#[test]
+fn a_field_made_smaller_than_the_beads_keeps_them() {
+    let mut window = window();
+    let past = Cell { column: 9, row: 4 };
+    window.press(past, PointerButton::Primary);
+    set_by_hand(&mut window, SMALL);
+
+    open_field(&mut window);
+    type_number(&mut window, &t!("field.width"), "2");
+    window.close_menu();
+
+    let app = window.harness.state();
+    assert_eq!(app.pattern.field().map(|field| field.width()), Some(2));
+    assert_eq!(app.pattern.get(past), Some(id_at(0)));
+}
+
+/// "As it was" puts back a size by the beads after "Set".
+#[test]
+fn as_it_was_puts_back_the_size_by_the_beads() {
+    let mut window = window();
+
+    open_field(&mut window);
+    window.click(&t!("field.set"));
+    window.click(&t!("field.revert"));
+    window.close_menu();
+
+    let app = window.harness.state();
+    assert_eq!(app.pattern.field(), None);
     assert!(!app.history.can_undo());
 }

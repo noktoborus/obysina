@@ -154,12 +154,12 @@ paper.black:
 grid.kind:
   en: "Grid"
   ru: "Сетка"
-sheet.width:
-  en: "Columns of the sheet"
-  ru: "Колонки полотна"
-sheet.height:
-  en: "Rows of the sheet"
-  ru: "Ряды полотна"
+field.width:
+  en: "Columns of the field"
+  ru: "Колонки поля"
+field.height:
+  en: "Rows of the field"
+  ru: "Ряды поля"
 
 grid.loom:
   en: "Loom"
@@ -564,13 +564,22 @@ keys.layer.text:
 keys.layer.help:
   en: "The keys"
   ru: "Подсказка клавиш"
-sheet.open:
-  en: "Size of the sheet"
-  ru: "Размер поля"
-sheet.revert:
-  en: "Put the old size back"
-  ru: "Вернуть прежний размер"
-sheet.size:
+field.open:
+  en: "Field"
+  ru: "Поле"
+field.by_beads:
+  en: "By the beads"
+  ru: "По бусинам"
+field.by_beads_detail:
+  en: "by the beads"
+  ru: "по бусинам"
+field.set:
+  en: "Set"
+  ru: "Задать"
+field.revert:
+  en: "As it was"
+  ru: "Как было"
+field.size:
   en: "Columns × rows"
   ru: "Колонки × ряды"
 projects.lock:

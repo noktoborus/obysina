@@ -7,7 +7,10 @@
 //!              turn <0°>          › ──► ‹ turn │ 0° ✔ │ 90° │ 180° │ 270°
 //!                  a choice: done at once, the menu stays in the level
 //!              ruling <step>      › ──► the four numbers on top
-//!              sheet <w×h>        › ──► the columns and the rows on top
+//!              field <w×h | by the beads>
+//!                                 › ──► ‹ field │ by the beads │ set
+//!                  a size chosen is done at once, the menu stays; with
+//!                  "set", the columns and the rows on top
 //!              background <▇>     › ──► the picker and the swatches on top
 //!                  a change shows on the field at once and stays;
 //!                  │ ‹, Esc, the way back of android ──► the top, on the entry
@@ -25,7 +28,7 @@
 //!              close the settings
 //! a locked pattern: background picture, panels, glow, back to the list,
 //! close
-//! a ruling, a size or a background left or closed over ──► one step of undo,
+//! a ruling, a field or a background left or closed over ──► one step of undo,
 //!                                                          none when unchanged
 //! ```
 //!
@@ -44,6 +47,7 @@ use rust_i18n::t;
 use crate::app::App;
 use crate::settings::PanelView;
 use crate::ui::access::Named;
+use crate::ui::field_size::{self, Sizing};
 
 /// The most columns or rows from one line of the ruling to the next.
 pub const MAX_RULING_STEP: u32 = 100;
@@ -66,7 +70,10 @@ const DETAIL_SWATCH: f32 = 40.0;
 
 /// The levels that edit a value of the pattern.
 const RULING: &str = "ruling";
-const SHEET: &str = "sheet";
+const FIELD: &str = "field";
+/// The entries of the level of the field: its size by the beads, or set.
+const BY_BEADS: &str = "field-by-beads";
+const SET: &str = "field-set";
 const PAPER: &str = "paper";
 /// The entry of each of them that puts the old value back.
 const REVERT: &str = "revert";
@@ -76,8 +83,9 @@ const REVERT: &str = "revert";
 pub struct Editing {
     /// The ruling the numbers change.
     ruling: Arc<Mutex<Ruling>>,
-    /// The size of the sheet (`src/ui/sheet.rs`); none with no sheet.
-    sheet: Option<crate::ui::sheet::Sizing>,
+    /// The size of a field set by hand (`src/ui/field_size.rs`); none by
+    /// the beads.
+    field: Option<Sizing>,
     /// The paper the picker changes.
     paper: Arc<Mutex<Color32>>,
     /// The level stood in and the value it was entered with.
@@ -91,7 +99,7 @@ pub struct Editing {
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum Entered {
     Ruling(Ruling),
-    Sheet(Bounds),
+    Field(Option<Bounds>),
     Paper(Rgb),
 }
 
@@ -100,7 +108,7 @@ impl Entered {
     fn level(&self) -> &'static str {
         match self {
             Entered::Ruling(_) => RULING,
-            Entered::Sheet(_) => SHEET,
+            Entered::Field(_) => FIELD,
             Entered::Paper(_) => PAPER,
         }
     }
@@ -119,10 +127,7 @@ pub fn open(app: &mut App) {
 fn editors(app: &App) -> Editing {
     Editing {
         ruling: Arc::new(Mutex::new(app.pattern.ruling())),
-        sheet: app
-            .pattern
-            .field()
-            .map(|sheet| crate::ui::sheet::Sizing::new(sheet, app.pattern.bounds())),
+        field: app.pattern.field().map(Sizing::new),
         paper: Arc::new(Mutex::new(colour(app.pattern.paper()))),
         entered: None,
         revert_offered: false,
@@ -180,14 +185,7 @@ fn pattern_items(app: &App, editing: &Editing) -> Vec<MenuItem> {
             .notice(numbers(Arc::clone(&editing.ruling)))
             .children(revert_entry(revert, t!("ruling.revert").to_string())),
     ];
-    if let (Some(sheet), Some(sizing)) = (app.pattern.field(), &editing.sheet) {
-        items.push(
-            MenuItem::new(SHEET, t!("sheet.open"))
-                .detail(crate::ui::sheet::detail(sheet))
-                .notice(sizing.numbers())
-                .children(revert_entry(revert, t!("sheet.revert").to_string())),
-        );
-    }
+    items.push(field_item(app, editing, revert));
     items.push(
         MenuItem::new(PAPER, t!("paper.open"))
             .detail(swatch(app.pattern.paper()))
@@ -196,6 +194,38 @@ fn pattern_items(app: &App, editing: &Editing) -> Vec<MenuItem> {
     );
     items.push(MenuItem::new("palettes", t!("palette.settings")));
     items
+}
+
+/// The level of the field: its size by the beads or set, the numbers of
+/// a size set on top, and the entry that puts the old one back.
+fn field_item(app: &App, editing: &Editing, revert: bool) -> MenuItem {
+    let field = app.pattern.field();
+    let mut children = vec![
+        MenuItem::new(BY_BEADS, t!("field.by_beads")).detail(mark(field.is_none())),
+        MenuItem::new(SET, t!("field.set")).detail(mark(field.is_some())),
+    ];
+    children.extend(revert_entry(revert, t!("field.revert").to_string()));
+    let item = MenuItem::new(FIELD, t!("field.open"))
+        .detail(field_size::detail(field))
+        .children(children);
+    match (field, &editing.field) {
+        (Some(_), Some(sizing)) => item.notice(sizing.numbers()),
+        _ => item,
+    }
+}
+
+/// Sizes the field by the beads, or sets it by hand: the field it had, or
+/// the first screen grown to hold the beads. The menu stays in the level.
+fn size_field(app: &mut App, by_hand: bool) {
+    let field = match (by_hand, app.pattern.field()) {
+        (false, _) => None,
+        (true, Some(field)) => Some(field),
+        (true, None) => Some(field_size::first_field(&app.pattern, &app.view)),
+    };
+    app.pattern.set_field(field);
+    if let Some(editing) = &mut app.settings_edit {
+        editing.field = field.map(Sizing::new);
+    }
 }
 
 /// The level of the panels: a level for each, its views, the one in use
@@ -307,7 +337,7 @@ impl Editing {
     fn changed(&self, app: &App) -> bool {
         match self.entered {
             Some(Entered::Ruling(before)) => app.pattern.ruling() != before,
-            Some(Entered::Sheet(before)) => app.pattern.field() != Some(before),
+            Some(Entered::Field(before)) => app.pattern.field() != before,
             Some(Entered::Paper(before)) => app.pattern.paper() != before,
             None => false,
         }
@@ -387,6 +417,10 @@ pub fn show(app: &mut App, context: &egui::Context) {
 fn choose(app: &mut App, context: &egui::Context, id: &str) {
     match id {
         REVERT => revert(app),
+        BY_BEADS | SET => {
+            size_field(app, id == SET);
+            reopen_at(app, id);
+        }
         "glow" => {
             app.keep_glow(!app.settings.glow());
             reopen_at(app, "glow");
@@ -442,12 +476,11 @@ fn revert(app: &mut App) {
             *editing.ruling.lock().expect("the ruling is never poisoned") = before;
             app.pattern.set_ruling(before);
         }
-        Entered::Sheet(before) => {
-            if let Some(sizing) = &editing.sheet {
-                *sizing.size.lock().expect("the size is never poisoned") =
-                    [before.width(), before.height()];
+        Entered::Field(before) => {
+            app.pattern.set_field(before);
+            if let Some(editing) = &mut app.settings_edit {
+                editing.field = before.map(Sizing::new);
             }
-            app.pattern.set_field(Some(before));
         }
         Entered::Paper(before) => {
             *editing.paper.lock().expect("the paper is never poisoned") = colour(before);
@@ -502,7 +535,7 @@ fn follow(app: &mut App) {
 /// Takes the value of the level `level` when it is entered.
 fn enter(app: &mut App, level: &str) {
     let ruling = app.pattern.ruling();
-    let sheet = app.pattern.field();
+    let field = app.pattern.field();
     let paper = app.pattern.paper();
     let Some(editing) = &mut app.settings_edit else {
         return;
@@ -515,10 +548,10 @@ fn enter(app: &mut App, level: &str) {
             *editing.ruling.lock().expect("the ruling is never poisoned") = ruling;
             Some(Entered::Ruling(ruling))
         }
-        SHEET => sheet.map(|sheet| {
-            editing.sheet = Some(crate::ui::sheet::Sizing::new(sheet, app.pattern.bounds()));
-            Entered::Sheet(sheet)
-        }),
+        FIELD => {
+            editing.field = field.map(Sizing::new);
+            Some(Entered::Field(field))
+        }
         PAPER => {
             *editing.paper.lock().expect("the paper is never poisoned") = colour(paper);
             Some(Entered::Paper(paper))
@@ -526,7 +559,7 @@ fn enter(app: &mut App, level: &str) {
         _ => None,
     };
     editing.revert_offered = false;
-    if editing.entered.is_some() && level == SHEET {
+    if editing.entered.is_some() && level == FIELD {
         // The level shows the numbers of the new sizing.
         let items = items(app);
         if let Err(error) = app.menu.refill(items) {
@@ -546,9 +579,9 @@ fn show_on_field(app: &mut App) {
             let shown = *editing.ruling.lock().expect("the ruling is never poisoned");
             app.pattern.set_ruling(shown);
         }
-        Some(Entered::Sheet(_)) => {
-            if let Some(sizing) = &editing.sheet {
-                let shown = sizing.sheet();
+        Some(Entered::Field(_)) => {
+            if let Some(sizing) = &editing.field {
+                let shown = sizing.field();
                 app.pattern.set_field(Some(shown));
             }
         }
@@ -572,7 +605,7 @@ fn leave(app: &mut App) {
     };
     match entered {
         Entered::Ruling(before) => app.history.keep_ruling(&app.pattern, before),
-        Entered::Sheet(before) => app.history.keep_sheet(&app.pattern, before),
+        Entered::Field(before) => app.history.keep_field(&app.pattern, before),
         Entered::Paper(before) => app.history.keep_paper(&app.pattern, before),
     }
     if app.menu.is_open() {

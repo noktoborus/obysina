@@ -11,7 +11,7 @@
 //! ```text
 //! first frame ──► find ──► none ──────────────────────► no picture
 //!                      └─► the description: corners ──► read, decode ──► the picture
-//! chosen file ──► a square ──► decode: corners over the sheet ──► put ──► the picture
+//! chosen file ──► a square ──► decode: corners over the work area ──► put ──► the picture
 //! ```
 //!
 //! A change of the picture is no step of undo: the picture is not part of
@@ -490,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn a_first_picture_lies_over_the_sheet_with_its_sides() {
+    fn a_first_picture_lies_over_the_work_area_with_its_sides() {
         let corners = over(SPAN, [200, 100]);
 
         assert_eq!(corners[0], vec2(0.0, 2.5));

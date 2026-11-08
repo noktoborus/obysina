@@ -91,15 +91,30 @@ on the field, columns 1 2 3       the file
     - Was: a sheet, the first screen at the start, grown by a bead past it
       and shrunk to the beads when one went, never below the first screen
       (`View::sheet`, `History::fit_sheet`). The first screen went with it.
-14. **The size of a field set by hand is changed in the menu of the
-    settings,** as the ruling is: the entry shows it, `columns×rows`, and
-    its level shows two numbers on top (decision 27). They show on the
-    field at once and change it around its middle, over the beads
-    (`Bounds::resized_over`), up to `MAX_SIDE`. A number is dragged or
-    typed, so a finger reaches it. The entry stands only while the field is
-    set by hand.
-    - The field is part of the pattern (decision 17): a size changed is a
-      step of undo when its level is left.
+14. **The size of the field is chosen in the level "Field" of the menu
+    of the settings** (`src/ui/settings_menu.rs`, `src/ui/field_size.rs`).
+    The entry shows `columns×rows`, or "by the beads".
+
+    ```text
+    ‹ Field
+      By the beads      ✔ ──► the field goes; the menu stays
+      Set                 ──► the field it had, or the first screen at
+                              zoom 1 grown to hold the beads; the menu stays
+      [40] × [30]           on top, with "Set" only: about the middle
+      As it was           ──► the size the level was entered with
+    ```
+
+    - The numbers show on the field at once and change it about its middle
+      (`Bounds::resized`), from 1 up to `MAX_SIDE`. A field made smaller
+      than the beads keeps them past it (decision 13). The field has no
+      offset of its own to set. A number is dragged or typed, so a finger
+      reaches it.
+    - The first screen is `View::first_screen`: the cells the screen holds
+      at zoom 1, about its middle, whatever the zoom now.
+    - The field is part of the pattern (decision 17): a change of the size,
+      by the beads or set, is one step of undo when the level is left.
+    - Was: "Size of the sheet", the numbers alone, never smaller than the
+      box of the beads (`Bounds::resized_over`).
     - Was: two fields in the tools, where changes one after another were
       one step, since a number dragged changed it in every frame.
 15. **There are no outlines of empty places.** Decision 20 replaces them.
@@ -176,7 +191,7 @@ on the field, columns 1 2 3       the file
     - "Ruling" of the menu of the settings is a level with the four
       numbers on top (decision 27). A number shows on the field at once and
       stays.
-    - Why from cell (0, 0): it does not move. The middle of the sheet moves
+    - Why from cell (0, 0): it does not move. The box of the beads moves
       when a bead grows or shrinks it, and the lines would jump while
       drawing; the middle of the screen moves with the field.
     - Why darker shadows: they mark the beads that are counted. Lines
@@ -215,17 +230,19 @@ on the field, columns 1 2 3       the file
       (`experiments/mockups/src/mock/glow.rs`).
 26. **Each entry of the menu of the settings shows what it is now** right
     of its label: the kind of grid, the turn, the step of the ruling, the
-    size of the sheet, a swatch of the paper, on or off
+    size of the field, a swatch of the paper, on or off
     (`plate_menu::Detail`).
 27. **What changes the pattern is a level of the menu of the settings**
     (`src/ui/settings_menu.rs`):
 
     ```text
-    grid, turn ──► a value chosen is done at once; the menu stays in the level
-    ruling, sheet, background ──► the editor on top (MenuItem::notice);
+    grid, turn, the size of the field ──► a value chosen is done at once;
+        the menu stays in the level
+    ruling, field set, background ──► the editor on top (MenuItem::notice);
         a change shows at once and stays
         ‹, Esc, the way back of android ──► the top, on the entry
-        "Put the old … back" ──► the value the level was entered with;
+        "Put the old … back", "As it was" ──► the value the level was
+                                 entered with;
                                  weak until the value changed
     a level left, or the menu closed in it ──► one step of undo, none when
                                                 the value is the one it had

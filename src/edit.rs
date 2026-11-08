@@ -253,15 +253,13 @@ impl History {
         self.paint(pattern, &cells, None);
     }
 
-    /// Keeps as a step the size of the sheet already put on the pattern in
-    /// place of `before`; nothing is kept when it is the same.
-    pub fn keep_sheet(&mut self, pattern: &Pattern, before: Bounds) {
+    /// Keeps as a step the field already put on the pattern in place of
+    /// `before`, set by hand or by the beads; nothing is kept when it is the
+    /// same.
+    pub fn keep_field(&mut self, pattern: &Pattern, before: Option<Bounds>) {
         let after = pattern.field();
-        if after != Some(before) {
-            self.keep(Edit::Field {
-                before: Some(before),
-                after,
-            });
+        if after != before {
+            self.keep(Edit::Field { before, after });
         }
     }
 
