@@ -143,9 +143,15 @@ says.
 make VERSION=x.y.z ──► a commit of the version, the tag vx.y.z
 git push && git push origin vx.y.z ──► .github/workflows/release.yml
     ├─ the package of android, signed with the key of the secrets
-    ├─ the program for Windows       ──► a release of GitHub, with both
+    ├─ the program for Windows       ──► a release of GitHub, with all
+    ├─ the program for Linux,             three
+    │  x86_64 and arm64, in .tar.gz
     └─ the site of the browser       ──► GitHub Pages
 ```
+
+The program for Linux is built only for a release, by `make build` on a
+runner of each architecture in Debian 12 (`rust:bookworm`): it runs where
+the glibc is 2.36 or newer, Raspberry Pi OS of Debian 12 among them.
 
 Every push runs the checks and the three builds, unsigned
 (`.github/workflows/ci.yml`). The key of the releases of android is in the

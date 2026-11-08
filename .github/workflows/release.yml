@@ -1,7 +1,8 @@
 # A release, on a tag `vx.y.z` that `make VERSION=x.y.z` made and that was
 # pushed: the builds of build.yml, the package of android signed with the
-# key of the secrets; a release of GitHub with the package and the program
-# for Windows; and the site of the browser on GitHub Pages.
+# key of the secrets; the program for Linux on x86_64 and on arm64, built
+# here only; a release of GitHub with the package and the programs for
+# Windows and Linux; and the site of the browser on GitHub Pages.
 #
 # The repository needs, once: the four secrets that build.yml names;
 # GitHub Actions as the source of its Pages (Settings, Pages); and the tags
@@ -37,8 +38,36 @@ jobs:
       signed: true
     secrets: inherit
 
+  # `make build` on a runner of each architecture, in Debian 12: the program
+  # needs the glibc it was built with or a newer one, and Debian 12 has 2.36,
+  # as Raspberry Pi OS of it has, where Ubuntu 24.04 of the runner has 2.39.
+  # It links only libc; the window loads X11 and Wayland when it starts. An
+  # archive keeps the mode of the program, which an artifact loses.
+  linux:
+    needs: version
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container: rust:bookworm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Swatinem/rust-cache@v2
+      - run: make build
+      - name: the program in an archive
+        run: tar -czf obusina-linux-${{ matrix.arch }}.tar.gz -C target/release obusina
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ matrix.arch }}
+          path: obusina-linux-${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
   release:
-    needs: [version, build]
+    needs: [version, build, linux]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -53,6 +82,10 @@ jobs:
           mkdir release
           cp built/android/obusina-release.apk "release/obusina-$VERSION.apk"
           cp built/windows/obusina.exe "release/obusina-$VERSION-windows-x86_64.exe"
+          for arch in x86_64 arm64; do
+            cp "built/linux-$arch/obusina-linux-$arch.tar.gz" \
+              "release/obusina-$VERSION-linux-$arch.tar.gz"
+          done
       - uses: softprops/action-gh-release@v3
         with:
           name: Obusina ${{ env.VERSION }}
