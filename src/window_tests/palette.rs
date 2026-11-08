@@ -6,7 +6,7 @@ use egui_kittest::kittest::Queryable;
 use rust_i18n::t;
 
 use super::{FREE, SIZE, id_at, swatch, window, window_in};
-use crate::settings::PaletteView;
+use crate::settings::{PaletteView, PanelView};
 use crate::ui::palette_window::delete_beads;
 
 /// The window of the palettes opened by `P`.
@@ -206,11 +206,12 @@ fn the_first_move_makes_a_palette_and_the_keys_switch_it() {
     window.harness.run();
     assert_eq!(window.harness.state().palette, 0);
     let other = t!("palette.switch").to_string();
+    let panel = window.panel(&t!("panel.palette"));
     let in_window = window
         .harness
         .query_all_by_label(&other)
-        .max_by(|first, second| first.rect().center().y.total_cmp(&second.rect().center().y))
-        .expect("the switch of the window, lower than the one of the panel");
+        .find(|node| !panel.contains_rect(node.rect()))
+        .expect("the switch of the window, out of the panel");
     in_window.click();
     window.harness.run();
     assert_eq!(window.harness.state().palette, 1);
@@ -391,10 +392,8 @@ fn the_panel_has_one_switch_for_two_palettes_and_two_for_more() {
 
 #[test]
 fn the_block_stands_as_a_numpad_and_is_kept() {
-    let mut window = opened();
-    window.click(&t!("palette.block"));
-    window.harness.state_mut().palette_window.open = false;
-    window.harness.run();
+    let mut window = window();
+    window.view(crate::ui::palette::NAME, PanelView::Block);
 
     let first = swatch(window.harness.state(), 0);
     let fourth = swatch(window.harness.state(), 3);
@@ -406,41 +405,26 @@ fn the_block_stands_as_a_numpad_and_is_kept() {
     let super::Window { harness, directory } = window;
     drop(harness);
     let again = window_in(directory, SIZE);
-    assert_eq!(
-        again.harness.state().settings.palette_view(),
-        PaletteView::Block
-    );
+    let posture = crate::settings::Posture::of(SIZE);
+    let kept = again
+        .harness
+        .state()
+        .settings
+        .panel(posture, crate::ui::palette::NAME);
+    assert_eq!(kept.map(|(_, view)| view), Some(PanelView::Block));
 }
 
+/// The tabs of the window of the palettes change the window, not the panel.
 #[test]
-fn a_shake_of_the_grip_turns_the_line_into_a_block() {
-    let mut window = window();
-    let start = window
-        .harness
-        .get_by_label(&t!("panel.palette"))
-        .rect()
-        .center();
-    let button = |pos, pressed| egui::Event::PointerButton {
-        pos,
-        button: PointerButton::Primary,
-        pressed,
-        modifiers: egui::Modifiers::NONE,
-    };
-    window.harness.event(egui::Event::PointerMoved(start));
-    window.harness.event(button(start, true));
-    window.harness.step();
-    for step in 0..8 {
-        let x = if step % 2 == 0 { -40.0 } else { 0.0 };
-        window
-            .harness
-            .event(egui::Event::PointerMoved(start + egui::vec2(x, 0.0)));
-        window.harness.step();
-    }
-    window.harness.event(button(start, false));
-    window.harness.run();
+fn the_tab_of_the_window_keeps_its_view_for_the_next_start() {
+    let mut window = opened();
+    window.click(&t!("palette.block"));
 
+    let super::Window { harness, directory } = window;
+    drop(harness);
+    let again = window_in(directory, SIZE);
     assert_eq!(
-        window.harness.state().settings.palette_view(),
+        again.harness.state().settings.palette_view(),
         PaletteView::Block
     );
 }
@@ -462,17 +446,9 @@ fn the_panel_fits_its_content_again() {
     };
     let line = panel(&window);
 
-    window
-        .harness
-        .state_mut()
-        .keep_palette_view(PaletteView::Block);
-    window.harness.run();
+    window.view(crate::ui::palette::NAME, PanelView::Block);
     let block = panel(&window);
-    window
-        .harness
-        .state_mut()
-        .keep_palette_view(PaletteView::Line);
-    window.harness.run();
+    window.view(crate::ui::palette::NAME, PanelView::Column);
 
     assert_ne!(line, block);
     assert_eq!(panel(&window), line, "the size it had before the block");

@@ -14,6 +14,24 @@ panel.tools:
 panel.palette:
   en: "Beads"
   ru: "Бисер"
+panels.open:
+  en: "Panels"
+  ru: "Панели"
+panels.row:
+  en: "Horizontal line"
+  ru: "Горизонтальная линия"
+panels.column:
+  en: "Vertical line"
+  ru: "Вертикальная линия"
+panels.two_rows:
+  en: "Two rows across"
+  ru: "2 строки горизонтально"
+panels.two_columns:
+  en: "Two rows down"
+  ru: "2 строки вертикально"
+panels.block:
+  en: "Block"
+  ru: "Блок"
 
 edit.undo:
   en: "Undo"

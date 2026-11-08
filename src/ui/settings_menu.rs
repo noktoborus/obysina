@@ -14,6 +14,9 @@
 //!                  └ put the old one back ──► the value the level was entered
 //!                                             with; only once it changed
 //!              palettes           ──► the window of the palettes
+//!              panels           › ──► ‹ panels │ beads › │ tools ›
+//!                  ‹ beads │ horizontal line ✔ │ vertical line │ block
+//!                  a choice: kept for the posture of the window now
 //!              glow <on | off>    ──► on or off, a setting of the program
 //!              back to the list   ──► the pattern saved, the list
 //!              close the settings
@@ -35,6 +38,7 @@ use plate_menu::{Detail, MenuItem, Notice};
 use rust_i18n::t;
 
 use crate::app::App;
+use crate::settings::PanelView;
 use crate::ui::access::Named;
 
 /// The most columns or rows from one line of the ruling to the next.
@@ -132,6 +136,7 @@ fn items(app: &App) -> Vec<MenuItem> {
         _ => Vec::new(),
     };
     items.extend([
+        panels_item(app),
         MenuItem::new("glow", t!("view.glow")).detail(glow),
         MenuItem::separator(),
         MenuItem::new("to-list", t!("settings.to_list")),
@@ -186,6 +191,85 @@ fn pattern_items(app: &App, editing: &Editing) -> Vec<MenuItem> {
     );
     items.push(MenuItem::new("palettes", t!("palette.settings")));
     items
+}
+
+/// The level of the panels: a level for each, its views, the one in use
+/// marked.
+fn panels_item(app: &App) -> MenuItem {
+    let panel = |name: &str, label: String, views: &[PanelView]| {
+        let used = app.settings.panel(app.posture, name).map(|(_, view)| view);
+        let entries = views
+            .iter()
+            .map(|view| {
+                MenuItem::new(view_id(name, *view), view_name(*view))
+                    .detail(mark(used == Some(*view)))
+            })
+            .collect();
+        let item = MenuItem::new(format!("panel-{name}"), label).children(entries);
+        match used {
+            Some(view) => item.opens_at(view_id(name, view)).detail(view_name(view)),
+            None => item,
+        }
+    };
+    MenuItem::new("panels", t!("panels.open")).children(vec![
+        panel(
+            crate::ui::palette::NAME,
+            t!("panel.palette").to_string(),
+            &crate::ui::palette::VIEWS,
+        ),
+        panel(
+            crate::ui::tools::NAME,
+            t!("panel.tools").to_string(),
+            &crate::ui::tools::VIEWS,
+        ),
+    ])
+}
+
+/// The id of the entry of `view` of the panel `name`.
+fn view_id(name: &str, view: PanelView) -> String {
+    format!("view:{name}:{}", view_key(view))
+}
+
+/// The key of a view, in the id of its entry.
+fn view_key(view: PanelView) -> &'static str {
+    match view {
+        PanelView::Row => "row",
+        PanelView::Column => "column",
+        PanelView::TwoRows => "two_rows",
+        PanelView::TwoColumns => "two_columns",
+        PanelView::Block => "block",
+    }
+}
+
+/// The name of a view.
+fn view_name(view: PanelView) -> String {
+    match view {
+        PanelView::Row => t!("panels.row"),
+        PanelView::Column => t!("panels.column"),
+        PanelView::TwoRows => t!("panels.two_rows"),
+        PanelView::TwoColumns => t!("panels.two_columns"),
+        PanelView::Block => t!("panels.block"),
+    }
+    .to_string()
+}
+
+/// The panel and the view an entry of a view names.
+fn view_of(id: &str) -> Option<(&'static str, PanelView)> {
+    let rest = id.strip_prefix("view:")?;
+    let (name, key) = rest.split_once(':')?;
+    let name = [crate::ui::palette::NAME, crate::ui::tools::NAME]
+        .into_iter()
+        .find(|known| *known == name)?;
+    let view = [
+        PanelView::Row,
+        PanelView::Column,
+        PanelView::TwoRows,
+        PanelView::TwoColumns,
+        PanelView::Block,
+    ]
+    .into_iter()
+    .find(|view| view_key(*view) == key)?;
+    Some((name, view))
 }
 
 /// The entry of a level that puts its value back: drawn weak until the value
@@ -309,6 +393,12 @@ fn choose(app: &mut App, context: &egui::Context, id: &str) {
             app.back_to_list(context, time);
         }
         "close" => {}
+        view if view_of(view).is_some() => {
+            if let Some((name, chosen)) = view_of(view) {
+                crate::ui::panels::set_view(app, context, name, chosen);
+            }
+            reopen_at(app, view);
+        }
         kind if Grid::ALL.iter().any(|grid| kind_id(*grid) == kind) => {
             if let Some(grid) = Grid::ALL.into_iter().find(|grid| kind_id(*grid) == kind) {
                 app.set_grid(grid);

@@ -1,6 +1,6 @@
 //! The activity of android, kept for what needs it: the choice of a file,
 //! the part of the window the system bars and the cut out of the camera
-//! leave free, the theme of the system, and the way back.
+//! leave free, the theme of the system, the way back, and a short vibration.
 //!
 //! ```text
 //! a frame ──► takes(the layer on top is not the list) ──JNI──► MainActivity.takeBack
@@ -176,5 +176,16 @@ pub fn take_back(taken: bool) {
     match called {
         Ok(()) => *told = Some(taken),
         Err(error) => log::error!("the way back is not given to the window: {error}"),
+    }
+}
+
+/// A short vibration, as for a long press: a panel was taken.
+pub fn tick() {
+    let called = call(|env, activity| {
+        env.call_method(activity, jni_str!("tick"), jni_sig!("()V"), &[])?;
+        Ok(())
+    });
+    if let Err(error) = called {
+        log::error!("no vibration: {error}");
     }
 }

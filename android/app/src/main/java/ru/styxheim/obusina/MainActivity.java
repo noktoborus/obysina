@@ -4,6 +4,7 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 
 import androidx.activity.OnBackPressedCallback;
@@ -27,7 +28,7 @@ import java.io.OutputStream;
  * saveDocument and is answered by fileSaved; the way back, which Rust
  * takes by takeBack and is told of by backPressed; and the part of the
  * window the system bars and the cut out of the camera leave free, told by
- * safeArea.
+ * safeArea; and a short vibration when a panel is taken, by tick.
  */
 public class MainActivity extends GameActivity {
     /** The kinds of picture Obusina reads. */
@@ -103,6 +104,12 @@ public class MainActivity extends GameActivity {
     /** Whether Rust takes the way back; called from Rust, on any thread. */
     public void takeBack(boolean taken) {
         runOnUiThread(() -> back.setEnabled(taken));
+    }
+
+    /** A short vibration, as for a long press; called from Rust, on any thread. */
+    public void tick() {
+        runOnUiThread(() -> getWindow().getDecorView()
+                .performHapticFeedback(HapticFeedbackConstants.LONG_PRESS));
     }
 
     /** Opens the choice of a picture; called from Rust, on any thread. */

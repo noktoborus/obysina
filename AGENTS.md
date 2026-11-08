@@ -418,17 +418,20 @@ EXC  F1, the plate of the keys (`src/ui/help.rs`), by the user's word: it
 
 RULE ui.layout : the field of beads fills the window; the tools and the
      palette are `obusina_panel::FloatingPanel`s
-THEN no side panel, no menu bar, no title on a panel: a grip of dots moves
-     it, a tap on the grip folds it
+THEN no side panel, no menu bar, no title and no grip on a panel: any place
+     of it moves it, a mouse moved or a finger held still
 EX-  a `SidePanel` holding the palette
 EX-  an `egui::Window` with its title bar
 REF  crates/obusina-panel/README.md
 
-RULE ui.dock : a panel turns at once by the edge strip under the pointer and
-     by the room it has; let go in a strip it stands against that edge
-THEN nothing is drawn while a panel is dragged
-THEN the content of a panel lays itself out by the `Room` it is given
-THEN the place of each panel is kept in the settings, by the name of the panel
+RULE ui.dock : a panel never turns by itself; its view is chosen in the menu
+     of the settings; let go in an edge strip it stands against that edge
+THEN nothing but the panel, lighter, is drawn while it is dragged
+THEN the content of a panel lays itself out by the `Room` it is given; a
+     line goes on in the next line where the window ends
+THEN the place and the view of each panel are kept in the settings, by the
+     posture of the window and the name of the panel; with none kept, the
+     panels are stood by `src/ui/arrange.rs`
 REF  docs/panels.md
 
 RULE ui.button : a button of a panel is made by `ui::button`, all of one
@@ -575,7 +578,7 @@ WHY  a widget is drawn the same way wherever it is used, so its pixels are its
      behaviour. The window changes with every locale, theme and setting.
 THEN the window is tested by its tree (`RULE test.window`), not by its pixels
 EX+  `obusina-canvas`: one picture per kind of grid
-EX+  `obusina-panel`: a row, a column, a folded panel
+EX+  `obusina-panel`: a row, a column, a panel taken
 EX+  `obusina-button`: every kind of button in one row
 EX-  a picture of the main window of `obusina` committed as a reference
 EXC  the screenshots of README.md (`RULE doc.picture`, its EXC); no

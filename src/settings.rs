@@ -1,14 +1,15 @@
 //! The settings of the program: `settings.yaml` in the configuration
-//! directory (`RULE config.dir`), read and written through `unifs`. They keep the place of each panel, how the
-//! places of a palette stand, whether the empty places show their shadows
-//! and whether the beads glow.
+//! directory (`RULE config.dir`), read and written through `unifs`. They keep the place and the view of each
+//! panel, apart for a window that stands and one that lies, how the places of
+//! a palette stand in its window, whether the empty places show their
+//! shadows and whether the beads glow.
 //!
 //! A file this version cannot read is renamed to [`UNREADABLE`] beside it,
 //! and the program starts from the defaults (`RULE config.legacy`).
 
 use std::collections::BTreeMap;
 
-use obusina_panel::{Orientation, Placement};
+use obusina_panel::Placement;
 use serde::{Deserialize, Serialize};
 use unifs::Files;
 
@@ -26,9 +27,9 @@ pub struct Settings {
     /// The configuration directory; `None` when the settings are not kept.
     #[serde(skip)]
     files: Option<Files>,
-    /// The place of each panel, by its name.
-    panels: BTreeMap<String, Panel>,
-    /// How the places of a palette stand.
+    /// The place and the view of each panel, by the posture of the window.
+    layout: Layout,
+    /// How the places of a palette stand in the window of the palettes.
     palette_view: PaletteView,
     /// Whether the empty places of the field show their shadows.
     shadows: bool,
@@ -40,7 +41,7 @@ impl Default for Settings {
     fn default() -> Self {
         Settings {
             files: None,
-            panels: BTreeMap::new(),
+            layout: Layout::default(),
             palette_view: PaletteView::default(),
             shadows: true,
             glow: true,
@@ -48,35 +49,102 @@ impl Default for Settings {
     }
 }
 
-/// How the places of a palette stand, on the panel of beads and in the
-/// window of the palettes (decision 10 of `docs/palette.md`).
+/// How the places of a palette stand in the window of the palettes (decision
+/// 10 of `docs/palette.md`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PaletteView {
-    /// One line along the panel; turned with it.
+    /// One line.
     #[default]
     Line,
     /// Rows of three, as the keys of a numpad.
     Block,
 }
 
-/// The place of a panel, as the file holds it.
+/// How a window stands: taller than wide, or not. It is told by the sides of
+/// the window, not by a sensor, so it is the same on every platform.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Posture {
+    /// Taller than wide.
+    Portrait,
+    /// As wide as tall or wider.
+    Landscape,
+}
+
+impl Posture {
+    /// The posture of a window of `size`.
+    pub fn of(size: egui::Vec2) -> Posture {
+        if size.y > size.x {
+            Posture::Portrait
+        } else {
+            Posture::Landscape
+        }
+    }
+}
+
+/// How the buttons of a panel stand. A panel offers some of these: the
+/// tools all but the block, the beads all but the two lines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelView {
+    /// One line across, going on in the next line where the window ends.
+    Row,
+    /// One line down, going on in the next line where the window ends.
+    Column,
+    /// Two lines across.
+    TwoRows,
+    /// Two lines down.
+    TwoColumns,
+    /// Rows of three, as the keys of a numpad.
+    Block,
+}
+
+impl PanelView {
+    /// How the panel lays out its content.
+    pub fn orientation(self) -> obusina_panel::Orientation {
+        use obusina_panel::Orientation;
+        match self {
+            PanelView::Row | PanelView::TwoRows => Orientation::Horizontal,
+            PanelView::Column | PanelView::TwoColumns | PanelView::Block => Orientation::Vertical,
+        }
+    }
+}
+
+/// The place and the view of each panel, by its name, for each posture.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct Layout {
+    /// For a window taller than wide.
+    portrait: BTreeMap<String, Panel>,
+    /// For a window as wide as tall or wider.
+    landscape: BTreeMap<String, Panel>,
+}
+
+impl Layout {
+    /// The panels of `posture`.
+    fn of(&self, posture: Posture) -> &BTreeMap<String, Panel> {
+        match posture {
+            Posture::Portrait => &self.portrait,
+            Posture::Landscape => &self.landscape,
+        }
+    }
+
+    /// The panels of `posture`, to change.
+    fn of_mut(&mut self, posture: Posture) -> &mut BTreeMap<String, Panel> {
+        match posture {
+            Posture::Portrait => &mut self.portrait,
+            Posture::Landscape => &mut self.landscape,
+        }
+    }
+}
+
+/// The place and the view of a panel, as the file holds it.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 struct Panel {
     /// The place in the room of the window, from 0 to 1 on each axis.
     at: [f32; 2],
-    /// How its content is laid out.
-    layout: Layout,
-    /// Only its grip is shown.
-    folded: bool,
-}
-
-/// An orientation, as the file names it.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum Layout {
-    Row,
-    Column,
+    /// How its buttons stand.
+    view: PanelView,
 }
 
 impl Settings {
@@ -94,18 +162,33 @@ impl Settings {
         (Settings { files, ..settings }, error)
     }
 
-    /// The place kept for the panel `name`.
-    pub fn panel(&self, name: &str) -> Option<Placement> {
-        self.panels.get(name).map(|panel| (*panel).into())
+    /// The place and the view kept for the panel `name` in `posture`.
+    pub fn panel(&self, posture: Posture, name: &str) -> Option<(Placement, PanelView)> {
+        let panel = self.layout.of(posture).get(name)?;
+        Some((
+            Placement::new(egui::vec2(panel.at[0], panel.at[1])),
+            panel.view,
+        ))
     }
 
-    /// Keeps the place of the panel `name`; gives the write of the file.
-    pub fn keep_panel(&mut self, name: &str, placement: Placement) -> Option<Write> {
-        self.panels.insert(name.to_owned(), placement.into());
+    /// Keeps the place and the view of the panel `name` in `posture`; gives
+    /// the write of the file.
+    pub fn keep_panel(
+        &mut self,
+        posture: Posture,
+        name: &str,
+        placement: Placement,
+        view: PanelView,
+    ) -> Option<Write> {
+        let panel = Panel {
+            at: [placement.at.x, placement.at.y],
+            view,
+        };
+        self.layout.of_mut(posture).insert(name.to_owned(), panel);
         self.write()
     }
 
-    /// How the places of a palette stand.
+    /// How the places of a palette stand in the window of the palettes.
     pub fn palette_view(&self) -> PaletteView {
         self.palette_view
     }
@@ -197,44 +280,6 @@ async fn read(files: &Files) -> Result<Settings> {
     }
 }
 
-impl From<Placement> for Panel {
-    fn from(placement: Placement) -> Panel {
-        Panel {
-            at: [placement.at.x, placement.at.y],
-            layout: placement.orientation.into(),
-            folded: placement.folded,
-        }
-    }
-}
-
-impl From<Panel> for Placement {
-    fn from(panel: Panel) -> Placement {
-        Placement {
-            at: egui::vec2(panel.at[0], panel.at[1]),
-            orientation: panel.layout.into(),
-            folded: panel.folded,
-        }
-    }
-}
-
-impl From<Orientation> for Layout {
-    fn from(orientation: Orientation) -> Layout {
-        match orientation {
-            Orientation::Horizontal => Layout::Row,
-            Orientation::Vertical => Layout::Column,
-        }
-    }
-}
-
-impl From<Layout> for Orientation {
-    fn from(layout: Layout) -> Orientation {
-        match layout {
-            Layout::Row => Orientation::Horizontal,
-            Layout::Column => Orientation::Vertical,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -250,30 +295,33 @@ mod tests {
     #[test]
     fn a_place_kept_is_read_back() {
         let (_directory, files) = config();
-        let placement = Placement {
-            folded: true,
-            ..Placement::new(egui::vec2(0.25, 1.0), Orientation::Horizontal)
-        };
+        let placement = Placement::new(egui::vec2(0.25, 1.0));
         let (mut settings, error) = block_on(Settings::load(Some(files.clone())));
         assert!(error.is_none());
-        let write = settings.keep_panel("tools", placement).expect("kept");
+        let write = settings
+            .keep_panel(Posture::Portrait, "tools", placement, PanelView::TwoRows)
+            .expect("kept");
         block_on(write.run()).expect("written");
 
         let (again, error) = block_on(Settings::load(Some(files)));
         assert!(error.is_none());
-        assert_eq!(again.panel("tools"), Some(placement));
-        assert_eq!(again.panel("palette"), None);
+        assert_eq!(
+            again.panel(Posture::Portrait, "tools"),
+            Some((placement, PanelView::TwoRows))
+        );
+        assert_eq!(again.panel(Posture::Landscape, "tools"), None);
+        assert_eq!(again.panel(Posture::Portrait, "palette"), None);
     }
 
     #[test]
     fn a_file_that_does_not_parse_is_kept_aside() {
         let (_directory, files) = config();
-        block_on(files.write(FILE, b"panels: [this is not a map")).expect("written");
+        block_on(files.write(FILE, b"layout: [this is not a map")).expect("written");
 
         let (settings, error) = block_on(Settings::load(Some(files.clone())));
 
         assert!(matches!(error, Some(AppError::SettingsInvalid { .. })));
-        assert_eq!(settings.panel("tools"), None);
+        assert_eq!(settings.panel(Posture::Landscape, "tools"), None);
         assert_eq!(block_on(files.read(FILE)).expect("it reads"), None);
         assert!(
             block_on(files.read(UNREADABLE))
@@ -291,7 +339,15 @@ mod tests {
         let (settings, error) = block_on(Settings::load(Some(files)));
 
         assert!(error.is_none());
-        assert_eq!(settings.panel("tools"), None);
+        assert_eq!(settings.panel(Posture::Landscape, "tools"), None);
+    }
+
+    /// A window taller than wide stands; a square one lies.
+    #[test]
+    fn the_posture_is_told_by_the_sides() {
+        assert_eq!(Posture::of(egui::vec2(400.0, 800.0)), Posture::Portrait);
+        assert_eq!(Posture::of(egui::vec2(800.0, 400.0)), Posture::Landscape);
+        assert_eq!(Posture::of(egui::vec2(500.0, 500.0)), Posture::Landscape);
     }
 
     #[test]

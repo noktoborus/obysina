@@ -8,6 +8,7 @@ use obusina_pattern::{Cell, ColourId, Grid};
 use rust_i18n::t;
 
 use crate::app::App;
+use crate::settings::PanelView;
 
 mod backdrop;
 mod field;
@@ -20,6 +21,8 @@ mod sheet;
 
 /// The size of the window in every test.
 const SIZE: egui::Vec2 = egui::vec2(1000.0, 700.0);
+/// How far a pointer moves before a press is no click, as egui has it.
+const CLICK: f32 = 6.0;
 /// A bead far from the panels.
 const FREE: Cell = Cell { column: 5, row: 5 };
 
@@ -115,9 +118,38 @@ impl Window {
         self.harness.run();
     }
 
-    /// Drags the grip named `grip` to `target` with the first button.
-    fn drag(&mut self, grip: &str, target: Pos2) {
-        let start = self.harness.get_by_label(grip).rect().center();
+    /// Drags the panel named `name` by its middle to `target` with the
+    /// first button.
+    fn drag(&mut self, name: &str, target: Pos2) {
+        let start = self.panel(name).center();
+        self.drag_from(start, target);
+    }
+
+    /// The rect of the panel named `name`.
+    fn panel(&self, name: &str) -> egui::Rect {
+        self.harness.get_by_label(name).rect()
+    }
+
+    /// Gives the panel `name` the view `view` in the posture of the window.
+    fn view(&mut self, name: &str, view: PanelView) {
+        let context = self.harness.ctx.clone();
+        crate::ui::panels::set_view(self.harness.state_mut(), &context, name, view);
+        self.harness.run();
+    }
+
+    /// Clicks the last widget named `name`: the one drawn on top.
+    fn click_last(&mut self, name: &str) {
+        let node = self
+            .harness
+            .query_all_by_label(name)
+            .last()
+            .expect("a widget of that name");
+        node.click();
+        self.harness.run();
+    }
+
+    /// The first button pressed at `start`, moved to `target` and let go.
+    fn drag_from(&mut self, start: Pos2, target: Pos2) {
         let button = |pos, pressed| Event::PointerButton {
             pos,
             button: PointerButton::Primary,
@@ -133,6 +165,44 @@ impl Window {
             self.harness.step();
         }
         self.harness.event(button(target, false));
+        self.harness.run();
+    }
+
+    /// A finger put at `start`, held still a second first when `hold`,
+    /// moved to `target` and lifted, sent as winit sends it: the touch, and
+    /// the pointer for the first finger.
+    fn touch_drag(&mut self, start: Pos2, target: Pos2, hold: bool) {
+        let touch = |phase, pos| Event::Touch {
+            device_id: TouchDeviceId(1),
+            id: TouchId(1),
+            phase,
+            pos,
+            force: None,
+        };
+        let button = |pos, pressed| Event::PointerButton {
+            pos,
+            button: PointerButton::Primary,
+            pressed,
+            modifiers: Modifiers::NONE,
+        };
+        self.harness.event(touch(TouchPhase::Start, start));
+        self.harness.event(Event::PointerMoved(start));
+        self.harness.event(button(start, true));
+        self.harness.step();
+        if hold {
+            for _ in 0..4 {
+                self.harness.step();
+            }
+        }
+        for step in 1..=10 {
+            let point = start + (target - start) * (step as f32 / 10.0);
+            self.harness.event(touch(TouchPhase::Move, point));
+            self.harness.event(Event::PointerMoved(point));
+            self.harness.step();
+        }
+        self.harness.event(touch(TouchPhase::End, target));
+        self.harness.event(button(target, false));
+        self.harness.event(Event::PointerGone);
         self.harness.run();
     }
 
@@ -389,84 +459,95 @@ fn every_widget_has_a_name() {
 }
 
 #[test]
-fn a_panel_has_a_grip_and_no_title() {
+fn a_panel_has_a_name_and_no_title() {
     let window = window();
 
-    let grips = window
+    let named = window
         .harness
         .query_all_by_label(&t!("panel.tools"))
         .count();
 
-    assert_eq!(grips, 1, "the grip is the one thing named for the panel");
+    assert_eq!(named, 1, "the panel is the one thing named for it");
+}
+
+/// The first start stands the panels apart, inside the window, and keeps
+/// their places.
+#[test]
+fn the_first_start_stands_the_panels_apart() {
+    for size in [SIZE, egui::vec2(420.0, 900.0), egui::vec2(1000.0, 260.0)] {
+        let window = window_in(tempfile::tempdir().expect("a scratch directory"), size);
+        let screen = egui::Rect::from_min_size(Pos2::ZERO, size);
+        let tools = window.panel(&t!("panel.tools"));
+        let beads = window.panel(&t!("panel.palette"));
+
+        assert!(!tools.intersects(beads), "{size:?}: {tools:?} {beads:?}");
+        assert!(screen.contains_rect(tools), "{size:?}: {tools:?}");
+        assert!(screen.contains_rect(beads), "{size:?}: {beads:?}");
+        let posture = crate::settings::Posture::of(size);
+        let settings = &window.harness.state().settings;
+        assert!(settings.panel(posture, crate::ui::tools::NAME).is_some());
+        assert!(settings.panel(posture, crate::ui::palette::NAME).is_some());
+    }
+}
+
+/// A window that stands keeps its panels apart from one that lies: a panel
+/// moved while it stands is where it was when it stands again.
+#[test]
+fn a_window_that_stands_keeps_its_own_places() {
+    let tall = egui::vec2(500.0, 900.0);
+    let mut window = window_in(tempfile::tempdir().expect("a scratch directory"), tall);
+    window.drag(&t!("panel.tools"), pos2(250.0, 450.0));
+    let moved = window.panel(&t!("panel.tools"));
+
+    window.harness.set_size(SIZE);
+    window.harness.run();
+    let lying = window.panel(&t!("panel.tools"));
+    window.harness.set_size(tall);
+    window.harness.run();
+
+    assert!(
+        (lying.center() - moved.center()).length() > 50.0,
+        "{lying:?}"
+    );
+    let again = window.panel(&t!("panel.tools"));
+    assert!(
+        (again.center() - moved.center()).length() < 1.0,
+        "{again:?}"
+    );
 }
 
 #[test]
-fn a_panel_at_a_side_stands_in_a_column() {
+fn a_panel_dragged_to_a_side_keeps_its_view() {
     let mut window = window();
+    window.view(crate::ui::tools::NAME, PanelView::Row);
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
     assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
 
     window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
 
-    window.drag(&t!("panel.tools"), pos2(100.0, 8.0));
     assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
-}
-
-#[test]
-fn a_panel_turns_while_it_is_dragged() {
-    let mut window = window();
-    let start = window
-        .harness
-        .get_by_label(&t!("panel.tools"))
-        .rect()
-        .center();
-    let target = pos2(8.0, SIZE.y / 2.0);
-    let button = |pos, pressed| Event::PointerButton {
-        pos,
-        button: PointerButton::Primary,
-        pressed,
-        modifiers: Modifiers::NONE,
-    };
-
-    window.harness.event(Event::PointerMoved(start));
-    window.harness.event(button(start, true));
-    window.harness.step();
-    for step in 1..=10 {
-        let point = start + (target - start) * (step as f32 / 10.0);
-        window.harness.event(Event::PointerMoved(point));
-        window.harness.step();
-    }
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
-
-    window.harness.event(button(target, false));
-    window.harness.run();
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
     assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
 }
 
+/// A row longer than the window goes on in the next line, inside it.
 #[test]
-fn a_panel_that_runs_out_of_the_window_turns() {
-    let mut window = window();
+fn a_line_too_long_for_the_window_goes_on_in_the_next_line() {
+    let narrow = egui::vec2(260.0, 700.0);
+    let mut window = window_in(tempfile::tempdir().expect("a scratch directory"), narrow);
+    window.view(crate::ui::tools::NAME, PanelView::Row);
 
-    window.drag(&t!("panel.tools"), pos2(SIZE.x * 0.85, 90.0));
-
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
-    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
-    assert!(grip.contains(pos2(SIZE.x * 0.85, 90.0)), "{grip:?}");
-}
-
-#[test]
-fn a_window_too_narrow_for_a_row_turns_the_tools() {
-    let narrow = egui::vec2(400.0, 700.0);
-    let window = window_in(tempfile::tempdir().expect("a scratch directory"), narrow);
-
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
+    let back = window.harness.get_by_label(&t!("projects.back")).rect();
+    assert!(back.min.y > undo.max.y, "{undo:?} {back:?}");
+    let screen = egui::Rect::from_min_size(Pos2::ZERO, narrow);
+    assert!(screen.contains_rect(back), "{back:?}");
 }
 
 #[test]
 fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
     let mut window = window();
+    window.drag(&t!("panel.palette"), pos2(SIZE.x - 8.0, SIZE.y / 2.0));
     let narrow = egui::vec2(700.0, 600.0);
 
     window.harness.set_size(narrow);
@@ -483,16 +564,20 @@ fn a_panel_against_an_edge_stays_there_when_the_window_shrinks() {
 #[test]
 fn the_place_of_a_panel_is_kept_for_the_next_start() {
     let mut window = window();
-    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    window.view(crate::ui::tools::NAME, PanelView::TwoColumns);
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+    let moved = window.panel(&t!("panel.tools"));
     let Window { harness, directory } = window;
     drop(harness);
 
     let window = window_in(directory, SIZE);
 
     assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
-    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
-    assert!(grip.min.x < SIZE.x / 4.0, "{grip:?}");
+    let again = window.panel(&t!("panel.tools"));
+    assert!(
+        (again.center() - moved.center()).length() < 1.0,
+        "{again:?}"
+    );
 }
 
 #[test]
@@ -513,25 +598,52 @@ fn the_beads_fit_a_short_window() {
 #[test]
 fn a_panel_in_the_centre_keeps_its_shape() {
     let mut window = window();
+    window.view(crate::ui::palette::NAME, PanelView::Column);
     let first = swatch(window.harness.state(), 0);
     let third = swatch(window.harness.state(), 2);
-    window.drag(&t!("panel.palette"), pos2(SIZE.x - 8.0, SIZE.y / 2.0));
-    assert!(window.stacked(&first, &third));
 
     window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
 
     assert!(window.stacked(&first, &third));
 }
 
+/// A mouse pressed on a button and moved moves the panel, and the button
+/// is not pressed.
 #[test]
-fn a_tap_on_the_grip_folds_the_panel() {
+fn a_press_on_a_button_moved_takes_the_panel_and_not_the_button() {
     let mut window = window();
+    window.press(FREE, PointerButton::Primary);
+    let before = window.panel(&t!("panel.tools"));
+    let undo = window
+        .harness
+        .get_by_label(&t!("edit.undo"))
+        .rect()
+        .center();
 
-    window.click(&t!("panel.tools"));
-    assert!(window.harness.query_by_label(&t!("edit.undo")).is_none());
+    window.drag_from(undo, undo + egui::vec2(120.0, 140.0));
 
-    window.click(&t!("panel.tools"));
-    window.harness.get_by_label(&t!("edit.undo"));
+    let after = window.panel(&t!("panel.tools"));
+    assert!((after.min - before.min - egui::vec2(120.0, 140.0)).length() < 1.0);
+    assert_eq!(window.harness.state().pattern.beads().count(), 1);
+}
+
+/// A finger held still takes the panel; one moved at once does not, and the
+/// panel stays.
+#[test]
+fn a_finger_takes_a_panel_only_when_held() {
+    let mut window = window();
+    let before = window.panel(&t!("panel.tools"));
+    let settings = window.harness.get_by_label(&t!("settings.open")).rect();
+    let start = settings.center();
+    let by = egui::vec2(100.0, 120.0);
+
+    window.touch_drag(start, start + by, false);
+    assert_eq!(window.panel(&t!("panel.tools")), before, "a quick swipe");
+
+    window.touch_drag(start, start + by, true);
+    let after = window.panel(&t!("panel.tools"));
+    assert!((after.min - before.min - by).length() < 1.0, "{after:?}");
+    assert!(!window.harness.state().menu.is_open(), "no button pressed");
 }
 
 #[test]
@@ -541,8 +653,32 @@ fn a_panel_stays_inside_the_window() {
     window.drag(&t!("panel.tools"), pos2(SIZE.x + 300.0, SIZE.y + 300.0));
 
     let screen = egui::Rect::from_min_size(Pos2::ZERO, SIZE);
-    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
-    assert!(screen.contains_rect(grip), "{grip:?} in {screen:?}");
+    let panel = window.panel(&t!("panel.tools"));
+    assert!(screen.contains_rect(panel), "{panel:?} in {screen:?}");
+}
+
+/// The view of a panel is chosen in the menu of the settings, and kept.
+#[test]
+fn the_view_of_a_panel_is_chosen_in_the_menu() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("panels.open"));
+    window.click_last(&t!("panel.tools"));
+    window.click(&t!("panels.two_rows"));
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
+    window.harness.key_press(egui::Key::Escape);
+    window.harness.run();
+
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let posture = window.harness.state().posture;
+    let kept = window
+        .harness
+        .state()
+        .settings
+        .panel(posture, crate::ui::tools::NAME);
+    assert_eq!(kept.map(|(_, view)| view), Some(PanelView::TwoRows));
 }
 
 impl Window {
@@ -719,13 +855,12 @@ fn a_panel_dragged_slowly_follows_the_pointer() {
         point += egui::vec2(1.0, 0.5);
         window.harness.event(Event::PointerMoved(point));
         window.harness.step();
-        let grip = window
-            .harness
-            .get_by_label(&t!("panel.tools"))
-            .rect()
-            .center();
-        let behind = (point - grip).length();
-        assert!(behind < 1.0, "the grip is {behind} behind the pointer");
+        if (point - start).length() <= CLICK {
+            continue;
+        }
+        let centre = window.panel(&t!("panel.tools")).center();
+        let behind = (point - centre).length();
+        assert!(behind < 1.0, "the panel is {behind} behind the pointer");
     }
     window.harness.event(button(point, false));
     window.harness.run();
@@ -844,30 +979,42 @@ fn a_bead_left_of_the_middle_opens_where_it_was() {
 }
 
 #[test]
-fn a_column_of_tools_is_two_buttons_wide() {
+fn two_columns_of_tools_stand_in_pairs() {
     let mut window = window();
 
-    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
+    window.view(crate::ui::tools::NAME, PanelView::TwoColumns);
 
-    let grip = window.harness.get_by_label(&t!("panel.tools")).rect();
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
     let redo = window.harness.get_by_label(&t!("edit.redo")).rect();
     assert!(
         (undo.center().y - redo.center().y).abs() < 1.0,
         "{undo:?} {redo:?}"
     );
-    let pair = (undo.min.x + redo.max.x) / 2.0;
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let panel = window.panel(&t!("panel.tools"));
+    assert!(panel.width() < 150.0, "the panel is {} wide", panel.width());
+}
+
+#[test]
+fn two_rows_of_tools_stand_in_pairs() {
+    let mut window = window();
+
+    window.view(crate::ui::tools::NAME, PanelView::TwoRows);
+
+    assert!(window.stacked(&t!("edit.undo"), &t!("edit.redo")));
+    assert!(window.stacked(&t!("settings.open"), &t!("view.shadows")));
+    let panel = window.panel(&t!("panel.tools"));
     assert!(
-        (pair - grip.center().x).abs() < 1.0,
-        "the pair {undo:?} {redo:?} stands under the grip {grip:?}"
+        panel.height() < 120.0,
+        "the panel is {} high",
+        panel.height()
     );
-    assert!(redo.max.x < 150.0, "the column is {} wide", redo.max.x);
 }
 
 #[test]
 fn the_buttons_of_a_row_stand_on_one_line() {
     let mut window = window();
-    window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, 8.0));
+    window.view(crate::ui::palette::NAME, PanelView::Row);
     let first = swatch(window.harness.state(), 0);
     let line = window.harness.get_by_label(&first).rect().center().y;
 

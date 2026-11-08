@@ -1,16 +1,31 @@
 # obusina-panel
 
-A floating panel for egui with no title: a grip of dots moves it, a tap on the
-grip folds it. It turns by the edge it is dragged to and by the room it has.
+A floating panel for egui with no title and no grip: any place of it moves
+it. It never turns: the caller gives its orientation.
 
 ## Scope
 
-- `FloatingPanel::new(id, name).placement(placement).show(context, |ui, room| …)`.
-  `name` is what a screen reader reads for the grip. `placement` is where the
-  panel stands the first time; later it keeps its own.
-- The grip stands at the start of the panel: on the left of a row, on top of
-  a column. Dragging it moves the panel; a tap folds the panel to the grip and
-  a second tap opens it.
+- `FloatingPanel::new(id, name).placement(placement).orientation(orientation).show(context, |ui, room| …)`.
+  `name` is what a screen reader reads for the panel.
+- The caller keeps the place: the panel stands where `placement` says, but
+  while it is held.
+- How a press takes the panel (`hold.rs`):
+
+```text
+mouse   press ──moved past max_click_dist──► taken
+finger  press ──still for max_click_duration──► taken
+        press ──moved before that──► dropped: the touch is the content's
+taken   ──moved──► follows the pointer, the point taken under it
+        ──let go after a move──► stands there; in an edge strip, against
+                                 that edge
+```
+
+  A finger waits as long as egui waits before a touch is no click, so the
+  button under it is not pressed when it lets go. A mouse moved past the
+  click is no click either.
+- A panel that is taken is lighter and has a deeper shadow (`LIFT_LIGHT`,
+  `LIFT_SHADOW`). `PanelResponse::taken` is set in the frame it is taken;
+  the caller may answer with a vibration.
 - The pointer chooses the edge strip, by a fixed distance (`edge.rs`):
 
 ```text
@@ -23,57 +38,35 @@ grip folds it. It turns by the edge it is dragged to and by the room it has.
 └──────────────────────────┘
 ```
 
-- In every frame of a drag the panel chooses its orientation, and turns at
-  once, its grip under the pointer:
-
-```text
-wanted = pointer in an edge strip ? a row at the top or the bottom,
-                                    a column at the sides
-                                  : the orientation it has
-wanted does not fit, the other fits → the other
-otherwise                           → wanted
-```
-
-  In the middle a panel fits when its far end lies inside the window. At an
-  edge, or at rest, it fits when it is not larger than the window. The size
-  of an orientation is the one last drawn in it; one never drawn is
-  measured: the content is laid out once more in that frame, invisible, in
-  an area of its own. So `add_contents` is `FnMut` and may run twice in a
-  frame; its widgets give no clicks in the invisible pass. The same
-  rule turns a panel at rest when the window changes its size.
-- Let go in an edge strip, the panel stands against that edge. Nothing is
-  drawn while a panel is dragged.
 - `Placement` holds the place as a part of the room of the window: 0 is
   against the left or the top, 1 against the right or the bottom. A panel
   against an edge stays there when the window changes its size. The room is
-  the window less `MARGIN`.
-- `PanelResponse::changed` is set in the frame the panel is let go or
-  folded; `PanelResponse::placement` is then the place to keep for the next
-  start.
+  the window less `MARGIN`, `room(window)`.
+- `PanelResponse::changed` is set in the frame the panel is let go after a
+  move; `PanelResponse::placement` is then the place to keep.
 - `FloatingPanel::content(key)`: the key of the shape of the content. When
-  it changes, the panel measures itself again; otherwise it keeps its size,
-  and a content that got smaller would stand in a panel too large.
-- `PanelResponse::shaken` is set in the frame the held grip is shaken: the
-  pointer turns three times within a short time (`shake.rs`). One drag is
-  one shake at most. The panel gives it no meaning.
+  it or the orientation changes, the panel measures itself again; otherwise
+  it keeps its size, and a content that got smaller would stand in a panel
+  too large.
 - `Room` gives the content its orientation and the length it may take along
-  it.
+  it. A line longer than that goes on in the next line; the content lays
+  itself out so.
 
-| Row | Column | Folded |
+| Row | Column | Taken |
 | --- | --- | --- |
-| ![A row][picture-horizontal] | ![A column][picture-vertical] | ![Folded][picture-folded] |
+| ![A row][picture-horizontal] | ![A column][picture-vertical] | ![Taken by the mouse][picture-lifted] |
 
 [picture-horizontal]: img/horizontal.png
 [picture-vertical]: img/vertical.png
-[picture-folded]: img/folded.png
+[picture-lifted]: img/lifted.png
 
 ## Boundaries
 
 It knows egui and nothing of the application. It holds no text: the caller
-names the grip. Its state lives in the temporary memory of egui; the caller
-keeps `Placement` if it should outlive the program. The content lays itself
-out by the `Room` it is given; the panel does not reflow it. Two panels do not
-avoid each other.
+names the panel. Its state lives in the temporary memory of egui; the caller
+keeps `Placement` and the orientation. The content lays itself out by the
+`Room` it is given; the panel does not reflow it. Two panels do not avoid
+each other.
 
 ## Errors
 

@@ -68,18 +68,20 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 - The beads have volume: round, lighter in the middle. "Volume" of the
   menu of the settings turns it off.
 - Two kinds of grid: loom (and square stitch) and peyote.
-- Two floating panels with no title. The grip of dots moves a panel; a tap on
-  it folds the panel. Dragged to the left or the right edge of the window, a
-  panel turns into a column; to the top or the bottom, into a row. A panel
-  that does not fit the window turns too. Let go at an edge, it stands
-  against it. The place of each panel is kept for the next start. The
+- Two floating panels with no title. Any place of a panel moves it: the
+  mouse pressed and moved, a finger held still and then moved. A panel
+  taken is lighter, and a phone gives a short vibration. Let go at an edge,
+  it stands against it. A panel never turns by itself: "Panels" of the menu
+  of the settings chooses its view. A line too long for the window goes on
+  in the next line. The place and the view of each panel are kept, apart for
+  a window that stands and one that lies. With none kept, the panels are
+  stood so they fit and do not overlap, at the short edges first. The
   panels:
   - **Tools**: undo, redo, the settings, the shadows, the picture, back to
-    the list;
+    the list; a row, a column, two rows or two columns;
   - **Beads**: the colours of the palette shown, each with the number of its
-    place, and the empty place `0`. They stand as a line, which turns with
-    the panel, or as a block, as the keys of a numpad; the tabs of the window
-    of the palettes or a shake of the grip switch the two. With two palettes
+    place, and the empty place `0`. They stand as a row, a column or a
+    block, as the keys of a numpad. With two palettes
     or more, buttons switch the palette. The one in hand is marked. A tap on
     it opens its menu: hide or show the colour, delete its beads, the
     settings of the palette.

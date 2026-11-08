@@ -46,28 +46,9 @@ pub enum Orientation {
     Vertical,
 }
 
-impl Orientation {
-    /// The other orientation.
-    pub fn other(self) -> Orientation {
-        match self {
-            Orientation::Horizontal => Orientation::Vertical,
-            Orientation::Vertical => Orientation::Horizontal,
-        }
-    }
-}
-
 impl Edge {
     /// Every edge.
     pub const ALL: [Edge; 4] = [Edge::Top, Edge::Right, Edge::Bottom, Edge::Left];
-
-    /// How a panel stands at this edge: a row along the top and the bottom, a
-    /// column along the sides.
-    pub fn orientation(self) -> Orientation {
-        match self {
-            Edge::Top | Edge::Bottom => Orientation::Horizontal,
-            Edge::Left | Edge::Right => Orientation::Vertical,
-        }
-    }
 
     /// The edge a panel dragged to `point` docks to, or `None` in the free
     /// middle. `held` is the edge chosen in the frame before: it reaches
@@ -97,9 +78,9 @@ impl Edge {
 
     /// How far this edge reaches into `window`.
     fn reach(self, window: Rect) -> f32 {
-        let side = match self.orientation() {
-            Orientation::Horizontal => window.height(),
-            Orientation::Vertical => window.width(),
+        let side = match self {
+            Edge::Top | Edge::Bottom => window.height(),
+            Edge::Left | Edge::Right => window.width(),
         };
         SNAP.min(side * SNAP_PART)
     }
@@ -208,11 +189,5 @@ mod tests {
             Edge::under(WINDOW, past, Some(Edge::Left)),
             Some(Edge::Left)
         );
-    }
-
-    #[test]
-    fn the_sides_stand_a_panel_up() {
-        assert_eq!(Edge::Left.orientation(), Orientation::Vertical);
-        assert_eq!(Edge::Top.orientation(), Orientation::Horizontal);
     }
 }

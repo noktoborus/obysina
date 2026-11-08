@@ -3,9 +3,10 @@
 //! on the ground of the panel, outlined;
 //! the one in hand marked
 //! by a bar under it, a hidden one hatched.
-//! A line runs along the panel and turns with it; a block stands as the keys
-//! of a numpad (decision 10 of `docs/palette.md`). A shake of its grip turns
-//! one into the other.
+//! A row or a column runs along the panel and goes on in the next line where
+//! the window ends; a block stands as the keys of a numpad (decision 10 of
+//! `docs/palette.md`). The menu of the settings chooses among them
+//! (`crate::ui::panels`).
 //!
 //! ```text
 //! line   < 1 2 3 4 5 6 7 8 9 0 >      block   7 8 9
@@ -20,17 +21,20 @@
 use egui::{Color32, vec2};
 use rust_i18n::t;
 
-use obusina_panel::{FloatingPanel, Orientation, Placement, Room};
+use obusina_panel::{FloatingPanel, Orientation, Room};
 use obusina_pattern::{ColourId, Rgb};
 use plate_menu::MenuItem;
 
 use crate::app::App;
-use crate::settings::PaletteView;
+use crate::settings::PanelView;
 use crate::ui::palette_window::{block, delete_beads, step};
+use crate::ui::panels::{self, Stood};
 use crate::ui::{button, icons};
 
 /// The name the place of the panel is kept by.
-const NAME: &str = "palette";
+pub const NAME: &str = "palette";
+/// The views the menu offers.
+pub const VIEWS: [PanelView; 3] = [PanelView::Row, PanelView::Column, PanelView::Block];
 /// The space between two swatches.
 const SPACING: egui::Vec2 = vec2(4.0, 4.0);
 
@@ -51,31 +55,48 @@ enum Entry {
 
 /// Shows the panel of beads.
 pub fn show(app: &mut App, context: &egui::Context) {
-    let placement = app
-        .settings
-        .panel(NAME)
-        .unwrap_or(Placement::new(vec2(1.0, 0.0), Orientation::Vertical));
-    let content = (app.settings.palette_view(), entries(app));
+    let Stood {
+        placement,
+        view,
+        posture,
+    } = panels::stand(app, context, NAME);
+    let content = (view, entries(app));
     let shown = FloatingPanel::new(NAME, t!("panel.palette"))
         .placement(placement)
+        .orientation(view.orientation())
         .content(content)
         .show(context, |ui, room| {
             ui.spacing_mut().item_spacing = SPACING;
-            match app.settings.palette_view() {
-                PaletteView::Line => line(app, ui, room),
-                PaletteView::Block => numpad(app, ui),
+            match view {
+                PanelView::Block => numpad(app, ui),
+                _ => line(app, ui, room),
             }
         });
-    if shown.changed {
-        app.keep_panel(NAME, shown.placement);
-    }
-    if shown.shaken {
-        let other = match app.settings.palette_view() {
-            PaletteView::Line => PaletteView::Block,
-            PaletteView::Block => PaletteView::Line,
-        };
-        app.keep_palette_view(other);
-    }
+    panels::after(app, posture, NAME, view, &shown);
+}
+
+/// The size of the panel in `view`, for the panels to be stood
+/// (`crate::ui::arrange`).
+pub fn size(app: &App, context: &egui::Context, view: PanelView) -> egui::Vec2 {
+    let margin = egui::Frame::window(&context.global_style())
+        .total_margin()
+        .sum();
+    let step = button::SIZE + SPACING;
+    let along = |count: usize, step: f32, spacing: f32| count as f32 * step - spacing;
+    let count = entries(app).len();
+    let size = match view {
+        PanelView::Row | PanelView::TwoRows => {
+            egui::vec2(along(count, step.x, SPACING.x), button::SIZE.y)
+        }
+        PanelView::Column | PanelView::TwoColumns => {
+            egui::vec2(button::SIZE.x, along(count, step.y, SPACING.y))
+        }
+        PanelView::Block => {
+            let rows = shown(app).len().div_ceil(3) + 2;
+            egui::vec2(along(3, step.x, SPACING.x), along(rows, step.y, SPACING.y))
+        }
+    };
+    size + margin
 }
 
 /// The buttons of the line, in order.
@@ -99,8 +120,9 @@ fn entries(app: &App) -> Vec<Entry> {
 }
 
 /// How many of `count` buttons stand in one line, so they fit the length of
-/// `room`. Along a row they are one line, cut where the window ends; along a
-/// column they are one column, two or more when the window is too short.
+/// `room`. Along a row they are one row, two or more when the window is too
+/// narrow; along a column they are one column, two or more when the window
+/// is too short.
 fn per_line(room: Room, count: usize) -> usize {
     let step = button::SIZE + SPACING;
     match room.orientation {

@@ -45,7 +45,7 @@ and `experiments/mockups` are no layer: nothing depends on them.
 | `obusina-backdrop` | the pictures under the patterns and how each lies, kept in a directory of the cache |
 | `obusina-button` | a button of a fixed size, its label in the middle, plain, selected or filled |
 | `plate-menu` | a menu of wide plates in the middle of the window; the settings are chosen in it |
-| `obusina-panel` | a floating panel with a grip, turned by the edge it is dragged to and by the room it has |
+| `obusina-panel` | a floating panel with no grip, moved by any place of it, stood against the edge it is let go at |
 | `egui-notify` | toasts, with a button of an action; a copy of the crate of crates.io |
 | `obusina` | the window, the list of patterns, the panels, the history of edits, the settings, the text of the user |
 | `obusina-android` | the library android loads; calls `obusina::android` |

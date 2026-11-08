@@ -94,13 +94,14 @@ model (`crates/obusina-pattern/README.md`). Its tests are
    ```
 
 10. **The palette has two views, a line and a block.** Tabs on top of the
-    window of the palette switch them. A new colour takes the first free place
-    after the last colour, in the order of the numbers. A shake of the panel
-    by its grip switches them too.
+    window of the palette switch them in the window; "Panels" of the menu of
+    the settings in the panel, where the line is a row or a column. A new
+    colour takes the first free place after the last colour, in the order of
+    the numbers.
     - The line: `< 1 2 3 4 5 6 7 8 9 0 >`, with a narrow `0`; `<` and `>` while
       there are three palettes or more, one `↔` after `0` with two. An empty place is left
-      out in the panel. It turns by the room it has and by the edge it stands
-      at (`RULE ui.dock`), in the same order.
+      out in the panel. It goes on in the next line where the window ends
+      (`RULE ui.dock`), in the same order.
     - The block: `7 8 9 / 4 5 6 / 1 2 3`, with a wide `0` under `1 2`. Empty rows
       are folded in the panel, and an empty place in a row is a gap. In the
       window, every place stands, each empty one a "+".

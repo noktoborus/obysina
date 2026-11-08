@@ -140,6 +140,9 @@ pub struct App {
     pub(crate) palette: usize,
     /// The window of the palettes.
     pub(crate) palette_window: crate::ui::palette_window::PaletteWindow,
+    /// The posture of the window in the last frame: the panels are kept
+    /// apart for each.
+    pub(crate) posture: crate::settings::Posture,
     /// The menu of the colour in hand on the panel of beads.
     pub(crate) bead_menu: plate_menu::PlateMenu,
     /// What that menu is of: a colour, or the empty place.
@@ -214,6 +217,7 @@ impl App {
             palette_window: Default::default(),
             bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
             bead_menu_of: None,
+            posture: crate::settings::Posture::Landscape,
             settings_edit: None,
             backdrop: crate::backdrop::Backdrop::new(places.pictures),
             backdrop_menu: plate_menu::PlateMenu::new().with_id("backdrop-menu"),
@@ -274,8 +278,14 @@ impl App {
     }
 
     /// Keeps the place of the panel `name` for the next start.
-    pub(crate) fn keep_panel(&mut self, name: &str, placement: obusina_panel::Placement) {
-        let write = self.settings.keep_panel(name, placement);
+    pub(crate) fn keep_panel(
+        &mut self,
+        posture: crate::settings::Posture,
+        name: &str,
+        placement: obusina_panel::Placement,
+        view: crate::settings::PanelView,
+    ) {
+        let write = self.settings.keep_panel(posture, name, placement, view);
         self.write_settings(write);
     }
 
@@ -448,6 +458,7 @@ impl eframe::App for App {
         if self.screen != crate::session::Screen::Editor {
             return;
         }
+        self.posture = crate::settings::Posture::of(ui.ctx().content_rect().size());
         egui::CentralPanel::no_frame().show(ui, |ui| self.field(ui));
         crate::ui::tools::show(self, ui.ctx());
         if !self.pattern.locked() {
