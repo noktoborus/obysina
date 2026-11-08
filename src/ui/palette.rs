@@ -9,10 +9,13 @@
 //! (`crate::ui::panels`).
 //!
 //! ```text
-//! line   < 1 2 3 4 5 6 7 8 9 0 > 🎨     block   7 8 9
-//!                                              4 5 6
-//!                                              1 2 3
-//!                                              0 🎨 ↔
+//! line   < 1 2 3 4 5 6 7 8 9 0 > 🎨
+//!
+//! block  7 8 9      two palettes  7 8 9      three or more  7 8 9
+//!        4 5 6                    4 5 6                     4 5 6
+//!        1 2 3                    1 2 3                     1 2 3
+//!        0 🎨                     0 🎨 ↔                    [ 0 ]
+//!                                                           < 🎨 >
 //! ```
 //!
 //! With two palettes one button `↔` goes to the other, after `0`; with more,
@@ -46,6 +49,9 @@ enum Entry {
     Colour(usize, ColourId),
     /// The empty place, `0`.
     Empty,
+    /// The empty place, `0`, as wide as two swatches: the block with more
+    /// than two palettes.
+    WideEmpty,
     /// The previous palette.
     Back,
     /// The next palette.
@@ -160,8 +166,8 @@ fn line(app: &mut App, ui: &mut egui::Ui, room: Room) {
 }
 
 /// The block: the colours as the keys of a numpad, rows with no colour
-/// folded, a gap for an empty place; `0` and `🎨` under them, the switch of
-/// two palettes beside them, of more on a row under them.
+/// folded, a gap for an empty place. Under them `0` and `🎨`, and `↔` with
+/// two palettes; with more, a wide `0`, and `< 🎨 >` on a row under it.
 fn numpad(app: &mut App, ui: &mut egui::Ui) {
     let colours = shown(app);
     let rows = block(obusina_pattern::MAX_COLOURS);
@@ -185,17 +191,20 @@ fn numpad(app: &mut App, ui: &mut egui::Ui) {
                 }
             });
         }
-        ui.horizontal(|ui| {
-            button_of(app, ui, Entry::Empty);
-            button_of(app, ui, Entry::Palettes);
-            if palettes == 2 {
-                button_of(app, ui, Entry::Other);
-            }
-        });
         if palettes > 2 {
+            ui.horizontal(|ui| button_of(app, ui, Entry::WideEmpty));
             ui.horizontal(|ui| {
                 button_of(app, ui, Entry::Back);
+                button_of(app, ui, Entry::Palettes);
                 button_of(app, ui, Entry::On);
+            });
+        } else {
+            ui.horizontal(|ui| {
+                button_of(app, ui, Entry::Empty);
+                button_of(app, ui, Entry::Palettes);
+                if palettes == 2 {
+                    button_of(app, ui, Entry::Other);
+                }
             });
         }
     });
@@ -222,11 +231,15 @@ fn button_of(app: &mut App, ui: &mut egui::Ui, entry: Entry) {
                 tap(app, Some(id));
             }
         }
-        Entry::Empty => {
+        Entry::Empty | Entry::WideEmpty => {
             let fill = ui.visuals().window_fill;
             let in_hand = app.colour.is_none();
             let name = t!("palette.empty");
-            let response = button::colour(ui, (Some(fill), false), icons::EMPTY, in_hand, &name);
+            let response = if entry == Entry::WideEmpty {
+                button::wide(ui, fill, icons::EMPTY, in_hand, &name)
+            } else {
+                button::colour(ui, (Some(fill), false), icons::EMPTY, in_hand, &name)
+            };
             if response.clicked() {
                 tap(app, None);
             }

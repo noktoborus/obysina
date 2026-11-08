@@ -505,3 +505,48 @@ fn a_press_beside_the_picker_closes_it_and_nothing_else() {
     let places = window.harness.state().pattern.palettes()[0].places();
     assert!(places[0].is_some(), "colour 1 was not tapped");
 }
+
+/// In the block with three palettes, `0` is two swatches wide and `🎨`
+/// stands between `<` and `>` on the row under it; with two, `0 🎨 ↔` stand
+/// on one row, `0` one swatch wide.
+#[test]
+fn the_block_puts_the_palette_button_between_the_arrows() {
+    let mut window = two_palettes();
+    window.view(crate::ui::palette::NAME, PanelView::Block);
+    let rect = |window: &super::Window, name: &str| window.harness.get_by_label(name).rect();
+    let first = swatch(window.harness.state(), 0);
+    let one = rect(&window, &first);
+    let empty = rect(&window, &t!("palette.empty"));
+    let palettes = rect(&window, &t!("palette.settings"));
+    let switch = rect(&window, &t!("palette.switch"));
+    assert_eq!(empty.width(), one.width());
+    for beside in [palettes, switch] {
+        assert!(
+            (beside.center().y - empty.center().y).abs() < 1.0,
+            "{beside:?}"
+        );
+    }
+
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    choose(&mut window, &colour(3), &t!("palette.move"));
+    window.click(&t!("palette.new"));
+    window.harness.state_mut().palette_window.open = false;
+    window.harness.run();
+    assert_eq!(window.harness.state().pattern.palettes().len(), 3);
+
+    let one = rect(&window, &swatch(window.harness.state(), 0));
+    let empty = rect(&window, &t!("palette.empty"));
+    let back = rect(&window, &t!("palette.previous"));
+    let palettes = rect(&window, &t!("palette.settings"));
+    let on = rect(&window, &t!("palette.next"));
+    assert!(empty.width() > one.width() * 2.0, "the 0 is wide");
+    assert!(back.min.y > empty.max.y, "the arrows under the 0");
+    for beside in [palettes, on] {
+        assert!(
+            (beside.center().y - back.center().y).abs() < 1.0,
+            "{beside:?}"
+        );
+    }
+    assert!(back.max.x < palettes.min.x && palettes.max.x < on.min.x);
+}

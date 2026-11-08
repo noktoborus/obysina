@@ -103,10 +103,11 @@ model (`crates/obusina-pattern/README.md`). Its tests are
       out in the panel. It goes on in the next line where the window ends
       (`RULE ui.dock`), in the same order.
     - The block: `7 8 9 / 4 5 6 / 1 2 3`, with `0 🎨` under `1 2`, and `↔`
-      beside them with two palettes; `< >` on a row under them with more.
+      beside them with two palettes. With more, a `0` as wide as two
+      swatches under `1 2`, and `< 🎨 >` on a row under it.
       Empty rows are folded in the panel, and an empty place in a row is a
       gap.
-      - Was: a `0` as wide as two swatches. In the
+      - Was: a wide `0` always, the switch beside it or under it. In the
       window, every place stands, each empty one a "+".
     - The digits of the keyboard and the numpad choose the colour in hand, `0`
       the empty place; a field of the tools that holds the focus keeps its
