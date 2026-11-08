@@ -50,14 +50,6 @@ pub fn colour(
     ui.add(button.marked(in_hand).name(name))
 }
 
-/// The empty place of the panel of beads, as wide as two swatches and the
-/// space between them, as the `0` of a numpad.
-pub fn wide(ui: &mut Ui, fill: Color32, label: &str, in_hand: bool, name: &str) -> Response {
-    let size = vec2(SIZE.x * 2.0 + ui.spacing().item_spacing.x, SIZE.y);
-    let button = SquareButton::new(label, size).text_size(TEXT);
-    ui.add(button.fill(fill).marked(in_hand).name(name))
-}
-
 /// A place of the window of the palettes with a colour not seen: hatched,
 /// selected while a dragged colour would go there.
 pub fn hatched(ui: &mut Ui, label: &str, selected: bool, name: &str) -> Response {

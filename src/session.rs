@@ -82,9 +82,8 @@ impl App {
         self.palette = 0;
         self.message = None;
         self.settings_edit = None;
-        self.bead_menu_of = None;
         self.palette_window.open = false;
-        for menu in [&mut self.menu, &mut self.bead_menu, &mut self.backdrop_menu] {
+        for menu in [&mut self.menu, &mut self.backdrop_menu] {
             menu.close();
         }
         self.backdrop = crate::backdrop::Backdrop::new(self.pictures.clone());

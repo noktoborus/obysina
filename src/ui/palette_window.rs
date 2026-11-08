@@ -8,8 +8,9 @@
 //!                 an empty place shows the colour farthest from the others
 //!                    │──accept────────► kept, as the steps below
 //!                    │──move──────────► one palette: a new one; more: a menu of them
+//!                    │──hide, show────► the beads of the colour hatched, or seen again
+//!                    │──delete beads──► the beads of the colour go
 //!                    │──remove────────► with beads its place is hatched; with none, empty
-//!                    │──delete beads──► the beads of a removed colour go
 //!                    └──cancel────────► the palettes as they were
 //!      closed with no entry, or by Escape ──► the palettes as they were
 //! all that is kept while the window is open is one step of the history,
@@ -474,19 +475,27 @@ fn tap(app: &mut App, place: usize) {
         }
     };
     let beads = app.pattern.count(id);
-    let last = match &colour {
-        Some(colour) if colour.rgb.is_none() && beads > 0 => {
-            MenuItem::new("beads", delete_beads(beads))
-        }
-        Some(_) => MenuItem::new("remove", t!("palette.remove")),
-        None => MenuItem::new("remove", t!("palette.remove")).enabled(false),
-    };
-    let items = vec![
+    let mut items = vec![
         MenuItem::new("accept", t!("palette.accept")),
         MenuItem::new("move", t!("palette.move")).enabled(colour.is_some()),
-        last,
-        MenuItem::new("cancel", t!("palette.cancel")),
     ];
+    match &colour {
+        Some(colour) if colour.rgb.is_none() && beads > 0 => {
+            items.push(MenuItem::new("beads", delete_beads(beads)));
+        }
+        Some(colour) => {
+            let hide = if colour.hidden {
+                t!("palette.show")
+            } else {
+                t!("palette.hide")
+            };
+            items.push(MenuItem::new("hide", hide));
+            items.push(MenuItem::new("beads", delete_beads(beads)).enabled(beads > 0));
+            items.push(MenuItem::new("remove", t!("palette.remove")));
+        }
+        None => items.push(MenuItem::new("remove", t!("palette.remove")).enabled(false)),
+    }
+    items.push(MenuItem::new("cancel", t!("palette.cancel")));
     let state = &mut app.palette_window;
     if let Err(error) = state.menu.open(items) {
         log::error!("the menu of a colour does not open: {error}");
@@ -599,6 +608,15 @@ fn menu(app: &mut App, context: &egui::Context) {
                 put_back(&mut app.pattern, before);
                 if let Some(id) = colour_at(app, place).map(|colour| colour.id) {
                     app.history.delete_beads(&mut app.pattern, id);
+                }
+            }
+            "hide" => {
+                put_back(&mut app.pattern, before);
+                if let Some(found) = colour_at(app, place).cloned() {
+                    change(app, |pattern| {
+                        pattern.set_hidden(found.id, !found.hidden);
+                        Ok(())
+                    });
                 }
             }
             _ => put_back(&mut app.pattern, before),

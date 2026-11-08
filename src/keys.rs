@@ -178,7 +178,7 @@ fn editor_layer(app: &App, text: bool) -> Layer {
     let window = &app.palette_window;
     if window.open && window.menu_open() {
         Layer::PaletteMenu
-    } else if app.bead_menu.is_open() || app.menu.is_open() || app.backdrop_menu.is_open() {
+    } else if app.menu.is_open() || app.backdrop_menu.is_open() {
         Layer::Menu
     } else if text {
         Layer::Text

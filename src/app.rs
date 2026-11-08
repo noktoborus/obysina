@@ -143,10 +143,6 @@ pub struct App {
     /// The posture of the window in the last frame: the panels are kept
     /// apart for each.
     pub(crate) posture: crate::settings::Posture,
-    /// The menu of the colour in hand on the panel of beads.
-    pub(crate) bead_menu: plate_menu::PlateMenu,
-    /// What that menu is of: a colour, or the empty place.
-    pub(crate) bead_menu_of: Option<Option<ColourId>>,
     /// The ruling or the paper being changed in the menu of the settings,
     /// while it is.
     pub(crate) settings_edit: Option<crate::ui::settings_menu::Editing>,
@@ -215,8 +211,6 @@ impl App {
             settings,
             palette: 0,
             palette_window: Default::default(),
-            bead_menu: plate_menu::PlateMenu::new().with_id("bead-menu"),
-            bead_menu_of: None,
             posture: crate::settings::Posture::Landscape,
             settings_edit: None,
             backdrop: crate::backdrop::Backdrop::new(places.pictures),
@@ -464,7 +458,6 @@ impl eframe::App for App {
         if !self.pattern.locked() {
             crate::ui::palette::show(self, ui.ctx());
             crate::ui::palette_window::show(self, ui.ctx());
-            crate::ui::palette::menu(self, ui.ctx());
         }
         crate::ui::settings_menu::show(self, ui.ctx());
         crate::ui::backdrop_menu::show(self, ui.ctx());

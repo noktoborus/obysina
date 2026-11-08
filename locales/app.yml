@@ -217,9 +217,6 @@ palette.place:
 palette.title:
   en: "Colour %{number} · %{rgb} · beads: %{count}"
   ru: "Цвет %{number} · %{rgb} · бусин: %{count}"
-palette.in_hand:
-  en: "Colour %{rgb}"
-  ru: "Цвет %{rgb}"
 palette.accept:
   en: "Accept"
   ru: "Принять"

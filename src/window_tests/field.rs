@@ -168,7 +168,7 @@ fn the_glow_is_kept_until_the_next_start() {
 fn the_settings_lead_to_the_palettes_and_to_the_list() {
     let mut window = window();
     window.click(&t!("settings.open"));
-    window.click(&t!("palette.settings"));
+    window.click_last(&t!("palette.settings"));
     let app = window.harness.state();
     assert!(!app.menu.is_open());
     assert!(app.palette_window.open);

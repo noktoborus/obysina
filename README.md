@@ -82,13 +82,13 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
   - **Beads**: the colours of the palette shown, each with the number of its
     place, and the empty place `0`. They stand as a row, a column or a
     block, as the keys of a numpad. With two palettes
-    or more, buttons switch the palette. The one in hand is marked. A tap on
-    it opens its menu: hide or show the colour, delete its beads, the
-    settings of the palette.
+    or more, buttons switch the palette. The one in hand is marked. `🎨`
+    opens the window of the palettes.
 - A pattern has one palette or more, each of nine places. The window of the
-  palettes, opened from that menu or by `P`, shows the places as a line or
+  palettes, opened by `🎨`, the menu of the settings or `P`, shows the places as a line or
   as a block. A tap on a place opens the picker of its colour; the colour
-  stays when it is accepted. A colour is moved to another palette, removed,
+  stays when it is accepted. A colour is hidden or shown, its beads are
+  deleted, it is moved to another palette, removed,
   or dragged onto another place, which swaps the two. A removed colour keeps
   its beads, hatched, until a colour is put in its place again. All that
   is changed while the window is open is one step of undo, made when it

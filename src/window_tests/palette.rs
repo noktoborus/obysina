@@ -36,28 +36,20 @@ fn choose(window: &mut super::Window, place: &str, entry: &str) {
     window.click(entry);
 }
 
+/// A second tap on the colour in hand opens nothing; the button of the
+/// palette opens the window of the palettes.
 #[test]
-fn a_second_tap_on_the_colour_in_hand_opens_its_menu() {
+fn a_second_tap_opens_nothing_and_the_palette_button_opens_the_window() {
     let mut window = window();
     let first = swatch(window.harness.state(), 0);
 
     window.click(&first);
-    assert!(window.harness.state().bead_menu.is_open());
+    window.click(&first);
+    assert!(!window.harness.state().menu.is_open());
+    assert!(!window.harness.state().palette_window.open);
+    assert_eq!(window.harness.state().colour, Some(id_at(0)));
+
     window.click(&t!("palette.settings"));
-
-    assert!(window.harness.state().palette_window.open);
-}
-
-#[test]
-fn the_empty_place_in_hand_opens_the_settings() {
-    let mut window = window();
-
-    window.click(&t!("palette.empty"));
-    assert_eq!(window.harness.state().colour, None);
-    window.click(&t!("palette.empty"));
-    assert!(window.harness.query_by_label(&t!("palette.hide")).is_none());
-    window.click(&t!("palette.settings"));
-
     assert!(window.harness.state().palette_window.open);
 }
 
@@ -265,26 +257,30 @@ fn the_tab_of_the_block_shows_every_place() {
     }
 }
 
+/// The menu of a place of the window hides a colour, shows it again and
+/// deletes its beads.
 #[test]
-fn the_menu_on_the_panel_hides_a_colour_and_deletes_its_beads() {
+fn the_menu_of_a_place_hides_a_colour_and_deletes_its_beads() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
-    let first = swatch(window.harness.state(), 0);
-
-    window.click(&first);
-    window.click(&t!("palette.hide"));
-    assert!(
+    window.harness.key_press(Key::P);
+    window.harness.run();
+    let hidden = |window: &super::Window| {
         window
             .harness
             .state()
             .pattern
             .colour(id_at(0))
             .is_some_and(|found| found.hidden)
-    );
+    };
 
-    let first = swatch(window.harness.state(), 0);
-    window.click(&first);
-    window.click(&delete_beads(1));
+    choose(&mut window, &colour(1), &t!("palette.hide"));
+    assert!(hidden(&window));
+    let hidden_one = t!("palette.hidden_colour", number = 1).to_string();
+    choose(&mut window, &hidden_one, &t!("palette.show"));
+    assert!(!hidden(&window));
+
+    choose(&mut window, &colour(1), &delete_beads(1));
     assert_eq!(window.harness.state().pattern.count(id_at(0)), 0);
 }
 
@@ -400,7 +396,13 @@ fn the_block_stands_as_a_numpad_and_is_kept() {
     assert!(window.stacked(&fourth, &first), "4 stands over 1");
     let empty = window.harness.get_by_label(&t!("palette.empty")).rect();
     let one = window.harness.get_by_label(&first).rect();
-    assert!(empty.width() > one.width() * 2.0, "the 0 is wide");
+    let palettes = window.harness.get_by_label(&t!("palette.settings")).rect();
+    assert_eq!(empty.width(), one.width(), "the 0 is one swatch wide");
+    assert!(empty.max.y < palettes.max.y + 1.0 && palettes.min.x > empty.max.x);
+    assert!(
+        (palettes.center().y - empty.center().y).abs() < 1.0,
+        "🎨 beside 0"
+    );
 
     let super::Window { harness, directory } = window;
     drop(harness);
@@ -502,41 +504,4 @@ fn a_press_beside_the_picker_closes_it_and_nothing_else() {
     );
     let places = window.harness.state().pattern.palettes()[0].places();
     assert!(places[0].is_some(), "colour 1 was not tapped");
-}
-
-/// A press beside the menu of the colour in hand closes it; the panel under
-/// it does not answer.
-#[test]
-fn a_press_beside_the_menu_of_the_colour_in_hand_closes_it() {
-    let mut window = window();
-    let first = swatch(window.harness.state(), 0);
-    let third = window
-        .harness
-        .get_by_label(&swatch(window.harness.state(), 2))
-        .rect()
-        .center();
-    window.click(&first);
-    assert!(window.harness.state().bead_menu.is_open());
-
-    press_at(&mut window, third);
-
-    assert!(!window.harness.state().bead_menu.is_open());
-    assert_eq!(window.harness.state().colour, Some(id_at(0)));
-}
-
-/// The empty place tapped twice opens its menu; a press on the field closes
-/// it, and the next press takes the bead away.
-#[test]
-fn the_field_takes_a_bead_away_after_the_menu_of_the_empty_place() {
-    let mut window = window();
-    window.press(super::FREE, PointerButton::Primary);
-    window.click(&t!("palette.empty"));
-    window.click(&t!("palette.empty"));
-    assert!(window.harness.state().bead_menu.is_open());
-
-    window.press(super::FREE, PointerButton::Primary);
-    assert!(!window.harness.state().bead_menu.is_open());
-    window.press(super::FREE, PointerButton::Primary);
-
-    assert_eq!(window.harness.state().pattern.get(super::FREE), None);
 }

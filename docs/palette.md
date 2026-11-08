@@ -98,12 +98,15 @@ model (`crates/obusina-pattern/README.md`). Its tests are
     the settings in the panel, where the line is a row or a column. A new
     colour takes the first free place after the last colour, in the order of
     the numbers.
-    - The line: `< 1 2 3 4 5 6 7 8 9 0 >`, with a narrow `0`; `<` and `>` while
-      there are three palettes or more, one `↔` after `0` with two. An empty place is left
+    - The line: `< 1 2 3 4 5 6 7 8 9 0 > 🎨`; `<` and `>` while there are
+      three palettes or more, one `↔` after `0` with two; `🎨` last. An empty place is left
       out in the panel. It goes on in the next line where the window ends
       (`RULE ui.dock`), in the same order.
-    - The block: `7 8 9 / 4 5 6 / 1 2 3`, with a wide `0` under `1 2`. Empty rows
-      are folded in the panel, and an empty place in a row is a gap. In the
+    - The block: `7 8 9 / 4 5 6 / 1 2 3`, with `0 🎨` under `1 2`, and `↔`
+      beside them with two palettes; `< >` on a row under them with more.
+      Empty rows are folded in the panel, and an empty place in a row is a
+      gap.
+      - Was: a `0` as wide as two swatches. In the
       window, every place stands, each empty one a "+".
     - The digits of the keyboard and the numpad choose the colour in hand, `0`
       the empty place; a field of the tools that holds the focus keeps its
@@ -140,23 +143,28 @@ model (`crates/obusina-pattern/README.md`). Its tests are
     hides it. The swatch gets lower.
     - Was: a thick frame, black or white, whichever read on the swatch; a ring;
       two bars.
-14. **A tap on the colour in hand opens its menu on the panel:** its title,
-    then hide or show, delete <n> beads, and palette settings. A first tap
-    takes the colour in hand. The right button does nothing on the panel or on the field. A hidden colour keeps its rgb and
+14. **A tap on a colour takes it in hand; a second tap does nothing
+    more.** Hide or show and delete <n> beads are entries of the menu of its
+    place in the window. The right button does nothing on the panel or on
+    the field. A hidden colour keeps its rgb and
     stands on the panel, hatched, and its beads are hatched; "show" brings it
     back. In the window it is hatched with its number. It can be drawn with,
     and the new beads are hatched. Delete takes only the beads.
+    - Was: a second tap opened a menu on the panel: hide or show, delete
+      the beads, palette settings. A tap meant for the colour opened it.
 
-15. **The window of the palette opens from the menu on the panel,** by the
-    entry "palette settings", or by the key `P` while no field holds the focus.
-    `0` is the way with no colours: a tap takes it in hand, a second tap opens a
-    menu with that one entry.
+15. **The window of the palette opens by `🎨` on the panel** (`icons::PALETTE`),
+    by "palette settings" of the menu of the settings, or by the key `P`
+    while no field holds the focus. `⚙` stays the menu of the settings: two
+    signs of one look must not do two things.
 
 ```text
 tap a colour ──► PlateMenu: the picker of the colour on top, then
                     │──accept──────────► the colour stays as picked
                     │──move to another─► one palette: a new one;
                     │                    more: a PlateMenu of them and a new one
+                    │──hide, show──────► its beads hatched, or seen again
+                    │──delete <n> beads► its beads go; weak with none
                     │──remove──────────► its place and its beads hatched
                     └──cancel──────────► the colour goes back to what it was
 tap a hatched place ──► the same, with "delete <n> beads" for "remove"
@@ -172,6 +180,4 @@ close the window ──► all kept while it was open is one step of undo
 
 - Every decision is in the window. The mockups that drew them are gone
   (`RULE ui.mockup`): the history of `experiments/mockups` keeps them.
-- The menu of the colour in hand (decision 14) came with the window of the
-  palettes, as its way in.
 - No note waits on the desk `obusina` of showcase.

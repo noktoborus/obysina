@@ -21,6 +21,8 @@ pub const EXPORT: &str = "\u{1f4e4}";
 pub const TRASH: &str = "\u{1f5d1}";
 /// The settings of the pattern and of the view, the gear.
 pub const SETTINGS: &str = "\u{2699}";
+/// The window of the palettes: a palette of a painter.
+pub const PALETTE: &str = "\u{1f3a8}";
 
 /// The shadows of the empty places, the dark shade.
 pub const SHADOW: &str = "\u{2593}";
@@ -48,7 +50,7 @@ pub const EMPTY: &str = "\u{1f6ab}";
 #[cfg(test)]
 pub const ALL: &[&str] = &[
     UNDO, REDO, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH, SETTINGS, SHADOW, PICTURE, DONE, CANCEL,
-    EMPTY, LOCK, UNLOCK, MENU,
+    EMPTY, LOCK, UNLOCK, MENU, PALETTE,
 ];
 
 #[cfg(test)]
