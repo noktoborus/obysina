@@ -63,7 +63,7 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 - The menu of the settings: the grid, the turn of the canvas, the ruling,
   the size of the sheet and the background colour, each a level of its own
   whose change shows at once and can be put back; the palette settings,
-  the volume, the way back to the list. `Esc` or the way back of android
+  the background picture, the panels, the volume, the way back to the list. `Esc` or the way back of android
   leaves a level.
 - The background colour is set in the menu of the settings and kept in
   the pattern. The shade and the shadows turn with it: darker on a light

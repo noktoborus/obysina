@@ -14,13 +14,17 @@
 //!                  └ put the old one back ──► the value the level was entered
 //!                                             with; only once it changed
 //!              palettes           ──► the window of the palettes
+//!              background picture <none | shown | hidden>
+//!                                 ──► the menu of the picture
+//!                                     (`crate::ui::backdrop_menu`)
 //!              panels           › ──► ‹ panels │ beads › │ tools ›
 //!                  ‹ beads │ horizontal line ✔ │ vertical line │ block
 //!                  a choice: kept for the posture of the window now
 //!              glow <on | off>    ──► on or off, a setting of the program
 //!              back to the list   ──► the pattern saved, the list
 //!              close the settings
-//! a locked pattern: glow, back to the list, close
+//! a locked pattern: background picture, panels, glow, back to the list,
+//! close
 //! a ruling, a size or a background left or closed over ──► one step of undo,
 //!                                                          none when unchanged
 //! ```
@@ -136,6 +140,7 @@ fn items(app: &App) -> Vec<MenuItem> {
         _ => Vec::new(),
     };
     items.extend([
+        MenuItem::new("backdrop", t!("backdrop.open")).detail(crate::ui::backdrop_menu::state(app)),
         panels_item(app),
         MenuItem::new("glow", t!("view.glow")).detail(glow),
         MenuItem::separator(),
@@ -387,6 +392,7 @@ fn choose(app: &mut App, context: &egui::Context, id: &str) {
             reopen_at(app, "glow");
         }
         "palettes" => app.palette_window.open = true,
+        "backdrop" => crate::ui::backdrop_menu::open(app),
         "to-list" => {
             leave(app);
             let time = context.input(|input| input.time);

@@ -586,3 +586,17 @@ fn the_buttons_turn_and_align_the_picture() {
     window.click(&t!("backdrop.align"));
     assert!((turn(&window) - 10.0).abs() < 0.01, "{}", turn(&window));
 }
+
+/// "Background picture" of the menu of the settings opens the menu of the
+/// picture: with none, only the choice of a file is offered.
+#[test]
+fn the_settings_open_the_menu_of_the_picture() {
+    let mut window = window();
+    window.click(&t!("settings.open"));
+    window.click(&t!("backdrop.open"));
+
+    let app = window.harness.state();
+    assert!(!app.menu.is_open());
+    assert!(app.backdrop_menu.is_open());
+    window.harness.get_by_label(&t!("backdrop.choose"));
+}

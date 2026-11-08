@@ -5,6 +5,8 @@
 //! picture, none ──────────► the choice of a file of the platform
 //! picture, hidden ────────► shown again
 //! picture, shown or loads ► PlateMenu: the opacity on top, then
+//! "background picture" of the menu of the settings ──► the same PlateMenu,
+//!               with or without a picture, hidden or not
 //!               │──choose a picture…─► the dialog of the platform; the
 //!               │                      picture takes the place of the old one
 //!               │                      and its corners
@@ -76,8 +78,9 @@ pub fn editing(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// Opens the menu of the picture.
-fn open(app: &mut App) {
+/// Opens the menu of the picture: from the button of the picture, and from
+/// "background picture" of the menu of the settings.
+pub fn open(app: &mut App) {
     let has = app.backdrop.has();
     let hide = if app.backdrop.hidden() {
         t!("backdrop.show")
@@ -118,6 +121,18 @@ fn ask_remove(app: &mut App) {
         return;
     }
     app.backdrop_menu.notice(t!("backdrop.remove_question"));
+}
+
+/// The state of the picture, right of its entry in the menu of the settings.
+pub fn state(app: &App) -> String {
+    let state = if !app.backdrop.has() && !app.backdrop.loading() {
+        t!("backdrop.none")
+    } else if app.backdrop.hidden() {
+        t!("backdrop.hidden")
+    } else {
+        t!("backdrop.shown")
+    };
+    state.to_string()
 }
 
 /// Draws the menu while it is open, does what is chosen, and takes the answer

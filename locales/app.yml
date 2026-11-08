@@ -53,6 +53,18 @@ view.shadows:
 backdrop.button:
   en: "Underlay"
   ru: "Подложка"
+backdrop.open:
+  en: "Background picture"
+  ru: "Фоновое изображение"
+backdrop.none:
+  en: "none"
+  ru: "нет"
+backdrop.shown:
+  en: "shown"
+  ru: "показано"
+backdrop.hidden:
+  en: "hidden"
+  ru: "скрыто"
 backdrop.choose:
   en: "Choose a picture…"
   ru: "Выбрать картинку…"
