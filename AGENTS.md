@@ -47,6 +47,15 @@ THEN `build.rs` draws from it the icon of the window and, for windows, the
      `icon.ico` of the resource linked into `obusina.exe`
 EX-  an `icon.ico` or a PNG of the icon committed beside the SVG
 
+RULE build.lto : every build that leaves the machine is fat LTO in one unit of
+     code: `[profile.release]`, and `[profile.mockups]` of
+     `experiments/mockups`
+THEN the desktop, windows, android and the browser build by `--release`;
+     a profile of its own carries `lto = "fat"` and `codegen-units = 1`
+WHY  a smaller program loads faster over a slow line and runs faster on a
+     small machine
+EX-  a build of a release, or of the mockups, by `dev`
+
 RULE lang = rust, edition 2024
 RULE toolkit = egui and eframe
 
@@ -460,9 +469,12 @@ RULE ui.narrow : the window works at the width of a phone
 THEN a floating panel is kept inside the window when the window is smaller
 
 RULE ui.render = `render::native_options` starts the window, on every platform
+     but a browser; `render::web_options` starts the page in a browser
 WHY  a modest chip ends up drawn by the processor unless the adapter is
      picked by hand and the limits asked are cut to what it grants; the same
-     code runs the window of zyterm
+     code runs the window of zyterm. A browser picks the adapter itself, but
+     the defaults of eframe ask a texture of 8192, and a Raspberry Pi grants
+     4096
 THEN the glyph atlas is cut to `render::ATLAS_SIDE` in `App::raw_input_hook`
 REF  src/render.rs
 

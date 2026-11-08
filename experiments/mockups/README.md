@@ -22,7 +22,7 @@ Mockups of the design of the window, shown in the gallery of `showcase`.
 | --- | --- |
 | `index.html` | the page: one canvas, and the line that tells trunk to build the crate |
 | `Trunk.toml` | the site in `target/mockups-site`, the profile, no downloads |
-| `[profile.mockups]` | `dev` with no debug information, the crates under it optimised |
+| `[profile.mockups]` | `release` with fat LTO in one unit of code (`RULE build.lto`) |
 | `Cargo.toml` | a workspace of its own, left out of the one of obusina: obusina builds without showcase beside it |
 
 ## Boundaries

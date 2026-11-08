@@ -175,7 +175,7 @@ pub fn web(canvas: &'static str) {
         let started = eframe::WebRunner::new()
             .start(
                 canvas,
-                eframe::WebOptions::default(),
+                render::web_options(),
                 Box::new(move |creation| {
                     if let Some(state) = &creation.wgpu_render_state {
                         render::log_adapter(state);

@@ -2519,7 +2519,7 @@ dependencies = [
 
 [[package]]
 name = "obusina-button"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "base64",
  "egui",
@@ -2787,7 +2787,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plate-menu"
-version = "0.1.0"
+version = "1.0.3"
 dependencies = [
  "base64",
  "egui",
@@ -3275,6 +3275,7 @@ dependencies = [
  "env_logger",
  "log",
  "png",
+ "pollster",
  "serde",
  "serde_json",
  "thiserror 2.0.21",

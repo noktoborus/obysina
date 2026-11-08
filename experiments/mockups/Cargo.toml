@@ -16,15 +16,14 @@ plate-menu = { path = "../../crates/plate-menu" }
 # The gallery of the mockups, a project of its own beside obusina.
 showcase = { path = "../../../showcase", version = "0.1.0" }
 
-# The wasm of the mockups: a build of `dev` with no debug information. The
-# crates under it are optimised once; unoptimised, they make a module of tens
-# of megabytes.
+# The wasm of the mockups: the release of obusina, fat LTO in one unit of
+# code. The module is smaller to load over a slow line, and runs faster on a
+# small machine such as a Raspberry Pi.
 [profile.mockups]
-inherits = "dev"
-debug = false
-
-[profile.mockups.package."*"]
-opt-level = 1
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
 
 [package]
 name = "mockups"

@@ -17,11 +17,12 @@
 //! Software rendering stays as the last resort — a machine that has nothing
 //! else, a virtual one or a remote session, still gets its window — but it is
 //! said in the log when it happens.
+//!
+//! In a browser the browser picks the adapter; only the limits are cut
+//! (`web_options`).
 
-#[cfg(not(target_arch = "wasm32"))]
 use std::sync::Arc;
 
-#[cfg(not(target_arch = "wasm32"))]
 use eframe::egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
 use eframe::wgpu;
 
@@ -31,11 +32,7 @@ pub fn native_options(viewport: egui::ViewportBuilder) -> eframe::NativeOptions 
     let mut setup = WgpuSetupCreateNew::without_display_handle();
     setup.power_preference = wgpu::PowerPreference::LowPower;
     setup.native_adapter_selector = Some(Arc::new(choose_adapter));
-    setup.device_descriptor = Arc::new(|adapter| wgpu::DeviceDescriptor {
-        label: Some(WINDOW_DEVICE),
-        required_limits: limits(&adapter.limits()),
-        ..Default::default()
-    });
+    setup.device_descriptor = Arc::new(device_descriptor);
 
     eframe::NativeOptions {
         viewport,
@@ -45,6 +42,34 @@ pub fn native_options(viewport: egui::ViewportBuilder) -> eframe::NativeOptions 
             ..WgpuConfiguration::default()
         },
         ..eframe::NativeOptions::default()
+    }
+}
+
+/// The options the page is started with in a browser. The browser picks the
+/// adapter, WebGPU or WebGL; the limits asked are cut to what it grants all
+/// the same.
+///
+/// The defaults of `eframe` ask a texture of 8192 of any adapter, and the
+/// page does not start where the browser grants 4096, as on a Raspberry Pi.
+#[cfg(target_arch = "wasm32")]
+pub fn web_options() -> eframe::WebOptions {
+    let mut setup = WgpuSetupCreateNew::without_display_handle();
+    setup.device_descriptor = Arc::new(device_descriptor);
+    eframe::WebOptions {
+        wgpu_options: WgpuConfiguration {
+            wgpu_setup: WgpuSetup::CreateNew(setup),
+            ..WgpuConfiguration::default()
+        },
+        ..eframe::WebOptions::default()
+    }
+}
+
+/// What is asked of the device of an adapter.
+fn device_descriptor(adapter: &wgpu::Adapter) -> wgpu::DeviceDescriptor<'static> {
+    wgpu::DeviceDescriptor {
+        label: Some(WINDOW_DEVICE),
+        required_limits: limits(&adapter.limits()),
+        ..Default::default()
     }
 }
 
@@ -73,7 +98,6 @@ pub fn log_adapter(state: &eframe::egui_wgpu::RenderState) {
 /// the toolkit grows with the glyphs of the fonts and the images of the
 /// interface, and a limit of 8192 where the adapter grants 16384 is a limit
 /// nothing asked for, so what the adapter offers is what is asked of it.
-#[cfg(not(target_arch = "wasm32"))]
 fn limits(offered: &wgpu::Limits) -> wgpu::Limits {
     let mut asked = wgpu::Limits::default().or_worse_values_from(offered);
     asked.max_texture_dimension_1d = offered.max_texture_dimension_1d;
@@ -94,7 +118,6 @@ fn limits(offered: &wgpu::Limits) -> wgpu::Limits {
 pub const ATLAS_SIDE: usize = 8192;
 
 /// The label the device carries in the messages of `wgpu`.
-#[cfg(not(target_arch = "wasm32"))]
 const WINDOW_DEVICE: &str = "window device";
 
 /// Picks the adapter the window is drawn with, hardware before software.
