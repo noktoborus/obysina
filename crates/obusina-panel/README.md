@@ -1,7 +1,8 @@
 # obusina-panel
 
 A floating panel for egui with no title and no grip: any place of it moves
-it. It never turns: the caller gives its orientation.
+it. It never turns by itself: the caller gives its orientation, and may turn
+it to the edge it is pulled to.
 
 ## Scope
 
@@ -15,7 +16,10 @@ it. It never turns: the caller gives its orientation.
 mouse   press ──moved past max_click_dist──► taken
 finger  press ──still for max_click_duration──► taken
         press ──moved before that──► dropped: the touch is the content's
-taken   ──moved──► follows the pointer, the point taken under it
+taken   ──moved──► follows the pointer, the point taken under it, the
+                   panel whole in the window
+        ──turned by the caller──► the point taken is the same part of the
+                                  panel along and across
         ──let go after a move──► stands there; in an edge strip, against
                                  that edge
 ```
@@ -42,6 +46,8 @@ taken   ──moved──► follows the pointer, the point taken under it
   against the left or the top, 1 against the right or the bottom. A panel
   against an edge stays there when the window changes its size. The room is
   the window less `MARGIN`, `room(window)`.
+- `PanelResponse::edge` is the edge strip the pointer is in while the panel
+  is taken: the edge it is pulled to.
 - `PanelResponse::changed` is set in the frame the panel is let go after a
   move; `PanelResponse::placement` is then the place to keep.
 - `FloatingPanel::content(key)`: the key of the shape of the content. When

@@ -81,7 +81,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
                 _ => line(app, ui, room),
             }
         });
-    panels::after(app, posture, NAME, view, &shown);
+    panels::after(app, context, (posture, NAME, view), &shown);
 }
 
 /// The size of the panel in `view`, for the panels to be stood

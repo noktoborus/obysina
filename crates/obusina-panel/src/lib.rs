@@ -9,7 +9,7 @@ mod placement;
 pub use edge::{Edge, HYSTERESIS, Orientation, SNAP, SNAP_PART};
 pub use placement::{MARGIN, Placement, room};
 
-use egui::{Context, Id, Rect, Ui, Vec2};
+use egui::{Context, Id, Rect, Ui, Vec2, vec2};
 
 use hold::{Hold, Step};
 
@@ -48,6 +48,8 @@ struct State {
     measure: bool,
     /// The key of the shape of the content the panel was measured for.
     content: u64,
+    /// How the content was laid out in the last frame.
+    orientation: Orientation,
 }
 
 /// What the panel did in this frame.
@@ -65,6 +67,9 @@ pub struct PanelResponse<R> {
     /// enough, or the mouse moved with its button held. The caller may
     /// answer with a short vibration.
     pub taken: bool,
+    /// The edge strip the pointer is in while the panel is taken: the edge
+    /// it is pulled to. The caller may turn the panel to it.
+    pub edge: Option<Edge>,
 }
 
 /// A floating panel with no title and no grip: any place of it moves it.
@@ -78,7 +83,10 @@ pub struct PanelResponse<R> {
 ///                     against that edge
 /// ```
 ///
-/// A panel never turns: the caller gives its orientation.
+/// A panel never turns by itself: the caller gives its orientation, and may
+/// turn it to [`PanelResponse::edge`] while it is taken. Turned while it is
+/// held, the point taken stays under the pointer, the same part of the panel
+/// along and across it. While it is taken it stands whole in the window.
 pub struct FloatingPanel {
     id: Id,
     name: String,
@@ -145,6 +153,7 @@ impl FloatingPanel {
             hold: None,
             measure: true,
             content,
+            orientation: self.orientation,
         });
         if state.hold.is_none() {
             state.placement = self.placement;
@@ -153,10 +162,17 @@ impl FloatingPanel {
             state.content = content;
             state.measure = true;
         }
+        if state.orientation != self.orientation {
+            state.orientation = self.orientation;
+            state.size = vec2(state.size.y, state.size.x);
+            if let Some(hold) = &mut state.hold {
+                hold.turn();
+            }
+        }
 
         let layer = egui::LayerId::new(egui::Order::Foreground, self.id);
         let last = Rect::from_min_size(state.placement.position(window, state.size), state.size);
-        let step = hold::step(context, &mut state.hold, layer, last, window);
+        let step = hold::step(context, &mut state.hold, layer, (last, state.size), window);
         let mut changed = false;
         if let Step::Let { position, edge } = step {
             let at = Placement::at(window, state.size, position);
@@ -166,7 +182,7 @@ impl FloatingPanel {
         let measure = std::mem::take(&mut state.measure);
         let lifted = state.hold.is_some_and(|hold| hold.taken());
         let position = match state.hold.and_then(|hold| hold.position()) {
-            Some(position) => position,
+            Some(position) => inside(window, state.size, position),
             None => state.placement.position(window, state.size),
         };
         let orientation = self.orientation;
@@ -215,8 +231,18 @@ impl FloatingPanel {
             placement: state.placement,
             changed,
             taken: matches!(step, Step::Taken),
+            edge: state.hold.and_then(|hold| hold.edge()),
         }
     }
+}
+
+/// The top left corner of a panel of `size` at `position`, moved so the
+/// panel stands whole in the room of `window`; one larger than the room
+/// keeps its start in sight.
+fn inside(window: Rect, size: Vec2, position: egui::Pos2) -> egui::Pos2 {
+    let room = placement::room(window);
+    let far = (room.max - size).max(room.min);
+    position.clamp(room.min, far)
 }
 
 /// The frame of a panel: the frame of a window of egui, lighter and with a

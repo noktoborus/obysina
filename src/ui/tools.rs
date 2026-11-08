@@ -110,7 +110,7 @@ pub fn show(app: &mut App, context: &egui::Context) {
                 ui.label(message);
             }
         });
-    panels::after(app, posture, NAME, view, &shown);
+    panels::after(app, context, (posture, NAME, view), &shown);
 }
 
 /// The buttons in one line along the panel, going on in the next line where

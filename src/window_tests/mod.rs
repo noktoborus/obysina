@@ -516,21 +516,108 @@ fn a_window_that_stands_keeps_its_own_places() {
     );
 }
 
+/// A row pulled to a side turns into a column while it is dragged, the
+/// button taken still under the pointer along the panel; let go, the column
+/// stands against the side and is kept.
 #[test]
-fn a_panel_dragged_to_a_side_keeps_its_view() {
+fn a_row_pulled_to_a_side_turns_into_a_column() {
     let mut window = window();
     window.view(crate::ui::tools::NAME, PanelView::Row);
     window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
-    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let start = window
+        .harness
+        .get_by_label(&t!("projects.back"))
+        .rect()
+        .center();
+    let target = pos2(20.0, SIZE.y / 2.0);
+    let button = |pos, pressed| Event::PointerButton {
+        pos,
+        button: PointerButton::Primary,
+        pressed,
+        modifiers: Modifiers::NONE,
+    };
+    window.harness.event(Event::PointerMoved(start));
+    window.harness.event(button(start, true));
+    window.harness.step();
+    for step in 1..=10 {
+        let point = start + (target - start) * (step as f32 / 10.0);
+        window.harness.event(Event::PointerMoved(point));
+        window.harness.step();
+    }
+    window.harness.step();
+    window.harness.step();
 
-    window.drag(&t!("panel.tools"), pos2(8.0, SIZE.y / 2.0));
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let back = window.harness.get_by_label(&t!("projects.back")).rect();
+    assert!(
+        (back.center().y - target.y).abs() < back.height(),
+        "the button taken, {back:?}, stays at the pointer {target:?} along the panel"
+    );
 
-    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    window.harness.event(button(target, false));
+    window.harness.run();
+    assert!(window.stacked(&t!("edit.undo"), &t!("settings.open")));
     let undo = window.harness.get_by_label(&t!("edit.undo")).rect();
     assert!(undo.min.x < 3.0 * obusina_panel::MARGIN, "{undo:?}");
+    let posture = window.harness.state().posture;
+    let kept = window
+        .harness
+        .state()
+        .settings
+        .panel(posture, crate::ui::tools::NAME);
+    assert_eq!(kept.map(|(_, view)| view), Some(PanelView::Column));
 }
 
-/// A row longer than the window goes on in the next line, inside it.
+/// A column pulled to the top by a finger turns into a row.
+#[test]
+fn a_column_pulled_up_by_a_finger_turns_into_a_row() {
+    let mut window = window();
+    window.view(crate::ui::tools::NAME, PanelView::Column);
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 2.0));
+    let start = window
+        .harness
+        .get_by_label(&t!("settings.open"))
+        .rect()
+        .center();
+
+    window.touch_drag(start, pos2(SIZE.x / 2.0, 20.0), true);
+
+    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    assert!(window.panel(&t!("panel.tools")).min.y < 3.0 * obusina_panel::MARGIN);
+}
+
+/// A row whose column would not fit the height of the window stays a row at
+/// a side.
+#[test]
+fn a_panel_that_would_not_fit_turned_stays_as_it_is() {
+    let short = egui::vec2(1000.0, 200.0);
+    let mut window = window_in(tempfile::tempdir().expect("a scratch directory"), short);
+    window.view(crate::ui::tools::NAME, PanelView::Row);
+
+    window.drag(&t!("panel.tools"), pos2(20.0, short.y / 2.0));
+
+    assert!(!window.stacked(&t!("edit.undo"), &t!("settings.open")));
+    let screen = egui::Rect::from_min_size(Pos2::ZERO, short);
+    assert!(screen.contains_rect(window.panel(&t!("panel.tools"))));
+}
+
+/// The block of the beads stays a block at any edge.
+#[test]
+fn a_block_stays_a_block_at_an_edge() {
+    let mut window = window();
+    window.view(crate::ui::palette::NAME, PanelView::Block);
+
+    window.drag(&t!("panel.palette"), pos2(SIZE.x / 2.0, 20.0));
+
+    let posture = window.harness.state().posture;
+    let kept = window
+        .harness
+        .state()
+        .settings
+        .panel(posture, crate::ui::palette::NAME);
+    assert_eq!(kept.map(|(_, view)| view), Some(PanelView::Block));
+}
+
 #[test]
 fn a_line_too_long_for_the_window_goes_on_in_the_next_line() {
     let narrow = egui::vec2(260.0, 700.0);
@@ -613,6 +700,7 @@ fn a_panel_in_the_centre_keeps_its_shape() {
 fn a_press_on_a_button_moved_takes_the_panel_and_not_the_button() {
     let mut window = window();
     window.press(FREE, PointerButton::Primary);
+    window.drag(&t!("panel.tools"), pos2(SIZE.x / 2.0, SIZE.y / 3.0));
     let before = window.panel(&t!("panel.tools"));
     let undo = window
         .harness

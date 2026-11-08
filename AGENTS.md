@@ -424,8 +424,10 @@ EX-  a `SidePanel` holding the palette
 EX-  an `egui::Window` with its title bar
 REF  crates/obusina-panel/README.md
 
-RULE ui.dock : a panel never turns by itself; its view is chosen in the menu
-     of the settings; let go in an edge strip it stands against that edge
+RULE ui.dock : a panel pulled to an edge strip takes the view of that edge
+     when that view fits the length of the edge whole; it turns nowhere
+     else; the menu of the settings chooses its view too; let go in an edge
+     strip it stands against that edge
 THEN nothing but the panel, lighter, is drawn while it is dragged
 THEN the content of a panel lays itself out by the `Room` it is given; a
      line goes on in the next line where the window ends

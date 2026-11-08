@@ -15,20 +15,33 @@ panel itself are `crates/obusina-panel/README.md`.
    shadow; on android the phone gives a short vibration (`tick` of
    `MainActivity`). Nothing else is drawn while a panel is dragged.
 3. **A panel is never folded.** It can be moved to an edge.
-4. **A panel never turns by itself.** Neither the edge it is dragged to nor
-   a change of the size of the window turns it. Its view is chosen in the
-   menu of the settings, level `Panels`:
+4. **A panel turns only when it is pulled to an edge, and only if it fits
+   there.** In the edge strip under the pointer it takes the view of that
+   edge, at once, when that view fits the length of the edge whole
+   (`src/ui/panels.rs`): a line or two lines along the edge; a block stays
+   a block. In the middle, and when the window changes its size, it keeps
+   its view. Its view is chosen in the menu of the settings too, level
+   `Panels`:
 
    | panel | views |
    | --- | --- |
    | beads | a row, a column, a block |
    | tools | a row, a column, two rows, two columns |
 
-   - Was: a panel turned by the edge strip under the pointer, and by the
-     room it had. A panel turned by itself where the person did not want it.
+   - The point taken stays under the pointer, the same part of the panel
+     along and across it, so the button taken stays under the finger. While
+     it is taken the panel stands whole in the window: where the point
+     cannot stay under the pointer, the panel moves in.
+   - When the window is too small for the turned view, the panel keeps its
+     view, and its line goes on in the next line.
+   - Was: a panel turned also in the middle when it ran out of the window,
+     and turned back by the room it had; then, for a while, it never turned
+     by itself.
 5. **Let go in an edge strip, a panel stands against that edge.** The
    pointer decides the edge, by a fixed distance: `SNAP` points, cut to
-   `SNAP_PART` of a small window. The edge held wins by `HYSTERESIS`.
+   `SNAP_PART` of a small window. The edge held reaches `HYSTERESIS`
+   further and wins a corner by as much, so a pointer on a border does not
+   turn the panel to and fro.
 6. **A line goes on in the next line where the window ends.** The row and
    the column of the beads and of the tools count how many buttons stand in
    a line of the `Room`. The two lines of the tools stand in pairs, and do

@@ -8,9 +8,19 @@
 //! a panel let go ──► its place kept for the posture
 //! a view chosen in the menu ──► kept for the posture
 //! a panel taken ──► a short vibration, on android
+//! a panel pulled to an edge ──► the view of that edge, if it fits the
+//!                               length of the edge whole; kept
 //! ```
+//!
+//! | view           | at the top or the bottom | at a side      |
+//! | -------------- | ------------------------ | -------------- |
+//! | row            | row                      | column         |
+//! | column         | row                      | column         |
+//! | two rows       | two rows                 | two columns    |
+//! | two columns    | two rows                 | two columns    |
+//! | block          | block                    | block          |
 
-use obusina_panel::{PanelResponse, Placement};
+use obusina_panel::{Edge, PanelResponse, Placement};
 
 use crate::app::App;
 use crate::settings::{PanelView, Posture};
@@ -72,20 +82,74 @@ pub fn stand(app: &mut App, context: &egui::Context, name: &str) -> Stood {
     }
 }
 
-/// Keeps the place of a panel let go, and answers a panel taken.
+/// Keeps the place of a panel let go, turns a panel pulled to an edge, and
+/// answers a panel taken.
 pub fn after<R>(
     app: &mut App,
-    posture: Posture,
-    name: &str,
-    view: PanelView,
+    context: &egui::Context,
+    (posture, name, view): (Posture, &str, PanelView),
     shown: &PanelResponse<R>,
 ) {
+    let turned = shown
+        .edge
+        .map(|edge| turned(view, edge))
+        .filter(|turned| *turned != view)
+        .filter(|turned| fits(app, context, name, *turned, shown.edge));
+    if let Some(turned) = turned {
+        let placement = app
+            .settings
+            .panel(posture, name)
+            .map_or(shown.placement, |(placement, _)| placement);
+        app.keep_panel(posture, name, placement, turned);
+    }
     if shown.changed {
+        let view = turned.unwrap_or(view);
         app.keep_panel(posture, name, shown.placement, view);
     }
     if shown.taken {
         #[cfg(target_os = "android")]
         crate::activity::tick();
+    }
+}
+
+/// The view of a panel at `edge`: a line or two lines along it; a block
+/// stays a block.
+fn turned(view: PanelView, edge: Edge) -> PanelView {
+    let across = matches!(edge, Edge::Top | Edge::Bottom);
+    match (view, across) {
+        (PanelView::Row | PanelView::Column, true) => PanelView::Row,
+        (PanelView::Row | PanelView::Column, false) => PanelView::Column,
+        (PanelView::TwoRows | PanelView::TwoColumns, true) => PanelView::TwoRows,
+        (PanelView::TwoRows | PanelView::TwoColumns, false) => PanelView::TwoColumns,
+        (PanelView::Block, _) => PanelView::Block,
+    }
+}
+
+/// True when the panel `name` in `view` fits whole the length of the edge
+/// of the window it is pulled to.
+fn fits(
+    app: &App,
+    context: &egui::Context,
+    name: &str,
+    view: PanelView,
+    edge: Option<Edge>,
+) -> bool {
+    let room = obusina_panel::room(context.content_rect()).size();
+    let size = size(app, context, name, view);
+    match edge {
+        Some(Edge::Top | Edge::Bottom) => size.x <= room.x,
+        Some(Edge::Left | Edge::Right) => size.y <= room.y,
+        None => false,
+    }
+}
+
+/// The size of the panel `name` in `view`, as it is counted to stand the
+/// panels.
+fn size(app: &App, context: &egui::Context, name: &str, view: PanelView) -> egui::Vec2 {
+    if name == crate::ui::tools::NAME {
+        crate::ui::tools::size(context, view)
+    } else {
+        crate::ui::palette::size(app, context, view)
     }
 }
 

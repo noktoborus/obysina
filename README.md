@@ -74,8 +74,9 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
 - Two floating panels with no title. Any place of a panel moves it: the
   mouse pressed and moved, a finger held still and then moved. A panel
   taken is lighter, and a phone gives a short vibration. Let go at an edge,
-  it stands against it. A panel never turns by itself: "Panels" of the menu
-  of the settings chooses its view. A line too long for the window goes on
+  it stands against it. Pulled to an edge, a panel turns to it, a line or
+  two lines along it, if it fits there whole; "Panels" of the menu of the
+  settings chooses its view too. A line too long for the window goes on
   in the next line. The place and the view of each panel are kept, apart for
   a window that stands and one that lies. With none kept, the panels are
   stood so they fit and do not overlap, at the short edges first. The

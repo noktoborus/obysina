@@ -4,7 +4,9 @@
 //! press on the panel ─┬─ mouse ──moved past max_click_dist──► taken
 //!                     └─ finger ─┬─ still for max_click_duration ──► taken
 //!                                └─ moved before that ──► dropped
-//! taken ──moved──► follows the pointer, the grab under it
+//! taken ──moved──► follows the pointer, the point taken under it
+//! turned while taken ──► the point taken is the same part of the panel
+//!                        across and along, so a button stays under it
 //! let go ──after a move──► Let: where, and the edge strip it is in
 //! ```
 //!
@@ -25,8 +27,9 @@ pub struct Hold {
     start: f64,
     /// It is a finger, which has to be held still before it takes the panel.
     touch: bool,
-    /// The point of the panel under the pointer, from its top left corner.
-    grab: Vec2,
+    /// The point of the panel under the pointer, as a part of its size from
+    /// its top left corner.
+    part: Vec2,
     /// The panel is taken: it follows the pointer.
     taken: bool,
     /// The pointer went past a click since the panel was taken.
@@ -46,6 +49,17 @@ impl Hold {
     /// A finger waits to take the panel: the time has to be watched.
     pub fn waits(&self) -> bool {
         self.touch && !self.taken
+    }
+
+    /// The panel turned while it is held: the point taken keeps its part
+    /// along the panel and its part across it.
+    pub fn turn(&mut self) {
+        self.part = egui::vec2(self.part.y, self.part.x);
+    }
+
+    /// The edge strip the pointer is in, while the panel is taken.
+    pub fn edge(&self) -> Option<Edge> {
+        self.taken.then_some(self.edge).flatten()
     }
 
     /// The top left corner of a panel that is taken.
@@ -72,12 +86,12 @@ pub enum Step {
 }
 
 /// Feeds the input of this frame to the press `hold` on a panel drawn at
-/// `rect` on `layer` of `window`.
+/// `rect` on `layer` of `window`; `size` is the size it is drawn at now.
 pub fn step(
     context: &Context,
     hold: &mut Option<Hold>,
     layer: LayerId,
-    rect: Rect,
+    (rect, size): (Rect, Vec2),
     window: Rect,
 ) -> Step {
     let (pressed, down, origin, pointer, time, touch) = context.input(|input| {
@@ -107,7 +121,7 @@ pub fn step(
             origin,
             start: time,
             touch,
-            grab: origin - rect.min,
+            part: (origin - rect.min) / rect.size().max(Vec2::splat(1.0)),
             taken: false,
             moved: false,
             position: rect.min,
@@ -151,7 +165,7 @@ pub fn step(
         step = Step::Taken;
     }
     held.moved |= far;
-    held.position = pointer - held.grab;
+    held.position = pointer - held.part * size;
     if held.moved {
         held.edge = Edge::under(window, pointer, held.edge);
     }
