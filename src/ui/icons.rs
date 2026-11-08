@@ -27,8 +27,8 @@ pub const PALETTE: &str = "\u{1f3a8}";
 pub const TURN_LEFT: &str = "\u{21ba}";
 /// A quarter turn of the picture clockwise.
 pub const TURN_RIGHT: &str = "\u{21bb}";
-/// The turn of the picture to the nearest ten degrees: a set square.
-pub const ALIGN: &str = "\u{1f4d0}";
+/// The corners of the picture made squarer: a set square.
+pub const SQUARE: &str = "\u{1f4d0}";
 
 /// The shadows of the empty places, the dark shade.
 pub const SHADOW: &str = "\u{2593}";
@@ -56,7 +56,7 @@ pub const EMPTY: &str = "\u{1f6ab}";
 #[cfg(test)]
 pub const ALL: &[&str] = &[
     UNDO, REDO, SWITCH, BACK, NEW, IMPORT, EXPORT, TRASH, SETTINGS, SHADOW, PICTURE, DONE, CANCEL,
-    EMPTY, LOCK, UNLOCK, MENU, PALETTE, TURN_LEFT, TURN_RIGHT, ALIGN,
+    EMPTY, LOCK, UNLOCK, MENU, PALETTE, TURN_LEFT, TURN_RIGHT, SQUARE,
 ];
 
 #[cfg(test)]

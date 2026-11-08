@@ -551,7 +551,7 @@ fn two_fingers_beside_the_picture_zoom_the_field() {
 }
 
 /// The buttons of the editing turn the picture a quarter either way about
-/// its middle, and to the nearest ten degrees.
+/// its middle, and make its corners square, ten degrees a press.
 #[test]
 fn the_buttons_turn_and_align_the_picture() {
     let mut window = window();
@@ -579,12 +579,23 @@ fn the_buttons_turn_and_align_the_picture() {
     assert!((turn(&window) + 90.0).abs() < 0.01, "{}", turn(&window));
     assert!((middle(&window) - centre).length() < 1e-3);
 
-    obusina_canvas::turn_corners(
-        &mut window.harness.state_mut().backdrop.corners,
-        97f32.to_radians(),
-    );
-    window.click(&t!("backdrop.align"));
-    assert!((turn(&window) - 10.0).abs() < 0.01, "{}", turn(&window));
+    window.harness.state_mut().backdrop.corners[2] += egui::vec2(2.0, 1.0);
+    let square = |window: &Window| {
+        let corners = window.harness.state().backdrop.corners;
+        (0..4)
+            .map(|index| {
+                let at = corners[index];
+                let before = (corners[(index + 3) % 4] - at).normalized();
+                let after = (corners[(index + 1) % 4] - at).normalized();
+                before.dot(after).abs()
+            })
+            .fold(0.0f32, f32::max)
+    };
+    assert!(square(&window) > 0.05, "skewed");
+    for _ in 0..9 {
+        window.click(&t!("backdrop.square"));
+    }
+    assert!(square(&window) < 1e-3, "square: {}", square(&window));
 }
 
 /// "Background picture" of the menu of the settings opens the menu of the

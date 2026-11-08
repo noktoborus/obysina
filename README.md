@@ -56,7 +56,7 @@ The screenshots are drawn by `src/window_tests/screenshots.rs`;
   straight. While its corners are edited, two fingers on it move, turn and
   grow it, the turn sticking to a whole quarter; over it Ctrl and the wheel
   grow it, Shift and the wheel turn it. Buttons turn it a quarter either
-  way, or to the nearest ten degrees. It is kept in the cache of the program, apart from the pattern.
+  way, and make its corners squarer, ten degrees a press. It is kept in the cache of the program, apart from the pattern.
 - A ruling to count the beads by: every few columns and rows the shadows
   are darker. The step and the offset from cell (0, 0) are set in the menu
   of the settings and kept in the pattern.

@@ -43,7 +43,8 @@ The field of beads: an egui widget that draws an
   it, and a drag outside moves the field; the handles are drawn over the
   beads. Two fingers with their middle on it move, turn and grow it, and
   so do Ctrl or Shift with the wheel over it; the turn sticks to a whole
-  quarter within `SNAP_TURN`. A corner moves only as far as the four stay
+  quarter within `SNAP_TURN`. `turn_corners` turns the corners about their
+  middle, `square_corners` takes them part of the way to a rectangle. A corner moves only as far as the four stay
   convex and in their turn: the picture never turns inside out. `handles` gives where they are,
   for a test.
 - Puts the middle of the work area, or cell (0, 0) when there is none, in

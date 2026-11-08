@@ -107,9 +107,9 @@ backdrop.turn_left:
 backdrop.turn_right:
   en: "Turn the picture a quarter right"
   ru: "Повернуть картинку на четверть вправо"
-backdrop.align:
-  en: "Turn the picture to the nearest ten degrees"
-  ru: "Выровнять поворот картинки до десяти градусов"
+backdrop.square:
+  en: "Make the corners of the picture squarer"
+  ru: "Выровнять углы картинки"
 
 menu.nothing_found:
   en: "Nothing found"

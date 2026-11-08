@@ -66,8 +66,15 @@ over four corners, kept apart from the pattern. The store is the crate
       beads are put zoom the field, and do not turn the picture by chance.
     - The panel of tools holds, while the corners are edited, `↺` and `↻`,
       a quarter turn either way about the middle of the picture, and `📐`,
-      which turns it to the nearest `ALIGN_STEP` of its top edge; then keep
-      and put back.
+      which makes its corners squarer; then keep and put back.
+    - A press of `📐` moves the corners part of the way to the rectangle of
+      the picture: its middle, the turn of its top edge, the mean of its
+      opposite sides. It goes so far that the angle farthest from a right
+      one stands at the next whole `SQUARE_STEP` nearer to it: 73° goes to
+      80°, the others as far or nearer. A few presses make the rectangle.
+      - Why part of the way: a picture laid by its corners over a photo
+        taken at an angle is mended a little, not lost.
+      - Was: `📐` turned the picture to the nearest ten degrees.
 12. **A corner never turns the picture inside out.** It moves only as far
     as the four stay convex and turn the same way at each corner, by at
     least `LEAST_TURN`; dragged further, it stops at the last place that

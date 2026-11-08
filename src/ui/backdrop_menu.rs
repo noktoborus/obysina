@@ -50,11 +50,12 @@ pub fn button(app: &mut App, ui: &mut egui::Ui) {
     }
 }
 
-/// The step the alignment turns the picture to: ten degrees.
-const ALIGN_STEP: f32 = 10.0 * std::f32::consts::PI / 180.0;
+/// The step a press makes the angles of the picture squarer by: ten degrees.
+const SQUARE_STEP: f32 = 10.0 * std::f32::consts::PI / 180.0;
 
 /// While the corners are edited, the buttons that turn the picture a quarter
-/// either way and to the nearest `ALIGN_STEP`, then the ones that keep the
+/// either way and make its corners squarer by `SQUARE_STEP`, then the ones
+/// that keep the
 /// corners and put them back, which the panel of tools holds in place of its
 /// tools; nothing otherwise.
 pub fn editing(app: &mut App, ui: &mut egui::Ui) {
@@ -66,8 +67,8 @@ pub fn editing(app: &mut App, ui: &mut egui::Ui) {
         if button::icon(ui, icons::TURN_RIGHT, &t!("backdrop.turn_right"), true).clicked() {
             obusina_canvas::turn_corners(&mut app.backdrop.corners, quarter);
         }
-        if button::icon(ui, icons::ALIGN, &t!("backdrop.align"), true).clicked() {
-            obusina_canvas::align_corners(&mut app.backdrop.corners, ALIGN_STEP);
+        if button::icon(ui, icons::SQUARE, &t!("backdrop.square"), true).clicked() {
+            obusina_canvas::square_corners(&mut app.backdrop.corners, SQUARE_STEP);
         }
         if button::icon(ui, icons::DONE, &t!("backdrop.done"), true).clicked() {
             app.backdrop.end_editing(ui.ctx(), true);

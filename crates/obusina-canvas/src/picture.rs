@@ -299,12 +299,69 @@ pub fn turn_corners(corners: &mut [Vec2; 4], radians: f32) {
     }
 }
 
-/// Turns the corners of a picture about their middle so its top edge stands
-/// at the nearest whole `step`, in radians.
-pub fn align_corners(corners: &mut [Vec2; 4], step: f32) {
-    let now = top_turn(corners);
-    let aligned = (now / step).round() * step;
-    turn_corners(corners, aligned - now);
+/// Makes the corners of a picture squarer: the corners go part of the way
+/// to the rectangle of the picture, so far that the angle farthest from a
+/// right one stands at the next whole `step` nearer to it. A few presses make
+/// the rectangle.
+///
+/// The rectangle has the middle of the corners, the turn of the top edge,
+/// the width of the mean of the top and the bottom edges and the height of
+/// the mean of the sides.
+pub fn square_corners(corners: &mut [Vec2; 4], step: f32) {
+    let rectangle = rectangle_of(corners);
+    let worst = farthest_from_right(corners);
+    let wanted = ((worst / step).ceil() - 1.0).max(0.0) * step;
+    let towards = |part: f32| {
+        let mut moved = *corners;
+        for (corner, square) in moved.iter_mut().zip(rectangle) {
+            *corner += (square - *corner) * part;
+        }
+        moved
+    };
+    let (mut short, mut far) = (0.0, 1.0);
+    for _ in 0..HALVINGS * 2 {
+        let middle = (short + far) / 2.0;
+        if farthest_from_right(&towards(middle)) <= wanted {
+            far = middle;
+        } else {
+            short = middle;
+        }
+    }
+    let moved = towards(far);
+    if convex(&moved) {
+        *corners = moved;
+    }
+}
+
+/// The rectangle of a picture: see [`square_corners`].
+fn rectangle_of(corners: &[Vec2; 4]) -> [Vec2; 4] {
+    let middle = corners.iter().fold(Vec2::ZERO, |sum, corner| sum + *corner) / 4.0;
+    let width = ((corners[1] - corners[0]).length() + (corners[2] - corners[3]).length()) / 2.0;
+    let height = ((corners[3] - corners[0]).length() + (corners[2] - corners[1]).length()) / 2.0;
+    let mut rectangle = [
+        middle + egui::vec2(-width, -height) / 2.0,
+        middle + egui::vec2(width, -height) / 2.0,
+        middle + egui::vec2(width, height) / 2.0,
+        middle + egui::vec2(-width, height) / 2.0,
+    ];
+    turn_corners(&mut rectangle, top_turn(corners));
+    rectangle
+}
+
+/// How far the angle at a corner farthest from a right one is from it, in
+/// radians.
+fn farthest_from_right(corners: &[Vec2; 4]) -> f32 {
+    (0..corners.len())
+        .map(|index| {
+            let at = corners[index];
+            let before = corners[(index + corners.len() - 1) % corners.len()] - at;
+            let after = corners[(index + 1) % corners.len()] - at;
+            let angle = before.angle() - after.angle();
+            let angle = angle.rem_euclid(std::f32::consts::TAU);
+            let angle = angle.min(std::f32::consts::TAU - angle);
+            (angle - std::f32::consts::FRAC_PI_2).abs()
+        })
+        .fold(0.0, f32::max)
 }
 
 /// The points the wheel turned with Shift held in this frame, as given, not
@@ -477,23 +534,34 @@ mod tests {
         }
     }
 
-    /// The top edge turned by 23 degrees stands at 20 after the alignment,
-    /// by 26 at 30.
+    /// A press brings the angle farthest from a right one to the next ten
+    /// degrees nearer it, keeps the middle and the shape the right way round;
+    /// two more make the rectangle.
     #[test]
-    fn the_alignment_takes_the_nearest_ten_degrees() {
-        let square = [
+    fn a_press_makes_the_corners_squarer_by_ten_degrees() {
+        let mut corners = [
             Vec2::new(0.0, 0.0),
-            Vec2::new(2.0, 0.0),
-            Vec2::new(2.0, 2.0),
-            Vec2::new(0.0, 2.0),
+            Vec2::new(10.0, 1.0),
+            Vec2::new(12.0, 9.0),
+            Vec2::new(-2.0, 7.0),
         ];
+        let middle = |corners: &[Vec2; 4]| corners.iter().fold(Vec2::ZERO, |sum, c| sum + *c) / 4.0;
+        let before = farthest_from_right(&corners).to_degrees();
+        let centre = middle(&corners);
         let ten = 10f32.to_radians();
-        for (degrees, aligned) in [(23.0f32, 20.0f32), (26.0, 30.0), (-4.0, 0.0)] {
-            let mut corners = square;
-            turn_corners(&mut corners, degrees.to_radians());
-            align_corners(&mut corners, ten);
-            assert!((top_turn(&corners).to_degrees() - aligned).abs() < 1e-3);
-        }
+        assert!(before > 20.0 && before < 30.0, "{before}");
+
+        square_corners(&mut corners, ten);
+        let after = farthest_from_right(&corners).to_degrees();
+        assert!((after - 20.0).abs() < 0.05, "{after}");
+        assert!((middle(&corners) - centre).length() < 1e-3);
+        assert!(convex(&corners));
+
+        square_corners(&mut corners, ten);
+        square_corners(&mut corners, ten);
+        assert!(farthest_from_right(&corners).to_degrees() < 0.05);
+        square_corners(&mut corners, ten);
+        assert!(farthest_from_right(&corners).to_degrees() < 0.05);
     }
 
     use super::*;
