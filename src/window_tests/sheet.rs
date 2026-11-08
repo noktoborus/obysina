@@ -29,7 +29,7 @@ fn type_number(window: &mut Window, name: &str, text: &str) {
 fn the_sheet_starts_as_the_screen() {
     let window = window();
     let app = window.harness.state();
-    let sheet = app.pattern.sheet().expect("the field was shown");
+    let sheet = app.pattern.field().expect("the field was shown");
     let columns = SIZE.x / app.view.bead;
     let rows = SIZE.y / app.view.bead;
 
@@ -46,13 +46,13 @@ fn the_sheet_starts_as_the_screen() {
 #[test]
 fn a_size_typed_in_the_menu_resizes_the_sheet() {
     let mut window = window();
-    let before = window.harness.state().pattern.sheet().expect("a sheet");
+    let before = window.harness.state().pattern.field().expect("a sheet");
 
     open_sheet(&mut window);
     type_number(&mut window, &t!("sheet.width"), "12");
     window.close_menu();
 
-    let after = window.harness.state().pattern.sheet().expect("a sheet");
+    let after = window.harness.state().pattern.field().expect("a sheet");
     assert_eq!(after.width(), 12);
     assert_eq!(after.height(), before.height());
     let middle = |sheet: obusina_pattern::Bounds| sheet.min.column + sheet.max.column;
@@ -62,7 +62,7 @@ fn a_size_typed_in_the_menu_resizes_the_sheet() {
     );
 
     window.click(&t!("edit.undo"));
-    assert_eq!(window.harness.state().pattern.sheet(), Some(before));
+    assert_eq!(window.harness.state().pattern.field(), Some(before));
     assert!(!window.harness.state().history.can_undo(), "one step");
 }
 
@@ -79,7 +79,7 @@ fn the_sheet_is_never_smaller_than_the_beads() {
     type_number(&mut window, &t!("sheet.width"), "3");
     window.close_menu();
 
-    let sheet = window.harness.state().pattern.sheet().expect("a sheet");
+    let sheet = window.harness.state().pattern.field().expect("a sheet");
     assert_eq!(sheet.width(), 8, "columns 2 to 9");
     assert!(sheet.contains(left) && sheet.contains(right), "{sheet:?}");
 }
@@ -89,7 +89,7 @@ fn the_sheet_is_never_smaller_than_the_beads() {
 #[test]
 fn the_old_size_is_put_back() {
     let mut window = window();
-    let before = window.harness.state().pattern.sheet().expect("a sheet");
+    let before = window.harness.state().pattern.field().expect("a sheet");
 
     open_sheet(&mut window);
     type_number(&mut window, &t!("sheet.width"), "12");
@@ -98,7 +98,7 @@ fn the_old_size_is_put_back() {
             .harness
             .state()
             .pattern
-            .sheet()
+            .field()
             .expect("a sheet")
             .width(),
         12
@@ -107,7 +107,7 @@ fn the_old_size_is_put_back() {
     window.close_menu();
 
     let app = window.harness.state();
-    assert_eq!(app.pattern.sheet(), Some(before));
+    assert_eq!(app.pattern.field(), Some(before));
     assert!(!app.history.can_undo());
 }
 
@@ -120,7 +120,7 @@ fn a_bead_past_the_sheet_grows_it_in_one_step() {
         min: Cell { column: 2, row: 2 },
         max: Cell { column: 7, row: 7 },
     };
-    window.harness.state_mut().pattern.set_sheet(Some(small));
+    window.harness.state_mut().pattern.set_field(Some(small));
     window.harness.run();
     let past = Cell { column: 9, row: 4 };
 
@@ -128,11 +128,11 @@ fn a_bead_past_the_sheet_grows_it_in_one_step() {
 
     let app = window.harness.state_mut();
     assert!(app.pattern.get(past).is_some());
-    let grown = app.pattern.sheet().expect("a sheet");
+    let grown = app.pattern.field().expect("a sheet");
     assert_eq!(grown, small.with(past));
     app.history.undo(&mut app.pattern);
     assert_eq!(app.pattern.get(past), None);
-    assert_eq!(app.pattern.sheet(), Some(small));
+    assert_eq!(app.pattern.field(), Some(small));
     assert!(!app.history.can_undo());
 }
 
@@ -140,10 +140,10 @@ fn a_bead_past_the_sheet_grows_it_in_one_step() {
 #[test]
 fn the_sheet_is_saved_with_the_pattern() {
     let mut window = window();
-    let sheet = window.harness.state().pattern.sheet().expect("a sheet");
+    let sheet = window.harness.state().pattern.field().expect("a sheet");
     let again = super::reopened(&mut window);
 
-    assert_eq!(again.pattern.sheet(), Some(sheet));
+    assert_eq!(again.pattern.field(), Some(sheet));
 }
 
 /// The field drawn is the work area doubled: the sheet of 51 columns,
@@ -190,19 +190,19 @@ fn a_bead_taken_away_shrinks_the_sheet_to_the_first_screen() {
     window.harness.run();
     let shade = Cell { column: 40, row: 0 };
     window.press(shade, PointerButton::Primary);
-    let grown = window.harness.state().pattern.sheet();
+    let grown = window.harness.state().pattern.field();
     window.press(shade, PointerButton::Primary);
 
     let app = window.harness.state_mut();
     assert_eq!(app.pattern.get(shade), None);
-    let sheet = app.pattern.sheet().expect("a sheet");
+    let sheet = app.pattern.field().expect("a sheet");
     assert_eq!(
         (sheet.width(), sheet.height()),
         (first.width(), first.height())
     );
     app.history.undo(&mut app.pattern);
     assert_eq!(app.pattern.get(shade), Some(id_at(0)));
-    assert_eq!(app.pattern.sheet(), grown);
+    assert_eq!(app.pattern.field(), grown);
 }
 
 /// The sheet shrinks to the box of the beads left when it is larger than
@@ -227,7 +227,7 @@ fn a_bead_taken_away_shrinks_the_sheet_to_the_beads() {
     window.press(far, PointerButton::Primary);
 
     let app = window.harness.state();
-    let sheet = app.pattern.sheet().expect("a sheet");
+    let sheet = app.pattern.field().expect("a sheet");
     assert!(sheet.contains(near) && !sheet.contains(far), "{sheet:?}");
     assert_eq!(
         (sheet.min.column, sheet.max.column),

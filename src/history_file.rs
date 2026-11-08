@@ -46,7 +46,7 @@ enum Step {
         before: Vec<Vec<Option<Place>>>,
         after: Vec<Vec<Option<Place>>>,
     },
-    Sheet {
+    Field {
         before: Option<[i32; 4]>,
         after: Option<[i32; 4]>,
     },
@@ -147,9 +147,9 @@ impl From<&Edit> for Step {
                 before: palettes(before),
                 after: palettes(after),
             },
-            Edit::Sheet { before, after } => Step::Sheet {
-                before: before.map(sheet),
-                after: after.map(sheet),
+            Edit::Field { before, after } => Step::Field {
+                before: before.map(field),
+                after: after.map(field),
             },
             Edit::Ruling { before, after } => Step::Ruling {
                 before: ruling(*before),
@@ -190,7 +190,7 @@ impl Step {
                 before: read_palettes(before)?,
                 after: read_palettes(after)?,
             },
-            Step::Sheet { before, after } => Edit::Sheet {
+            Step::Field { before, after } => Edit::Field {
                 before: before.map(bounds),
                 after: after.map(bounds),
             },
@@ -259,7 +259,7 @@ fn read_palettes(palettes: Vec<Vec<Option<Place>>>) -> Option<Vec<Palette>> {
         .collect()
 }
 
-fn sheet(bounds: Bounds) -> [i32; 4] {
+fn field(bounds: Bounds) -> [i32; 4] {
     [
         bounds.min.column,
         bounds.min.row,

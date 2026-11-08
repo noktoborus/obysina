@@ -31,8 +31,13 @@ A bead pattern: its grid, its palettes, its beads and its JSON file.
   to count the beads by; `Ruling::marks` says whether a cell is on one.
   `Pattern::ruling` and `set_ruling`; a new pattern has
   `DEFAULT_RULING_STEP`.
+- `Pattern::field` and `set_field`: the size of the field. `None`, the
+  default, is by the beads: the field is the box around them. A field set
+  by hand takes no bead past it (`Pattern::takes`); beads past a field
+  made smaller stay. `Pattern::work_area` is the field, set or by the
+  beads; `count_in_field` counts the beads in it.
 - `Pattern::paper` and `set_paper`: the colour of the paper, the ground of
-  the sheet; a new pattern has `DEFAULT_PAPER`.
+  the field; a new pattern has `DEFAULT_PAPER`.
 - `Grid`: where a bead stands, which bead is under a point, which cells lie
   under a span (`Grid::cells_in`) and the span of a box (`Grid::span`).
 - `Pattern::to_json`, `Pattern::from_json`: the text of the file. Where the
@@ -59,7 +64,7 @@ an empty place.
   "name": "Daisies",
   "grid": "peyote",
   "turn": 90,
-  "sheet": {
+  "field": {
     "origin": [-4, 1],
     "size": [8, 4]
   },
@@ -92,13 +97,13 @@ beads on one line; the example keeps them all on one.
 | `grid` | `loom` or `peyote` |
 | `turn` | how far the pattern is shown turned clockwise: 0, 90, 180 or 270; the beads do not move; 0 when left out |
 | `locked` | `true` when the pattern is only to be looked at; left out when it is not |
-| `sheet` | the size of the work area set by hand; left out when none is set |
-| `sheet.origin` | column and row of the field of its top left cell |
-| `sheet.size` | columns and rows, at least one each |
+| `field` | the field set by hand; left out when its size is by the beads |
+| `field.origin` | column and row of its top left cell |
+| `field.size` | columns and rows, at least one each |
 | `ruling` | the lines to count the beads by (`Ruling`); `DEFAULT_RULING_STEP` and no offset when left out |
 | `ruling.step` | columns and rows from one line to the next; `0` draws no line along that axis |
 | `ruling.offset` | column and row of a line, counted from cell (0, 0) |
-| `paper` | `#rrggbb`, the colour of the paper, the ground of the sheet; `DEFAULT_PAPER` when left out |
+| `paper` | `#rrggbb`, the colour of the paper, the ground of the field; `DEFAULT_PAPER` when left out |
 | `bead_ratio` | the width of a bead to its height |
 | `palettes` | one array or more, each of at most `MAX_COLOURS` places; the index is the place, `null` an empty one; empty places at the end are left out |
 | `palettes[][].id` | a number, unique in the file, never `0` |
@@ -108,15 +113,15 @@ beads on one line; the example keeps them all on one.
 | `rows_origin` | column and row of the field of the first bead of the first row; `[0, 0]` with no rows |
 | `rows` | the active area, the box around the beads; one id per cell, `0` for a cell with no bead; every row as long as the first |
 
-A cell of the field has a signed column and row. The rows and the sheet are
-both placed on the field by their own origin, so a pattern opens where it
-was, and a peyote column keeps its parity. The work area is not written: it
-is the box around the sheet and the rows.
+A cell has a signed column and row. The rows and the field are both placed
+by their own origin, so a pattern opens where it was, and a peyote column
+keeps its parity. Beads may lie past a field set by hand, when it was made
+smaller than them.
 
 ```text
-on the field                          the file
-        column -4         3           "sheet": origin [-4, 1], size [8, 4]
-row 1   ┌──── sheet ──────┐
+the cells                             the file
+        column -4         3           "field": origin [-4, 1], size [8, 4]
+row 1   ┌──── field ──────┐
         │ ┌── rows ──┐    │           "rows_origin": [-3, 2]
 row 2   │ │112022    │    │           "rows": [[1, 1, 2, 0, 2, 2],
 row 3   │ │121213    │    │                    [1, 2, 1, 2, 1, 3]]
@@ -145,5 +150,5 @@ back. It says nothing to the user: its errors are for the program.
 
 `Result<T, PatternError>`: `Json`, `NoFormat`,
 `Newer`, `UnknownFormat`, `RowWidth`, `UnknownId`, `Outside`, `DuplicateId`,
-`Palette`, `NoPalette`, `Colour`, `Ratio`, `Turn`, `Sheet`; for a change of
+`Palette`, `NoPalette`, `Colour`, `Ratio`, `Turn`, `Field`; for a change of
 the colours, `Place`, `Full` and `Lost`.

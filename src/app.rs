@@ -396,8 +396,8 @@ impl App {
             canvas = canvas.picture(picture);
         }
         let field = canvas.show(ui);
-        if self.pattern.sheet().is_none() {
-            self.pattern.set_sheet(self.view.sheet);
+        if self.pattern.field().is_none() {
+            self.pattern.set_field(self.view.sheet);
         }
         self.history.least_sheet = self.view.sheet.map(|first| (first.width(), first.height()));
         field.response.named(&t!("field"));

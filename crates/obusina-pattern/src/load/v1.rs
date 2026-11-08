@@ -24,7 +24,7 @@ struct Document {
     #[serde(default)]
     locked: bool,
     #[serde(default)]
-    sheet: Option<Sheet>,
+    field: Option<Field>,
     #[serde(default)]
     ruling: Option<Ruling>,
     #[serde(default)]
@@ -35,10 +35,11 @@ struct Document {
     rows: Vec<Vec<u32>>,
 }
 
-/// The sheet of format 1: its top left cell and its size.
+/// The field set by hand of format 1: its top left cell and its size;
+/// left out, the size is by the beads.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Sheet {
+struct Field {
     origin: [i32; 2],
     size: [usize; 2],
 }
@@ -87,8 +88,8 @@ pub(super) fn load(value: serde_json::Value) -> Result<Pattern> {
     pattern.set_locked(document.locked);
     let [column, row] = document.rows_origin;
     super::put(&mut pattern, Cell { column, row }, &document.rows)?;
-    if let Some(sheet) = document.sheet {
-        pattern.set_sheet(Some(sheet.bounds()?));
+    if let Some(field) = document.field {
+        pattern.set_field(Some(field.bounds()?));
     }
     if let Some(Ruling { step, offset }) = document.ruling {
         pattern.set_ruling(Lines { step, offset });
@@ -112,13 +113,13 @@ impl Colour {
     }
 }
 
-impl Sheet {
-    /// The cells of the sheet; a sheet of no cells, or past the field a
-    /// cell can name, is refused.
+impl Field {
+    /// The cells of the field; a field of no cells, or past what a cell can
+    /// name, is refused.
     fn bounds(&self) -> Result<Bounds> {
         let [width, height] = self.size;
         let [column, row] = self.origin;
-        let refused = || PatternError::Sheet { width, height };
+        let refused = || PatternError::Field { width, height };
         if width == 0 || height == 0 {
             return Err(refused());
         }

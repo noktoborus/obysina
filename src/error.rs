@@ -122,7 +122,7 @@ impl AppError {
                 | PatternError::Lost { .. }
                 | PatternError::Colour { .. }
                 | PatternError::Ratio { .. }
-                | PatternError::Sheet { .. }
+                | PatternError::Field { .. }
                 | PatternError::Turn { .. }
                 | PatternError::Outside { .. } => "error.pattern.invalid",
             },

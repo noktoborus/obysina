@@ -141,7 +141,7 @@ fn pattern(design: &Design) -> Pattern {
         column: max.column.max(cell.column),
         row: max.row.max(cell.row),
     });
-    pattern.set_sheet(Some(Bounds {
+    pattern.set_field(Some(Bounds {
         min: cell(0, 0),
         max,
     }));

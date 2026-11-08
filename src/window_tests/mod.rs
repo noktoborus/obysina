@@ -1049,7 +1049,7 @@ fn a_new_size_of_the_window_keeps_the_middle() {
 fn columns_on_screen(window: &Window) -> i32 {
     let app = window.harness.state();
     let screen = window.harness.get_by_label(&t!("field")).rect();
-    let sheet = app.pattern.sheet().expect("a sheet");
+    let sheet = app.pattern.field().expect("a sheet");
     let field = app
         .pattern
         .bounds()

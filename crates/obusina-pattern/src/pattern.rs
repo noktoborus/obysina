@@ -12,7 +12,7 @@ use crate::ruling::Ruling;
 /// The width of a bead to its height, for a pattern that says nothing else.
 pub const DEFAULT_BEAD_RATIO: f32 = 1.0;
 
-/// The paper of a new pattern, the ground of its sheet: a neutral grey, so
+/// The paper of a new pattern, the ground of its field: a neutral grey, so
 /// that a colour looks the same in every theme and a black bead is seen.
 pub const DEFAULT_PAPER: Rgb = Rgb([0xd6, 0xd4, 0xce]);
 
@@ -42,7 +42,7 @@ pub struct Pattern {
     ratio: f32,
     palettes: Vec<Palette>,
     beads: BTreeMap<Cell, ColourId>,
-    sheet: Option<Bounds>,
+    field: Option<Bounds>,
     ruling: Ruling,
     paper: Rgb,
     turn: u16,
@@ -68,7 +68,7 @@ impl Pattern {
             && self.ratio == other.ratio
             && self.palettes == other.palettes
             && self.beads == other.beads
-            && self.sheet == other.sheet
+            && self.field == other.field
             && self.ruling == other.ruling
             && self.paper == other.paper
             && self.turn == other.turn
@@ -95,7 +95,7 @@ impl Pattern {
             ratio,
             palettes,
             beads: BTreeMap::new(),
-            sheet: None,
+            field: None,
             ruling: Ruling::default(),
             paper: DEFAULT_PAPER,
             turn: 0,
@@ -167,18 +167,25 @@ impl Pattern {
             .find(|colour| colour.id == id)
     }
 
-    /// The sheet: the size of the work area set by hand, where it stands on
-    /// the field. `None` until one is set.
-    pub fn sheet(&self) -> Option<Bounds> {
-        self.sheet
+    /// The field set by hand: its cells, where they stand. `None` when its
+    /// size is by the beads: the field is then the box around them.
+    pub fn field(&self) -> Option<Bounds> {
+        self.field
     }
 
-    /// Sets the sheet.
-    pub fn set_sheet(&mut self, sheet: Option<Bounds>) {
-        if self.sheet != sheet {
-            self.sheet = sheet;
+    /// Sets the field by hand, or by the beads with `None`. Beads past a
+    /// field set smaller than them stay.
+    pub fn set_field(&mut self, field: Option<Bounds>) {
+        if self.field != field {
+            self.field = field;
             self.revision = next_revision();
         }
+    }
+
+    /// True when a bead may be put in `cell`: anywhere with the size by the
+    /// beads, in the field only when it is set by hand.
+    pub fn takes(&self, cell: Cell) -> bool {
+        self.field.is_none_or(|field| field.contains(cell))
     }
 
     /// The lines to count the beads by.
@@ -194,7 +201,7 @@ impl Pattern {
         }
     }
 
-    /// The colour of the paper, the ground of the sheet.
+    /// The colour of the paper, the ground of the field.
     pub fn paper(&self) -> Rgb {
         self.paper
     }
@@ -241,14 +248,10 @@ impl Pattern {
         Ok(())
     }
 
-    /// The work area: the box around the sheet and the beads. A bead past
-    /// the sheet grows it; when that bead goes, the work area is the sheet
-    /// again. `None` with no sheet and no beads.
+    /// The work area: the field set by hand, or the box around the beads
+    /// when the size is by them. `None` by the beads with no beads.
     pub fn work_area(&self) -> Option<Bounds> {
-        match (self.sheet, self.bounds()) {
-            (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
-            (sheet, beads) => sheet.or(beads),
-        }
+        self.field.or_else(|| self.bounds())
     }
 
     /// The active area: the box around the beads. `None` when there are none.
@@ -288,6 +291,15 @@ impl Pattern {
     /// How many beads a colour has.
     pub fn count(&self, id: ColourId) -> usize {
         self.beads.values().filter(|bead| **bead == id).count()
+    }
+
+    /// How many beads a colour has in the work area; all of them with the
+    /// size by the beads.
+    pub fn count_in_field(&self, id: ColourId) -> usize {
+        self.beads
+            .iter()
+            .filter(|(cell, bead)| **bead == id && self.takes(**cell))
+            .count()
     }
 
     /// Puts a colour in a place and gives back its id. A colour there changes.
@@ -523,24 +535,30 @@ mod tests {
         );
     }
 
-    /// The work area is the sheet and the beads, never kept: a bead past
-    /// the sheet grows it, and taken away gives the sheet back.
+    /// By the beads the work area is their box; by hand it is the field,
+    /// and a bead past it is counted apart.
     #[test]
-    fn the_work_area_is_the_sheet_and_the_beads() {
+    fn the_work_area_is_the_beads_or_the_field_set() {
         let mut pattern = pattern();
-        let sheet = Bounds {
+        assert_eq!(pattern.work_area(), None);
+        let past = Cell { column: 6, row: 1 };
+        pattern.set(past, Some(FIRST));
+        assert_eq!(pattern.work_area(), Some(Bounds::of(past)));
+        assert!(pattern.takes(Cell {
+            column: -50,
+            row: 9
+        }));
+
+        let field = Bounds {
             min: Cell { column: 0, row: 0 },
             max: Cell { column: 3, row: 2 },
         };
-        pattern.set_sheet(Some(sheet));
-        assert_eq!(pattern.work_area(), Some(sheet));
-
-        let past = Cell { column: 6, row: 1 };
-        pattern.set(past, Some(FIRST));
-        assert_eq!(pattern.work_area().map(|area| area.width()), Some(7));
-
-        pattern.set(past, None);
-        assert_eq!(pattern.work_area(), Some(sheet));
+        pattern.set_field(Some(field));
+        pattern.set(Cell { column: 1, row: 1 }, Some(FIRST));
+        assert_eq!(pattern.work_area(), Some(field));
+        assert!(!pattern.takes(past));
+        assert_eq!(pattern.count(FIRST), 2);
+        assert_eq!(pattern.count_in_field(FIRST), 1);
     }
 
     #[test]

@@ -400,7 +400,7 @@ fn cards_of_patterns_of_other_sizes_all_get_pictures() {
             row: side / 2,
         };
         pattern.set(corner, Some(super::id_at(0)));
-        pattern.set_sheet(Some(obusina_pattern::Bounds {
+        pattern.set_field(Some(obusina_pattern::Bounds {
             min: obusina_pattern::Cell { column: 0, row: 0 },
             max: corner,
         }));

@@ -121,7 +121,7 @@ fn editors(app: &App) -> Editing {
         ruling: Arc::new(Mutex::new(app.pattern.ruling())),
         sheet: app
             .pattern
-            .sheet()
+            .field()
             .map(|sheet| crate::ui::sheet::Sizing::new(sheet, app.pattern.bounds())),
         paper: Arc::new(Mutex::new(colour(app.pattern.paper()))),
         entered: None,
@@ -180,7 +180,7 @@ fn pattern_items(app: &App, editing: &Editing) -> Vec<MenuItem> {
             .notice(numbers(Arc::clone(&editing.ruling)))
             .children(revert_entry(revert, t!("ruling.revert").to_string())),
     ];
-    if let (Some(sheet), Some(sizing)) = (app.pattern.sheet(), &editing.sheet) {
+    if let (Some(sheet), Some(sizing)) = (app.pattern.field(), &editing.sheet) {
         items.push(
             MenuItem::new(SHEET, t!("sheet.open"))
                 .detail(crate::ui::sheet::detail(sheet))
@@ -307,7 +307,7 @@ impl Editing {
     fn changed(&self, app: &App) -> bool {
         match self.entered {
             Some(Entered::Ruling(before)) => app.pattern.ruling() != before,
-            Some(Entered::Sheet(before)) => app.pattern.sheet() != Some(before),
+            Some(Entered::Sheet(before)) => app.pattern.field() != Some(before),
             Some(Entered::Paper(before)) => app.pattern.paper() != before,
             None => false,
         }
@@ -447,7 +447,7 @@ fn revert(app: &mut App) {
                 *sizing.size.lock().expect("the size is never poisoned") =
                     [before.width(), before.height()];
             }
-            app.pattern.set_sheet(Some(before));
+            app.pattern.set_field(Some(before));
         }
         Entered::Paper(before) => {
             *editing.paper.lock().expect("the paper is never poisoned") = colour(before);
@@ -502,7 +502,7 @@ fn follow(app: &mut App) {
 /// Takes the value of the level `level` when it is entered.
 fn enter(app: &mut App, level: &str) {
     let ruling = app.pattern.ruling();
-    let sheet = app.pattern.sheet();
+    let sheet = app.pattern.field();
     let paper = app.pattern.paper();
     let Some(editing) = &mut app.settings_edit else {
         return;
@@ -549,7 +549,7 @@ fn show_on_field(app: &mut App) {
         Some(Entered::Sheet(_)) => {
             if let Some(sizing) = &editing.sheet {
                 let shown = sizing.sheet();
-                app.pattern.set_sheet(Some(shown));
+                app.pattern.set_field(Some(shown));
             }
         }
         Some(Entered::Paper(_)) => {

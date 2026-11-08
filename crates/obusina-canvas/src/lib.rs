@@ -175,7 +175,7 @@ impl<'a> Canvas<'a> {
     /// put past it grows it. `None` before the field was first shown, with
     /// no beads.
     fn work_area(&self) -> Option<Bounds> {
-        let sheet = self.pattern.sheet().or(self.view.sheet);
+        let sheet = self.pattern.field().or(self.view.sheet);
         match (sheet, self.pattern.bounds()) {
             (Some(sheet), Some(beads)) => Some(sheet.union(beads)),
             (sheet, beads) => sheet.or(beads),

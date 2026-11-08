@@ -26,7 +26,7 @@ struct Document<'a> {
     #[serde(skip_serializing_if = "is_false")]
     locked: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    sheet: Option<Sheet>,
+    field: Option<Field>,
     ruling: WrittenRuling,
     paper: String,
     bead_ratio: f32,
@@ -35,9 +35,9 @@ struct Document<'a> {
     rows: Vec<Box<RawValue>>,
 }
 
-/// The sheet as it is written: its top left cell and its size.
+/// The field set by hand as it is written: its top left cell and its size.
 #[derive(Serialize)]
-struct Sheet {
+struct Field {
     origin: [i32; 2],
     size: [usize; 2],
 }
@@ -94,7 +94,7 @@ impl Pattern {
     /// The pattern as the text of a file: pretty printed, one row of beads on
     /// one line. The rows are the active area; `rows_origin` is the cell of
     /// the field of its top left corner, `[0, 0]` for a pattern with no
-    /// beads. The sheet is written when one is set.
+    /// beads. The field is written when it is set by hand.
     pub fn to_json(&self) -> Result<String> {
         let origin = self
             .bounds()
@@ -106,9 +106,9 @@ impl Pattern {
             grid: self.grid(),
             turn: self.turn(),
             locked: self.locked(),
-            sheet: self.sheet().map(|sheet| Sheet {
-                origin: [sheet.min.column, sheet.min.row],
-                size: [sheet.width(), sheet.height()],
+            field: self.field().map(|field| Field {
+                origin: [field.min.column, field.min.row],
+                size: [field.width(), field.height()],
             }),
             ruling: WrittenRuling {
                 step: self.ruling().step,

@@ -33,11 +33,11 @@ pub enum Edit {
         /// The palettes after.
         after: Vec<Palette>,
     },
-    /// The sheet changed its size.
-    Sheet {
-        /// The sheet before.
+    /// The field changed its size, or how it is sized.
+    Field {
+        /// The field set by hand before; `None` by the beads.
         before: Option<Bounds>,
-        /// The sheet after.
+        /// The field set by hand after; `None` by the beads.
         after: Option<Bounds>,
     },
     /// The lines to count the beads by changed.
@@ -69,7 +69,7 @@ impl Edit {
             }
             Edit::Grid { after, .. } => pattern.set_grid(*after),
             Edit::Palettes { after, .. } => put_back(pattern, after),
-            Edit::Sheet { after, .. } => pattern.set_sheet(*after),
+            Edit::Field { after, .. } => pattern.set_field(*after),
             Edit::Ruling { after, .. } => pattern.set_ruling(*after),
             Edit::Paper { after, .. } => pattern.set_paper(*after),
             Edit::Many(edits) => edits.iter().for_each(|edit| edit.apply(pattern)),
@@ -86,7 +86,7 @@ impl Edit {
             }
             Edit::Grid { before, .. } => pattern.set_grid(*before),
             Edit::Palettes { before, .. } => put_back(pattern, before),
-            Edit::Sheet { before, .. } => pattern.set_sheet(*before),
+            Edit::Field { before, .. } => pattern.set_field(*before),
             Edit::Ruling { before, .. } => pattern.set_ruling(*before),
             Edit::Paper { before, .. } => pattern.set_paper(*before),
             Edit::Many(edits) => edits.iter().rev().for_each(|edit| edit.revert(pattern)),
@@ -202,14 +202,14 @@ impl History {
         for change in &changes {
             pattern.set(change.cell, change.after);
         }
-        let before = pattern.sheet();
+        let before = pattern.field();
         let after = before.map(|sheet| self.fit_sheet(sheet, pattern.bounds(), &changes));
         let beads = Edit::Beads(changes);
         if after == before {
             self.keep(beads);
             return;
         }
-        let sheet = Edit::Sheet { before, after };
+        let sheet = Edit::Field { before, after };
         sheet.apply(pattern);
         self.keep(Edit::Many(vec![beads, sheet]));
     }
@@ -288,9 +288,9 @@ impl History {
     /// Keeps as a step the size of the sheet already put on the pattern in
     /// place of `before`; nothing is kept when it is the same.
     pub fn keep_sheet(&mut self, pattern: &Pattern, before: Bounds) {
-        let after = pattern.sheet();
+        let after = pattern.field();
         if after != Some(before) {
-            self.keep(Edit::Sheet {
+            self.keep(Edit::Field {
                 before: Some(before),
                 after,
             });
@@ -516,19 +516,19 @@ mod tests {
             ..History::default()
         };
         let mut pattern = pattern();
-        pattern.set_sheet(Some(bounds((0, 0), (19, 9))));
+        pattern.set_field(Some(bounds((0, 0), (19, 9))));
         let row: Vec<Cell> = (0..10).map(|column| Cell { column, row: 0 }).collect();
         history.paint(&mut pattern, &row, Some(COLOUR));
 
         history.paint(&mut pattern, &row[5..], None);
-        assert_eq!(pattern.sheet(), Some(bounds((0, 0), (4, 3))));
+        assert_eq!(pattern.field(), Some(bounds((0, 0), (4, 3))));
 
         history.paint(&mut pattern, &row[..5], None);
-        assert_eq!(pattern.sheet(), Some(bounds((0, 0), (3, 3))));
+        assert_eq!(pattern.field(), Some(bounds((0, 0), (3, 3))));
 
-        pattern.set_sheet(Some(bounds((0, 0), (1, 1))));
+        pattern.set_field(Some(bounds((0, 0), (1, 1))));
         history.paint(&mut pattern, &row[..1], Some(COLOUR));
         history.paint(&mut pattern, &row[..1], None);
-        assert_eq!(pattern.sheet(), Some(bounds((0, 0), (1, 1))));
+        assert_eq!(pattern.field(), Some(bounds((0, 0), (1, 1))));
     }
 }

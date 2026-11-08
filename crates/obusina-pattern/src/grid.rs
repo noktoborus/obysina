@@ -108,7 +108,7 @@ impl Bounds {
     }
 
     /// The box resized around its middle, but never smaller than `inside`
-    /// and moved as little as it takes to hold it: a sheet over the beads.
+    /// and moved as little as it takes to hold it: a field over the beads.
     pub fn resized_over(self, width: usize, height: usize, inside: Option<Bounds>) -> Bounds {
         let Some(inside) = inside else {
             return self.resized(width, height);
@@ -424,7 +424,7 @@ mod tests {
 
     #[test]
     fn a_box_over_others_holds_them() {
-        let sheet = Bounds {
+        let field = Bounds {
             min: Cell { column: 0, row: 0 },
             max: Cell { column: 9, row: 9 },
         };
@@ -433,16 +433,16 @@ mod tests {
             max: Cell { column: 4, row: 8 },
         };
 
-        let smaller = sheet.resized_over(2, 2, Some(beads));
+        let smaller = field.resized_over(2, 2, Some(beads));
         assert_eq!(smaller, beads, "no smaller than the beads, and over them");
 
-        let narrow = sheet.resized_over(6, 10, Some(beads));
+        let narrow = field.resized_over(6, 10, Some(beads));
         assert_eq!((narrow.width(), narrow.height()), (6, 10));
         assert!(
             narrow.contains(beads.min) && narrow.contains(beads.max),
             "{narrow:?}"
         );
 
-        assert_eq!(sheet.resized_over(4, 4, None), sheet.resized(4, 4));
+        assert_eq!(field.resized_over(4, 4, None), field.resized(4, 4));
     }
 }

@@ -128,9 +128,9 @@ pub enum PatternError {
         degrees: u16,
     },
 
-    /// The sheet of the file has no cells.
-    #[error("the sheet is {width} by {height}")]
-    Sheet {
+    /// The field of the file has no cells.
+    #[error("the field is {width} by {height}")]
+    Field {
         /// Columns.
         width: usize,
         /// Rows.

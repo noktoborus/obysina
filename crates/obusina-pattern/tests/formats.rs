@@ -35,7 +35,7 @@ fn format_1_reads_its_beads() {
         })
     );
     assert_eq!(
-        pattern.sheet(),
+        pattern.field(),
         Some(Bounds {
             min: Cell { column: -4, row: 1 },
             max: Cell { column: 3, row: 4 },
@@ -184,18 +184,18 @@ fn a_pattern_with_no_beads_has_no_rows() {
     assert_eq!(again.bounds(), None);
 }
 
-/// The sheet is the size set by hand; a file may carry none, and a pattern
-/// opened from it has none until the window sets one.
+/// A file with no field has its size by the beads.
 #[test]
-fn a_file_with_no_sheet_reads_with_none() {
-    let start = file(1).find("  \"sheet\"").expect("the file has a sheet");
+fn a_file_with_no_field_reads_by_the_beads() {
+    let start = file(1).find("  \"field\"").expect("the file has a field");
     let end = file(1).find("  \"ruling\"").expect("and a ruling");
     let mut text = file(1);
     text.replace_range(start..end, "");
 
     let pattern = Pattern::from_json(&text).expect("it reads");
 
-    assert_eq!(pattern.sheet(), None);
+    assert_eq!(pattern.field(), None);
+    assert_eq!(pattern.work_area(), pattern.bounds());
     assert_eq!(pattern.count(ColourId(1)), 5);
 }
 
@@ -217,12 +217,12 @@ fn a_file_with_no_turn_is_shown_unturned() {
 }
 
 #[test]
-fn a_sheet_of_no_cells_is_refused() {
+fn a_field_of_no_cells_is_refused() {
     let text = file(1).replace("      8,\n      4", "      0,\n      4");
 
     assert!(matches!(
         Pattern::from_json(&text),
-        Err(PatternError::Sheet {
+        Err(PatternError::Field {
             width: 0,
             height: 4
         })
